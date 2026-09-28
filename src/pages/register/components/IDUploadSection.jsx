@@ -1,6 +1,5 @@
 import React, { useState, useRef } from 'react';
 import Icon from '../../../components/AppIcon';
-import Image from '../../../components/AppImage';
 import Button from '../../../components/ui/Button';
 
 const IDUploadSection = ({ 
@@ -175,7 +174,7 @@ const IDUploadSection = ({
               <div className="flex items-start space-x-4">
                 {formData?.idDocument?.previewUrl ? (
                   <div className="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border border-border">
-                    <Image
+                    <img
                       src={formData?.idDocument?.previewUrl}
                       alt="ID Document Preview"
                       className="w-full h-full object-cover"

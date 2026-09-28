@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
 import Select from '../../../components/ui/Select';
 import Input from '../../../components/ui/Input';
+import { userProfilesService } from '../../../services/supabaseService';
 
 const AssignResponderModal = ({ 
   report, 
@@ -16,9 +17,26 @@ const AssignResponderModal = ({
   const [priority, setPriority] = useState(report?.priority || 'medium');
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
+  const [responders, setResponders] = useState([]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    userProfilesService.getRespondersByDepartment().then(({ data }) => {
+      setResponders((data || []).map(item => ({
+        value: item.id,
+        label: item.full_name,
+        department: item.department?.type || '',
+        departmentId: item.department_id,
+        status: item.is_active ? 'available' : 'unavailable',
+        experience: 'Verified responder',
+        currentLoad: 0
+      })));
+    });
+  }, [isOpen]);
 
   if (!isOpen || !report) return null;
 
+  /* Legacy examples
   const mockResponders = [
     {
       value: 'resp-001',
@@ -60,7 +78,7 @@ const AssignResponderModal = ({
       experience: '15 years',
       currentLoad: 0
     }
-  ];
+  ]; */
 
   const departmentOptions = [
     { value: '', label: 'All Departments' },
@@ -77,7 +95,7 @@ const AssignResponderModal = ({
     { value: 'critical', label: 'Critical Priority' }
   ];
 
-  const filteredResponders = mockResponders?.filter(responder => 
+  const filteredResponders = responders?.filter(responder => 
     !selectedDepartment || responder?.department === selectedDepartment
   );
 
@@ -103,7 +121,7 @@ const AssignResponderModal = ({
     return 'text-destructive';
   };
 
-  const selectedResponderData = mockResponders?.find(r => r?.value === selectedResponder);
+  const selectedResponderData = responders?.find(r => r?.value === selectedResponder);
 
   const handleAssign = async () => {
     if (!selectedResponder) return;
@@ -114,6 +132,7 @@ const AssignResponderModal = ({
         reportId: report?.id,
         responderId: selectedResponder,
         responderData: selectedResponderData,
+        departmentId: selectedResponderData?.departmentId,
         priority,
         notes
       });

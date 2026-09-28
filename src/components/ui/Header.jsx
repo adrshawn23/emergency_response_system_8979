@@ -14,7 +14,8 @@ const Header = ({ user = null, notificationCount = 0, onNavigate = () => {} }) =
     { label: 'Emergency Report', path: '/emergency-report', icon: 'AlertTriangle', roles: ['resident', 'dispatcher', 'responder'] },
     { label: 'Report Management', path: '/report-management', icon: 'FileText', roles: ['dispatcher', 'responder', 'admin'] },
     { label: 'User Management', path: '/user-management', icon: 'Users', roles: ['admin'] },
-    { label: 'Department Management', path: '/department-management', icon: 'Building', roles: ['admin'] }
+    { label: 'Department Management', path: '/department-management', icon: 'Building', roles: ['admin'] },
+    { label: 'Service Area', path: '/geofence-settings', icon: 'MapPin', roles: ['admin'] }
   ];
 
   const mockNotifications = [
@@ -175,23 +176,23 @@ const Header = ({ user = null, notificationCount = 0, onNavigate = () => {} }) =
                   <div className="py-2">
                     <button
                       onClick={() => {
-                        handleNavigation('/profile');
+                        handleNavigation('/account-management');
                         setIsUserMenuOpen(false);
                       }}
                       className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-foreground hover:bg-muted transition-emergency"
                     >
                       <Icon name="User" size={16} />
-                      <span>Profile</span>
+                      <span>Account</span>
                     </button>
                     <button
                       onClick={() => {
-                        handleNavigation('/settings');
+                        handleNavigation('/notifications');
                         setIsUserMenuOpen(false);
                       }}
                       className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-foreground hover:bg-muted transition-emergency"
                     >
-                      <Icon name="Settings" size={16} />
-                      <span>Settings</span>
+                      <Icon name="Bell" size={16} />
+                      <span>Notifications</span>
                     </button>
                   </div>
                   <div className="border-t border-border py-2">

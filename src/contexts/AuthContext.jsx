@@ -13,6 +13,7 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null)
+  const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
 
   // ⚠️ PROTECTED FUNCTION - DO NOT MODIFY OR ADD ASYNC OPERATIONS
@@ -23,6 +24,7 @@ export const AuthProvider = ({ children }) => {
       setUser(session?.user)
     } else {
       setUser(null)
+      setProfile(null)
     }
     setLoading(false)
   }
@@ -42,16 +44,24 @@ export const AuthProvider = ({ children }) => {
     return () => subscription?.unsubscribe()
   }, [])
 
+  useEffect(() => {
+    if (!user) return;
+    supabase.from('user_profiles').select('*, department:departments(*)').eq('id', user.id).single()
+      .then(({ data }) => setProfile(data || null));
+  }, [user])
+
 
   const value = {
     user,
+    profile,
     loading,
     signUp: async (email, password, userData = {}) => {
       const { data, error } = await supabase?.auth?.signUp({
         email,
         password,
         options: {
-          data: userData
+          data: userData,
+          emailRedirectTo: window.location.origin
         }
       });
       return { data, error };
@@ -65,6 +75,8 @@ export const AuthProvider = ({ children }) => {
     },
     signOut: async () => {
       const { error } = await supabase?.auth?.signOut();
+      localStorage.clear();
+      sessionStorage.clear();
       return { error };
     },
     getCurrentUserProfile: async () => {

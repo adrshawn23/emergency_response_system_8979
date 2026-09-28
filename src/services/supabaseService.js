@@ -83,6 +83,26 @@ export const emergencyReportsService = {
   }
 };
 
+export const mapReportForUi = report => ({
+  id: report.report_id,
+  databaseId: report.id,
+  incidentType: report.incident_type,
+  location: report.location,
+  priority: report.priority,
+  status: report.status,
+  reporter: { name: report.reporter_name, phone: report.reporter_phone },
+  assignedTo: report.assigned_responder ? {
+    id: report.assigned_responder.id,
+    name: report.assigned_responder.full_name,
+    department: report.assigned_department?.name || report.assigned_responder.department?.name
+  } : null,
+  description: report.description,
+  timestamp: new Date(report.created_at),
+  coordinates: report.coordinates,
+  images: report.images || [],
+  declineReason: report.decline_reason
+});
+
 // User Profiles Service
 export const userProfilesService = {
   // Get all user profiles

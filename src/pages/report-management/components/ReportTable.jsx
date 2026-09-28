@@ -195,9 +195,9 @@ const ReportTable = ({
                     </div>
                   </td>
                   <td className="p-4">
-                    <div className="flex items-center space-x-1">
-                      <Icon name="MapPin" size={14} className="text-muted-foreground" />
-                      <span className="text-sm text-foreground">{report?.location}</span>
+                    <div className="flex items-center space-x-1 min-w-0">
+                      <Icon name="MapPin" size={14} className="text-muted-foreground flex-shrink-0" />
+                      <span className="text-sm text-foreground truncate">{report?.location}</span>
                     </div>
                   </td>
                   <td className="p-4">
@@ -211,24 +211,24 @@ const ReportTable = ({
                     </span>
                   </td>
                   <td className="p-4">
-                    <div className="flex items-center space-x-2">
-                      <div className="w-6 h-6 bg-muted rounded-full flex items-center justify-center">
+                    <div className="flex items-center space-x-2 min-w-0">
+                      <div className="w-6 h-6 bg-muted rounded-full flex items-center justify-center flex-shrink-0">
                         <span className="text-xs font-medium text-foreground">
                           {report?.reporter?.name?.charAt(0)}
                         </span>
                       </div>
-                      <span className="text-sm text-foreground">{report?.reporter?.name}</span>
+                      <span className="text-sm text-foreground truncate">{report?.reporter?.name}</span>
                     </div>
                   </td>
                   <td className="p-4">
                     {report?.assignedTo ? (
-                      <div className="flex items-center space-x-2">
-                        <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center">
+                      <div className="flex items-center space-x-2 min-w-0">
+                        <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center flex-shrink-0">
                           <span className="text-xs font-medium text-white">
                             {report?.assignedTo?.name?.charAt(0)}
                           </span>
                         </div>
-                        <span className="text-sm text-foreground">{report?.assignedTo?.name}</span>
+                        <span className="text-sm text-foreground truncate">{report?.assignedTo?.name}</span>
                       </div>
                     ) : (
                       <span className="text-sm text-muted-foreground">Unassigned</span>

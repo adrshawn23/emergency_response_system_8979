@@ -12,19 +12,22 @@ import PrioritySelector from './components/PrioritySelector';
 import ImageUpload from './components/ImageUpload';
 import EmergencyContacts from './components/EmergencyContacts';
 import SubmissionProgress from './components/SubmissionProgress';
+import { useAuth } from '../../contexts/AuthContext';
+import { emergencyReportsService } from '../../services/supabaseService';
+import { supabase } from '../../lib/supabase';
 
 const EmergencyReport = () => {
   const navigate = useNavigate();
+  const { user: authUser, profile } = useAuth();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   
-  // Mock user data
-  const [user] = useState({
-    id: 1,
-    name: "John Resident",
-    email: "john.resident@email.com",
-    role: "resident",
-    avatar: "https://randomuser.me/api/portraits/men/32.jpg"
-  });
+  const user = {
+    id: authUser?.id,
+    name: profile?.full_name || authUser?.email || 'User',
+    email: authUser?.email,
+    role: profile?.role || 'resident',
+    avatar: profile?.avatar_url
+  };
 
   // Form state
   const [formData, setFormData] = useState({
@@ -43,7 +46,7 @@ const EmergencyReport = () => {
   const [reportNumber, setReportNumber] = useState(null);
   const [submissionError, setSubmissionError] = useState(null);
 
-  // Auto-save to localStorage
+  // Auto-save to localStorage (non-sensitive data only)
   useEffect(() => {
     const savedData = localStorage.getItem('emergency-report-draft');
     if (savedData) {
@@ -52,13 +55,19 @@ const EmergencyReport = () => {
         setFormData(prev => ({ ...prev, ...parsed }));
       } catch (error) {
         console.error('Error loading saved draft:', error);
+        localStorage.removeItem('emergency-report-draft');
       }
     }
   }, []);
 
   useEffect(() => {
     if (formData?.emergencyType || formData?.location || formData?.description) {
-      localStorage.setItem('emergency-report-draft', JSON.stringify(formData));
+      const safeFormData = {
+        emergencyType: formData.emergencyType,
+        location: formData.location,
+        description: formData.description
+      };
+      localStorage.setItem('emergency-report-draft', JSON.stringify(safeFormData));
     }
   }, [formData]);
 
@@ -113,12 +122,34 @@ const EmergencyReport = () => {
     setSubmissionError(null);
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      
-      // Generate mock report number
-      const reportNum = `ER-${Date.now()?.toString()?.slice(-6)}`;
-      setReportNumber(reportNum);
+      const verified = JSON.parse(sessionStorage.getItem('verifiedLocation') || 'null');
+      if (!verified) throw new Error('Your location must be verified before submitting.');
+
+      const imageUrls = [];
+      for (const image of formData.images || []) {
+        const file = image?.file || image;
+        if (!(file instanceof File)) continue;
+        const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const path = `${authUser.id}/${crypto.randomUUID()}-${safeName}`;
+        const { error: uploadError } = await supabase.storage.from('report-images').upload(path, file);
+        if (uploadError) throw uploadError;
+        const { data: publicUrl } = supabase.storage.from('report-images').getPublicUrl(path);
+        imageUrls.push(publicUrl.publicUrl);
+      }
+
+      const { data: report, error } = await emergencyReportsService.createReport({
+        incident_type: formData.emergencyType,
+        priority: formData.priority,
+        location: formData.location.trim(),
+        coordinates: { lat: verified.latitude, lng: verified.longitude, accuracy: verified.accuracy },
+        description: formData.description.trim(),
+        reporter_id: authUser.id,
+        reporter_name: formData.contactName.trim(),
+        reporter_phone: formData.contactPhone.trim(),
+        images: imageUrls
+      });
+      if (error) throw error;
+      setReportNumber(report.report_id);
       setIsSubmitted(true);
       
       // Clear draft from localStorage
@@ -136,11 +167,11 @@ const EmergencyReport = () => {
           contactPhone: '',
           images: []
         });
-        navigate('/');
+        navigate(profile?.role === 'resident' ? '/emergency-report' : '/report-management');
       }, 5000);
       
     } catch (error) {
-      setSubmissionError('Failed to submit emergency report. Please try again or call 911 for immediate assistance.');
+      setSubmissionError(error?.message || 'Failed to submit emergency report. Please contact local emergency services for immediate assistance.');
     } finally {
       setIsSubmitting(false);
     }
@@ -178,7 +209,7 @@ const EmergencyReport = () => {
         onNavigate={navigate}
       />
       <main className={`pt-16 transition-emergency ${
-        isSidebarCollapsed ? 'pl-16' : 'pl-64'
+        isSidebarCollapsed ? 'ml-16' : 'ml-64'
       }`}>
         <div className="p-6">
           {/* Header Section */}

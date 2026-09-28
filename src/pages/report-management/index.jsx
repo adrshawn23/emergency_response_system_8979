@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Icon from '../../components/AppIcon';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
@@ -10,14 +11,23 @@ import AssignResponderModal from './components/AssignResponderModal';
 import DeclineReasonModal from './components/DeclineReasonModal';
 import BulkActionsPanel from './components/BulkActionsPanel';
 import ReportStats from './components/ReportStats';
+import { emergencyReportsService, mapReportForUi, subscriptions } from '../../services/supabaseService';
+import Header from '../../components/ui/Header';
+import Sidebar from '../../components/ui/Sidebar';
+import { useAuth } from '../../contexts/AuthContext';
 
 const ReportManagement = () => {
+  const navigate = useNavigate();
+  const { user: authUser, profile } = useAuth();
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const currentUser = { id: authUser?.id, name: profile?.full_name || authUser?.email || 'User', role: profile?.role };
   const [reports, setReports] = useState([]);
   const [filteredReports, setFilteredReports] = useState([]);
   const [selectedReports, setSelectedReports] = useState([]);
   const [filters, setFilters] = useState({});
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
+  const [dataError, setDataError] = useState('');
   const [currentView, setCurrentView] = useState('table'); // 'table', 'stats'
   
   // Modal states
@@ -26,7 +36,7 @@ const ReportManagement = () => {
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [showDeclineModal, setShowDeclineModal] = useState(false);
 
-  // Mock data
+  /* Legacy sample shape retained for UI documentation only.
   const mockReports = [
     {
       id: 'RPT-001',
@@ -143,7 +153,7 @@ const ReportManagement = () => {
         'https://images.unsplash.com/photo-1581833971358-2c8b550f87b3?w=400'
       ]
     }
-  ];
+  ]; */
 
   const breadcrumbItems = [
     { label: 'Dashboard', path: '/' },
@@ -152,27 +162,31 @@ const ReportManagement = () => {
 
   // Calculate stats
   const stats = {
-    total: mockReports?.length,
-    pending: mockReports?.filter(r => r?.status === 'pending')?.length,
-    assigned: mockReports?.filter(r => r?.status === 'assigned')?.length,
-    inProgress: mockReports?.filter(r => r?.status === 'in-progress')?.length,
-    resolved: mockReports?.filter(r => r?.status === 'resolved')?.length,
-    declined: mockReports?.filter(r => r?.status === 'declined')?.length,
-    critical: mockReports?.filter(r => r?.priority === 'critical')?.length,
-    high: mockReports?.filter(r => r?.priority === 'high')?.length,
-    medium: mockReports?.filter(r => r?.priority === 'medium')?.length,
-    low: mockReports?.filter(r => r?.priority === 'low')?.length
+    total: reports.length,
+    pending: reports.filter(r => r.status === 'pending').length,
+    assigned: reports.filter(r => r.status === 'assigned').length,
+    inProgress: reports.filter(r => r.status === 'in-progress').length,
+    resolved: reports.filter(r => r.status === 'resolved').length,
+    declined: reports.filter(r => r.status === 'declined').length,
+    critical: reports.filter(r => r.priority === 'critical').length,
+    high: reports.filter(r => r.priority === 'high').length,
+    medium: reports.filter(r => r.priority === 'medium').length,
+    low: reports.filter(r => r.priority === 'low').length
+  };
+
+  const loadReports = async () => {
+    setLoading(true);
+    setDataError('');
+    const { data, error } = await emergencyReportsService.getReports();
+    if (error) setDataError(error.message || 'Unable to load emergency reports.');
+    setReports((data || []).map(mapReportForUi));
+    setLoading(false);
   };
 
   useEffect(() => {
-    // Simulate loading
-    const timer = setTimeout(() => {
-      setReports(mockReports);
-      setFilteredReports(mockReports);
-      setLoading(false);
-    }, 1000);
-
-    return () => clearTimeout(timer);
+    loadReports();
+    const channel = subscriptions.subscribeToReports(() => loadReports());
+    return () => { subscriptions.unsubscribe(channel); };
   }, []);
 
   useEffect(() => {
@@ -273,37 +287,25 @@ const ReportManagement = () => {
     }
   };
 
-  const handleAcceptReport = (report) => {
-    setReports(prev => prev?.map(r => 
-      r?.id === report?.id 
-        ? { ...r, status: 'assigned' }
-        : r
-    ));
+  const handleAcceptReport = async (report) => {
+    const { error } = await emergencyReportsService.updateReportStatus(report.databaseId, 'in-progress');
+    if (error) setDataError(error.message);
+    else loadReports();
   };
 
-  const handleAssignResponder = (assignmentData) => {
-    setReports(prev => prev?.map(r => 
-      r?.id === assignmentData?.reportId 
-        ? { 
-            ...r, 
-            status: 'assigned',
-            assignedTo: {
-              name: assignmentData?.responderData?.label,
-              department: assignmentData?.responderData?.department
-            },
-            priority: assignmentData?.priority
-          }
-        : r
-    ));
+  const handleAssignResponder = async (assignmentData) => {
+    const report = reports.find(item => item.id === assignmentData.reportId);
+    const { error } = await emergencyReportsService.assignResponder(report.databaseId, assignmentData.responderId, assignmentData.departmentId || null);
+    if (error) throw error;
+    await emergencyReportsService.updateReportStatus(report.databaseId, 'assigned', { priority: assignmentData.priority });
+    await loadReports();
     setShowAssignModal(false);
   };
 
-  const handleDeclineReport = (declineData) => {
-    setReports(prev => prev?.map(r => 
-      r?.id === declineData?.reportId 
-        ? { ...r, status: 'declined' }
-        : r
-    ));
+  const handleDeclineReport = async (declineData) => {
+    const report = reports.find(item => item.id === declineData.reportId);
+    const { error } = await emergencyReportsService.updateReportStatus(report.databaseId, 'declined', { decline_reason: declineData.reason });
+    if (error) setDataError(error.message); else await loadReports();
     setShowDeclineModal(false);
   };
 
@@ -332,13 +334,20 @@ const ReportManagement = () => {
     setSelectedReports([]);
   };
 
-  const handleNavigation = (path) => {
-    window.location.href = path;
-  };
+  const handleNavigation = path => navigate(path);
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-6 space-y-6">
+      <Header user={currentUser} onNavigate={navigate} />
+      <Sidebar
+        isCollapsed={isSidebarCollapsed}
+        onToggleCollapse={() => setIsSidebarCollapsed(value => !value)}
+        user={currentUser}
+        onNavigate={navigate}
+      />
+      <main className={`pt-16 transition-emergency ${isSidebarCollapsed ? 'ml-16' : 'ml-64'}`}>
+      <div className="p-6 space-y-6">
+        {dataError && <div className="p-4 rounded-lg border border-destructive/20 bg-destructive/10 text-sm text-destructive">{dataError}</div>}
         {/* Header */}
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
           <div>
@@ -409,8 +418,7 @@ const ReportManagement = () => {
             variant="outline"
             iconName="RefreshCw"
             onClick={() => {
-              setLoading(true);
-              setTimeout(() => setLoading(false), 1000);
+              loadReports();
             }}
             title="Refresh reports"
           />
@@ -520,6 +528,7 @@ const ReportManagement = () => {
           onDecline={handleDeclineReport}
         />
       </div>
+      </main>
     </div>
   );
 };

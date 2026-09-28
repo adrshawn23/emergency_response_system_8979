@@ -8,10 +8,12 @@ import AccountCredentialsSection from './components/AccountCredentialsSection';
 import RoleSelectionSection from './components/RoleSelectionSection';
 import IDUploadSection from './components/IDUploadSection';
 import EmergencyContactSection from './components/EmergencyContactSection';
-import TrustIndicators from './components/TrustIndicators';
+import { useAuth } from '../../contexts/AuthContext';
+import { supabase } from '../../lib/supabase';
 
 const Register = () => {
   const navigate = useNavigate();
+  const { signUp } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const totalSteps = 5;
@@ -156,11 +158,24 @@ const Register = () => {
     setIsLoading(true);
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Mock successful registration
-      console.log('Registration data:', formData);
+      const requestedRole = formData.role || 'resident';
+      const { data, error } = await signUp(formData.email.trim(), formData.password, {
+        full_name: `${formData.firstName} ${formData.lastName}`.trim(),
+        role: 'resident',
+        requested_role: requestedRole,
+        phone_number: formData.phone,
+        address: formData.address
+      });
+      if (error) throw error;
+      if (data?.user && formData.emergencyContacts?.length) {
+        await supabase.from('emergency_contacts').insert(formData.emergencyContacts.map((contact, index) => ({
+          user_id: data.user.id,
+          name: contact.name,
+          relationship: contact.relationship,
+          phone_number: contact.phone,
+          is_primary: index === 0
+        })));
+      }
       
       // Navigate to confirmation page or login
       navigate('/login', { 
@@ -170,8 +185,7 @@ const Register = () => {
         }
       });
     } catch (error) {
-      console.error('Registration error:', error);
-      setErrors({ submit: 'Registration failed. Please try again.' });
+      setErrors({ submit: error?.message || 'Registration failed. Please try again.' });
     } finally {
       setIsLoading(false);
     }
@@ -334,8 +348,6 @@ const Register = () => {
                 </div>
               </div>
 
-              {/* Trust Indicators */}
-              <TrustIndicators />
             </div>
           </div>
 
@@ -421,10 +433,10 @@ const Register = () => {
 
               {/* Error Display */}
               {errors?.submit && (
-                <div className="bg-error/10 border border-error/20 rounded-lg p-4">
+                <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
                   <div className="flex items-center space-x-2">
-                    <Icon name="AlertCircle" size={16} className="text-error" />
-                    <span className="text-sm text-error font-medium">{errors?.submit}</span>
+                    <Icon name="AlertCircle" size={16} className="text-destructive" />
+                    <span className="text-sm text-destructive font-medium">{errors?.submit}</span>
                   </div>
                 </div>
               )}
