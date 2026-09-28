@@ -46,7 +46,7 @@ const EmergencyReport = () => {
   const [reportNumber, setReportNumber] = useState(null);
   const [submissionError, setSubmissionError] = useState(null);
 
-  // Auto-save to localStorage
+  // Auto-save to localStorage (non-sensitive data only)
   useEffect(() => {
     const savedData = localStorage.getItem('emergency-report-draft');
     if (savedData) {
@@ -55,13 +55,19 @@ const EmergencyReport = () => {
         setFormData(prev => ({ ...prev, ...parsed }));
       } catch (error) {
         console.error('Error loading saved draft:', error);
+        localStorage.removeItem('emergency-report-draft');
       }
     }
   }, []);
 
   useEffect(() => {
     if (formData?.emergencyType || formData?.location || formData?.description) {
-      localStorage.setItem('emergency-report-draft', JSON.stringify(formData));
+      const safeFormData = {
+        emergencyType: formData.emergencyType,
+        location: formData.location,
+        description: formData.description
+      };
+      localStorage.setItem('emergency-report-draft', JSON.stringify(safeFormData));
     }
   }, [formData]);
 
@@ -203,7 +209,7 @@ const EmergencyReport = () => {
         onNavigate={navigate}
       />
       <main className={`pt-16 transition-emergency ${
-        isSidebarCollapsed ? 'pl-16' : 'pl-64'
+        isSidebarCollapsed ? 'ml-16' : 'ml-64'
       }`}>
         <div className="p-6">
           {/* Header Section */}

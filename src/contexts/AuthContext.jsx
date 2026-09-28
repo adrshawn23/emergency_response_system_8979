@@ -60,7 +60,8 @@ export const AuthProvider = ({ children }) => {
         email,
         password,
         options: {
-          data: userData
+          data: userData,
+          emailRedirectTo: window.location.origin
         }
       });
       return { data, error };
@@ -74,7 +75,8 @@ export const AuthProvider = ({ children }) => {
     },
     signOut: async () => {
       const { error } = await supabase?.auth?.signOut();
-      localStorage.removeItem('currentUser');
+      localStorage.clear();
+      sessionStorage.clear();
       return { error };
     },
     getCurrentUserProfile: async () => {

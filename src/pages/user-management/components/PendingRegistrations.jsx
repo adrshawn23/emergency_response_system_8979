@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import Icon from '../../../components/AppIcon';
-import Image from '../../../components/AppImage';
 import Button from '../../../components/ui/Button';
 import Input from '../../../components/ui/Input';
 
@@ -78,7 +77,7 @@ const PendingRegistrations = ({
             <div key={user?.id} className="p-6 hover:bg-muted/30 transition-emergency">
               <div className="flex items-start space-x-4">
                 <div className="relative">
-                  <Image
+                  <img
                     src={user?.avatar}
                     alt={user?.name}
                     className="w-12 h-12 rounded-full object-cover"
@@ -150,7 +149,7 @@ const PendingRegistrations = ({
                       <div className="flex space-x-2">
                         {user?.idDocuments?.map((doc, index) => (
                           <div key={index} className="relative group">
-                            <Image
+                            <img
                               src={doc?.url}
                               alt={doc?.name}
                               className="w-20 h-20 rounded-lg object-cover border border-border cursor-pointer hover:opacity-80 transition-emergency"

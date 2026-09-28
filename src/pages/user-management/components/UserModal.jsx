@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import Icon from '../../../components/AppIcon';
-import Image from '../../../components/AppImage';
 import Button from '../../../components/ui/Button';
 import Input from '../../../components/ui/Input';
 import Select from '../../../components/ui/Select';
@@ -182,8 +181,8 @@ const UserModal = ({
             (<div className="space-y-6">
               {/* User Avatar and Basic Info */}
               <div className="flex items-center space-x-4">
-                <div className="relative">
-                  <Image
+                <div className="relative flex-shrink-0">
+                  <img
                     src={user?.avatar}
                     alt={user?.name}
                     className="w-20 h-20 rounded-full object-cover"
@@ -192,9 +191,9 @@ const UserModal = ({
                     <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-success border-2 border-card rounded-full"></div>
                   )}
                 </div>
-                <div>
-                  <h3 className="text-xl font-semibold text-foreground">{user?.name}</h3>
-                  <p className="text-muted-foreground">{user?.email}</p>
+                <div className="min-w-0">
+                  <h3 className="text-xl font-semibold text-foreground truncate">{user?.name}</h3>
+                  <p className="text-muted-foreground truncate">{user?.email}</p>
                   <div className="flex items-center space-x-2 mt-2">
                     {getStatusBadge(user?.status)}
                     <span className="text-sm text-muted-foreground">•</span>

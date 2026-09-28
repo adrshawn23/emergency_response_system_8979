@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
-import Image from '../../../components/AppImage';
 
 const ReportDetailsModal = ({ 
   report, 
@@ -276,7 +275,7 @@ const ReportDetailsModal = ({
                   <div className="mt-2 grid grid-cols-2 md:grid-cols-3 gap-4">
                     {report?.images?.map((image, index) => (
                       <div key={index} className="relative group">
-                        <Image
+                        <img
                           src={image}
                           alt={`Evidence ${index + 1}`}
                           className="w-full h-32 object-cover rounded-md"

@@ -163,13 +163,13 @@ const UserAssignmentPanel = ({
                       selectedUsers?.some(u => u?.id === user?.id) ? 'bg-primary/10 border-primary' : ''
                     }`}
                   >
-                    <div className="flex items-center space-x-3">
-                      <div className="flex items-center justify-center w-8 h-8 bg-primary text-white rounded-full text-xs font-semibold">
+                    <div className="flex items-center space-x-3 min-w-0">
+                      <div className="flex items-center justify-center w-8 h-8 bg-primary text-white rounded-full text-xs font-semibold flex-shrink-0">
                         {user?.name?.charAt(0)}
                       </div>
-                      <div>
-                        <p className="text-sm font-medium text-foreground">{user?.name}</p>
-                        <p className="text-xs text-muted-foreground">{user?.email}</p>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">{user?.name}</p>
+                        <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
                       </div>
                     </div>
                     
@@ -217,13 +217,13 @@ const UserAssignmentPanel = ({
                     key={member?.id}
                     className="flex items-center justify-between p-3 border border-border rounded-lg hover:bg-muted transition-emergency"
                   >
-                    <div className="flex items-center space-x-3">
-                      <div className="flex items-center justify-center w-8 h-8 bg-primary text-white rounded-full text-xs font-semibold">
+                    <div className="flex items-center space-x-3 min-w-0">
+                      <div className="flex items-center justify-center w-8 h-8 bg-primary text-white rounded-full text-xs font-semibold flex-shrink-0">
                         {member?.name?.charAt(0)}
                       </div>
-                      <div>
-                        <p className="text-sm font-medium text-foreground">{member?.name}</p>
-                        <p className="text-xs text-muted-foreground">{member?.email}</p>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">{member?.name}</p>
+                        <p className="text-xs text-muted-foreground truncate">{member?.email}</p>
                         <div className="flex items-center space-x-2 mt-1">
                           <span className={`px-2 py-1 text-xs font-medium rounded-full ${getRoleBadgeColor(member?.role)}`}>
                             {member?.role}

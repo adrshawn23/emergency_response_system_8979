@@ -33,6 +33,34 @@ const Sidebar = ({
       description: 'Manage incident reports'
     },
     { 
+      label: 'Broadcasting', 
+      path: '/broadcasting', 
+      icon: 'Bell', 
+      roles: ['admin', 'dispatcher', 'resident', 'responder'],
+      description: 'Emergency broadcasts'
+    },
+    { 
+      label: 'Emergency Contacts', 
+      path: '/emergency-contacts', 
+      icon: 'Phone', 
+      roles: ['admin', 'dispatcher', 'resident', 'responder'],
+      description: 'Emergency contacts'
+    },
+    { 
+      label: 'Notifications', 
+      path: '/notifications', 
+      icon: 'BellRing', 
+      roles: ['admin', 'dispatcher', 'resident', 'responder'],
+      description: 'System notifications'
+    },
+    { 
+      label: 'Account Management', 
+      path: '/account-management', 
+      icon: 'Settings', 
+      roles: ['admin', 'dispatcher', 'resident', 'responder'],
+      description: 'Account settings'
+    },
+    { 
       label: 'User Management', 
       path: '/user-management', 
       icon: 'Users', 

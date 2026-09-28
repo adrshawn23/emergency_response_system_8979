@@ -8,7 +8,6 @@ import AccountCredentialsSection from './components/AccountCredentialsSection';
 import RoleSelectionSection from './components/RoleSelectionSection';
 import IDUploadSection from './components/IDUploadSection';
 import EmergencyContactSection from './components/EmergencyContactSection';
-import TrustIndicators from './components/TrustIndicators';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 
@@ -349,8 +348,6 @@ const Register = () => {
                 </div>
               </div>
 
-              {/* Trust Indicators */}
-              <TrustIndicators />
             </div>
           </div>
 
@@ -436,10 +433,10 @@ const Register = () => {
 
               {/* Error Display */}
               {errors?.submit && (
-                <div className="bg-error/10 border border-error/20 rounded-lg p-4">
+                <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
                   <div className="flex items-center space-x-2">
-                    <Icon name="AlertCircle" size={16} className="text-error" />
-                    <span className="text-sm text-error font-medium">{errors?.submit}</span>
+                    <Icon name="AlertCircle" size={16} className="text-destructive" />
+                    <span className="text-sm text-destructive font-medium">{errors?.submit}</span>
                   </div>
                 </div>
               )}

@@ -36,8 +36,7 @@ const Login = () => {
   };
 
   const handleForgotPassword = () => {
-    // In a real app, this would navigate to forgot password page
-    alert('Forgot password functionality would redirect to password recovery page.');
+    navigate('/forgot-password');
   };
 
   const handleCreateAccount = () => {

@@ -285,8 +285,8 @@ const UserTable = ({
                 
                 <td className="p-4">
                   <div className="flex items-center space-x-3">
-                    <div className="relative">
-                      <Image
+                    <div className="relative flex-shrink-0">
+                      <img
                         src={user?.avatar}
                         alt={user?.name}
                         className="w-10 h-10 rounded-full object-cover"
@@ -295,9 +295,9 @@ const UserTable = ({
                         <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-success border-2 border-card rounded-full"></div>
                       )}
                     </div>
-                    <div>
-                      <p className="font-medium text-foreground">{user?.name}</p>
-                      <p className="text-sm text-muted-foreground">{user?.email}</p>
+                    <div className="min-w-0">
+                      <p className="font-medium text-foreground truncate">{user?.name}</p>
+                      <p className="text-sm text-muted-foreground truncate">{user?.email}</p>
                     </div>
                   </div>
                 </td>

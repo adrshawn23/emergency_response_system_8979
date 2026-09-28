@@ -345,7 +345,7 @@ const ReportManagement = () => {
         user={currentUser}
         onNavigate={navigate}
       />
-      <main className={`pt-16 transition-emergency ${isSidebarCollapsed ? 'pl-16' : 'pl-64'}`}>
+      <main className={`pt-16 transition-emergency ${isSidebarCollapsed ? 'ml-16' : 'ml-64'}`}>
       <div className="p-6 space-y-6">
         {dataError && <div className="p-4 rounded-lg border border-destructive/20 bg-destructive/10 text-sm text-destructive">{dataError}</div>}
         {/* Header */}
