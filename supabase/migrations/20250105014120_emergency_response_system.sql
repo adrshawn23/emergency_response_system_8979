@@ -1,0 +1,406 @@
+-- Emergency Response System Database Migration
+-- Schema Analysis: No existing schema - creating complete emergency management database
+-- Integration Type: Complete schema creation with authentication and RLS policies
+-- Dependencies: auth.users (Supabase managed)
+
+-- 1. ENUMS AND TYPES
+CREATE TYPE public.user_role AS ENUM ('admin', 'dispatcher', 'responder', 'resident');
+CREATE TYPE public.incident_type AS ENUM ('fire', 'medical', 'police', 'accident', 'natural');
+CREATE TYPE public.priority_level AS ENUM ('low', 'medium', 'high', 'critical');
+CREATE TYPE public.report_status AS ENUM ('pending', 'assigned', 'in-progress', 'resolved', 'declined');
+CREATE TYPE public.department_type AS ENUM ('fire', 'medical', 'police', 'emergency_management');
+
+-- 2. CORE TABLES (No foreign keys first)
+
+-- User profiles table (intermediary for auth.users)
+CREATE TABLE public.user_profiles (
+    id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    email TEXT NOT NULL UNIQUE,
+    full_name TEXT NOT NULL,
+    phone_number TEXT,
+    role public.user_role DEFAULT 'resident'::public.user_role,
+    department_id UUID,
+    is_active BOOLEAN DEFAULT true,
+    avatar_url TEXT,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Departments table
+CREATE TABLE public.departments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT NOT NULL,
+    type public.department_type NOT NULL,
+    description TEXT,
+    contact_email TEXT,
+    contact_phone TEXT,
+    address TEXT,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Emergency reports table
+CREATE TABLE public.emergency_reports (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    report_id TEXT NOT NULL UNIQUE, -- RPT-001 format
+    incident_type public.incident_type NOT NULL,
+    priority public.priority_level NOT NULL,
+    status public.report_status DEFAULT 'pending'::public.report_status,
+    location TEXT NOT NULL,
+    coordinates JSONB, -- {lat: number, lng: number}
+    description TEXT NOT NULL,
+    reporter_id UUID REFERENCES public.user_profiles(id) ON DELETE SET NULL,
+    reporter_name TEXT NOT NULL,
+    reporter_phone TEXT NOT NULL,
+    assigned_to UUID REFERENCES public.user_profiles(id) ON DELETE SET NULL,
+    assigned_department_id UUID REFERENCES public.departments(id) ON DELETE SET NULL,
+    images TEXT[], -- Array of image URLs
+    decline_reason TEXT,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    resolved_at TIMESTAMPTZ
+);
+
+-- 3. DEPENDENT TABLES (With foreign keys to existing tables)
+
+-- Add department foreign key to user_profiles
+ALTER TABLE public.user_profiles 
+ADD CONSTRAINT fk_user_profiles_department 
+FOREIGN KEY (department_id) REFERENCES public.departments(id) ON DELETE SET NULL;
+
+-- Report updates/notes table
+CREATE TABLE public.report_updates (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    report_id UUID REFERENCES public.emergency_reports(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES public.user_profiles(id) ON DELETE CASCADE,
+    update_type TEXT NOT NULL, -- 'status_change', 'assignment', 'note', 'location_update'
+    message TEXT NOT NULL,
+    old_status public.report_status,
+    new_status public.report_status,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Emergency contacts table
+CREATE TABLE public.emergency_contacts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES public.user_profiles(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    relationship TEXT NOT NULL,
+    phone_number TEXT NOT NULL,
+    is_primary BOOLEAN DEFAULT false,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 4. INDEXES
+CREATE INDEX idx_user_profiles_role ON public.user_profiles(role);
+CREATE INDEX idx_user_profiles_department ON public.user_profiles(department_id);
+CREATE INDEX idx_departments_type ON public.departments(type);
+CREATE INDEX idx_emergency_reports_status ON public.emergency_reports(status);
+CREATE INDEX idx_emergency_reports_priority ON public.emergency_reports(priority);
+CREATE INDEX idx_emergency_reports_incident_type ON public.emergency_reports(incident_type);
+CREATE INDEX idx_emergency_reports_reporter ON public.emergency_reports(reporter_id);
+CREATE INDEX idx_emergency_reports_assigned_to ON public.emergency_reports(assigned_to);
+CREATE INDEX idx_emergency_reports_created_at ON public.emergency_reports(created_at DESC);
+CREATE INDEX idx_report_updates_report_id ON public.report_updates(report_id);
+CREATE INDEX idx_emergency_contacts_user_id ON public.emergency_contacts(user_id);
+
+-- 5. FUNCTIONS (Before RLS policies)
+
+-- Function to generate report ID
+CREATE OR REPLACE FUNCTION public.generate_report_id()
+RETURNS TEXT
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    next_number INTEGER;
+    report_id TEXT;
+BEGIN
+    -- Get the next sequential number
+    SELECT COALESCE(MAX(CAST(SUBSTRING(report_id FROM 5) AS INTEGER)), 0) + 1
+    INTO next_number
+    FROM public.emergency_reports
+    WHERE report_id LIKE 'RPT-%';
+    
+    -- Format as RPT-XXX
+    report_id := 'RPT-' || LPAD(next_number::TEXT, 3, '0');
+    
+    RETURN report_id;
+END;
+$$;
+
+-- Function to handle new user registration
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+    INSERT INTO public.user_profiles (id, email, full_name, role)
+    VALUES (
+        NEW.id,
+        NEW.email,
+        COALESCE(NEW.raw_user_meta_data->>'full_name', split_part(NEW.email, '@', 1)),
+        COALESCE(NEW.raw_user_meta_data->>'role', 'resident')::public.user_role
+    );
+    RETURN NEW;
+END;
+$$;
+
+-- Function to update report timestamps
+CREATE OR REPLACE FUNCTION public.update_report_timestamp()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    
+    -- Set resolved_at when status changes to resolved
+    IF NEW.status = 'resolved' AND OLD.status != 'resolved' THEN
+        NEW.resolved_at = CURRENT_TIMESTAMP;
+    END IF;
+    
+    RETURN NEW;
+END;
+$$;
+
+-- 6. ENABLE RLS
+ALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.departments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.emergency_reports ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.report_updates ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.emergency_contacts ENABLE ROW LEVEL SECURITY;
+
+-- 7. RLS POLICIES
+
+-- User profiles policies (Pattern 1 - Core user table)
+CREATE POLICY "users_manage_own_user_profiles"
+ON public.user_profiles
+FOR ALL
+TO authenticated
+USING (id = auth.uid())
+WITH CHECK (id = auth.uid());
+
+-- Admin can view all profiles
+CREATE POLICY "admin_view_all_profiles"
+ON public.user_profiles
+FOR SELECT
+TO authenticated
+USING (
+    EXISTS (
+        SELECT 1 FROM auth.users au
+        WHERE au.id = auth.uid() 
+        AND au.raw_user_meta_data->>'role' = 'admin'
+    )
+);
+
+-- Departments policies - Public read, admin manage
+CREATE POLICY "public_can_read_departments"
+ON public.departments
+FOR SELECT
+TO public
+USING (true);
+
+CREATE POLICY "admin_manage_departments"
+ON public.departments
+FOR ALL
+TO authenticated
+USING (
+    EXISTS (
+        SELECT 1 FROM auth.users au
+        WHERE au.id = auth.uid() 
+        AND au.raw_user_meta_data->>'role' = 'admin'
+    )
+)
+WITH CHECK (
+    EXISTS (
+        SELECT 1 FROM auth.users au
+        WHERE au.id = auth.uid() 
+        AND au.raw_user_meta_data->>'role' = 'admin'
+    )
+);
+
+-- Emergency reports policies
+-- Residents can create and view their own reports
+CREATE POLICY "residents_manage_own_reports"
+ON public.emergency_reports
+FOR ALL
+TO authenticated
+USING (reporter_id = auth.uid())
+WITH CHECK (reporter_id = auth.uid());
+
+-- Staff can view all reports
+CREATE POLICY "staff_view_all_reports"
+ON public.emergency_reports
+FOR SELECT
+TO authenticated
+USING (
+    EXISTS (
+        SELECT 1 FROM public.user_profiles up
+        WHERE up.id = auth.uid() 
+        AND up.role IN ('admin', 'dispatcher', 'responder')
+    )
+);
+
+-- Staff can update reports
+CREATE POLICY "staff_update_reports"
+ON public.emergency_reports
+FOR UPDATE
+TO authenticated
+USING (
+    EXISTS (
+        SELECT 1 FROM public.user_profiles up
+        WHERE up.id = auth.uid() 
+        AND up.role IN ('admin', 'dispatcher', 'responder')
+    )
+)
+WITH CHECK (
+    EXISTS (
+        SELECT 1 FROM public.user_profiles up
+        WHERE up.id = auth.uid() 
+        AND up.role IN ('admin', 'dispatcher', 'responder')
+    )
+);
+
+-- Report updates policies
+CREATE POLICY "users_manage_own_report_updates"
+ON public.report_updates
+FOR ALL
+TO authenticated
+USING (user_id = auth.uid())
+WITH CHECK (user_id = auth.uid());
+
+-- Emergency contacts policies
+CREATE POLICY "users_manage_own_emergency_contacts"
+ON public.emergency_contacts
+FOR ALL
+TO authenticated
+USING (user_id = auth.uid())
+WITH CHECK (user_id = auth.uid());
+
+-- 8. TRIGGERS
+CREATE TRIGGER on_auth_user_created
+    AFTER INSERT ON auth.users
+    FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+CREATE TRIGGER update_emergency_reports_timestamp
+    BEFORE UPDATE ON public.emergency_reports
+    FOR EACH ROW EXECUTE FUNCTION public.update_report_timestamp();
+
+-- Trigger to auto-generate report ID
+CREATE OR REPLACE FUNCTION public.auto_generate_report_id()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    IF NEW.report_id IS NULL OR NEW.report_id = '' THEN
+        NEW.report_id = public.generate_report_id();
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER generate_report_id_trigger
+    BEFORE INSERT ON public.emergency_reports
+    FOR EACH ROW EXECUTE FUNCTION public.auto_generate_report_id();
+
+-- 9. MOCK DATA
+DO $$
+DECLARE
+    admin_uuid UUID := gen_random_uuid();
+    dispatcher_uuid UUID := gen_random_uuid();
+    responder_uuid UUID := gen_random_uuid();
+    resident_uuid UUID := gen_random_uuid();
+    fire_dept_id UUID := gen_random_uuid();
+    police_dept_id UUID := gen_random_uuid();
+    medical_dept_id UUID := gen_random_uuid();
+    report1_id UUID := gen_random_uuid();
+    report2_id UUID := gen_random_uuid();
+    report3_id UUID := gen_random_uuid();
+BEGIN
+    -- Create auth users with all required fields
+    INSERT INTO auth.users (
+        id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
+        created_at, updated_at, raw_user_meta_data, raw_app_meta_data,
+        is_sso_user, is_anonymous, confirmation_token, confirmation_sent_at,
+        recovery_token, recovery_sent_at, email_change_token_new, email_change,
+        email_change_sent_at, email_change_token_current, email_change_confirm_status,
+        reauthentication_token, reauthentication_sent_at, phone, phone_change,
+        phone_change_token, phone_change_sent_at
+    ) VALUES
+        (admin_uuid, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
+         'admin@emergency.gov', crypt('admin123', gen_salt('bf', 10)), now(), now(), now(),
+         '{"full_name": "System Administrator", "role": "admin"}'::jsonb, '{"provider": "email", "providers": ["email"]}'::jsonb,
+         false, false, '', null, '', null, '', '', null, '', 0, '', null, null, '', '', null),
+        (dispatcher_uuid, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
+         'dispatcher@emergency.gov', crypt('dispatch123', gen_salt('bf', 10)), now(), now(), now(),
+         '{"full_name": "Emergency Dispatcher", "role": "dispatcher"}'::jsonb, '{"provider": "email", "providers": ["email"]}'::jsonb,
+         false, false, '', null, '', null, '', '', null, '', 0, '', null, null, '', '', null),
+        (responder_uuid, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
+         'responder@emergency.gov', crypt('respond123', gen_salt('bf', 10)), now(), now(), now(),
+         '{"full_name": "First Responder", "role": "responder"}'::jsonb, '{"provider": "email", "providers": ["email"]}'::jsonb,
+         false, false, '', null, '', null, '', '', null, '', 0, '', null, null, '', '', null),
+        (resident_uuid, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
+         'resident@community.com', crypt('resident123', gen_salt('bf', 10)), now(), now(), now(),
+         '{"full_name": "Community Resident", "role": "resident"}'::jsonb, '{"provider": "email", "providers": ["email"]}'::jsonb,
+         false, false, '', null, '', null, '', '', null, '', 0, '', null, null, '', '', null);
+
+    -- Create departments
+    INSERT INTO public.departments (id, name, type, description, contact_email, contact_phone, address) VALUES
+        (fire_dept_id, 'Fire Department', 'fire', 'Emergency fire response and prevention services', 'fire@emergency.gov', '555-FIRE', '123 Fire Station Rd'),
+        (police_dept_id, 'Police Department', 'police', 'Law enforcement and public safety', 'police@emergency.gov', '555-POLICE', '456 Police Plaza'),
+        (medical_dept_id, 'Emergency Medical Services', 'medical', 'Emergency medical response and ambulance services', 'ems@emergency.gov', '555-MEDIC', '789 Hospital Way');
+
+    -- Update user profiles with departments (using direct UPDATE since trigger creates base profiles)
+    UPDATE public.user_profiles 
+    SET phone_number = '+1 (555) 123-0001', department_id = fire_dept_id
+    WHERE id = admin_uuid;
+
+    UPDATE public.user_profiles 
+    SET phone_number = '+1 (555) 123-0002', department_id = police_dept_id
+    WHERE id = dispatcher_uuid;
+
+    UPDATE public.user_profiles 
+    SET phone_number = '+1 (555) 123-0003', department_id = fire_dept_id
+    WHERE id = responder_uuid;
+
+    UPDATE public.user_profiles 
+    SET phone_number = '+1 (555) 123-0004'
+    WHERE id = resident_uuid;
+
+    -- Create emergency reports
+    INSERT INTO public.emergency_reports (
+        id, incident_type, priority, status, location, coordinates, description,
+        reporter_id, reporter_name, reporter_phone, assigned_to, assigned_department_id, images
+    ) VALUES
+        (report1_id, 'fire', 'critical', 'pending', '123 Main Street, Downtown',
+         '{"lat": 40.7128, "lng": -74.0060}'::jsonb,
+         'Large fire reported at residential building. Multiple residents trapped on upper floors. Heavy smoke visible from street level.',
+         resident_uuid, 'John Smith', '+1 (555) 123-4567', NULL, fire_dept_id,
+         ARRAY['https://images.unsplash.com/photo-1574869711319-2a4b1d2b3c5c?w=400']),
+        (report2_id, 'medical', 'high', 'assigned', '456 Oak Avenue, Midtown',
+         '{"lat": 40.7589, "lng": -73.9851}'::jsonb,
+         'Elderly person collapsed at home. Conscious but experiencing chest pain and difficulty breathing.',
+         resident_uuid, 'Sarah Johnson', '+1 (555) 234-5678', responder_uuid, medical_dept_id,
+         ARRAY[]::TEXT[]),
+        (report3_id, 'accident', 'high', 'resolved', '321 Elm Street, Southside',
+         '{"lat": 40.7282, "lng": -73.9942}'::jsonb,
+         'Multi-vehicle accident at busy intersection. Two cars involved with possible injuries.',
+         resident_uuid, 'Lisa Chen', '+1 (555) 456-7890', responder_uuid, police_dept_id,
+         ARRAY[]::TEXT[]);
+
+    -- Add emergency contacts
+    INSERT INTO public.emergency_contacts (user_id, name, relationship, phone_number, is_primary) VALUES
+        (resident_uuid, 'Mary Smith', 'Spouse', '+1 (555) 987-6543', true),
+        (resident_uuid, 'David Smith', 'Son', '+1 (555) 876-5432', false);
+
+    -- Add report updates
+    INSERT INTO public.report_updates (report_id, user_id, update_type, message, old_status, new_status) VALUES
+        (report2_id, dispatcher_uuid, 'assignment', 'Assigned to paramedic team', 'pending', 'assigned'),
+        (report3_id, responder_uuid, 'status_change', 'Scene secured and cleared', 'in-progress', 'resolved');
+
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'Error creating mock data: %', SQLERRM;
+END $$;
