@@ -79,8 +79,8 @@ const Register = () => {
         }
         if (!formData?.phone?.trim()) {
           newErrors.phone = 'Phone number is required';
-        } else if (!/^\(\d{3}\)\s\d{3}-\d{4}$/?.test(formData?.phone)) {
-          newErrors.phone = 'Please enter a valid phone number (555) 123-4567';
+        } else if (!/^0\d{10}$/.test(formData?.phone)) {
+          newErrors.phone = 'Please enter a valid 11-digit phone number starting with 0 (e.g., 09948270026)';
         }
         if (!formData?.dateOfBirth) newErrors.dateOfBirth = 'Date of birth is required';
         if (!formData?.address?.trim()) newErrors.address = 'Address is required';
@@ -119,6 +119,8 @@ const Register = () => {
           }
           if (!contact?.phone?.trim()) {
             newErrors[`emergencyContact_${contact.id}_phone`] = 'Contact phone is required';
+          } else if (!/^0\d{10}$/.test(contact?.phone)) {
+            newErrors[`emergencyContact_${contact.id}_phone`] = 'Please enter a valid 11-digit phone number starting with 0 (e.g., 09948270026)';
           }
           if (!contact?.relationship) {
             newErrors[`emergencyContact_${contact.id}_relationship`] = 'Relationship is required';

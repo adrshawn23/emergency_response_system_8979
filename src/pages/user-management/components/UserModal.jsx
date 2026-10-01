@@ -90,7 +90,11 @@ const UserModal = ({
     if (!formData?.email?.trim()) newErrors.email = 'Email is required';
     if (!formData?.role) newErrors.role = 'Role is required';
     if (!formData?.department) newErrors.department = 'Department is required';
-    if (!formData?.phone?.trim()) newErrors.phone = 'Phone is required';
+    if (!formData?.phone?.trim()) {
+      newErrors.phone = 'Phone is required';
+    } else if (!/^0\d{10}$/.test(formData?.phone)) {
+      newErrors.phone = 'Please enter a valid 11-digit phone number starting with 0 (e.g., 09948270026)';
+    }
     
     // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -266,11 +270,14 @@ const UserModal = ({
                 <Input
                   label="Phone Number"
                   type="tel"
+                  placeholder="09948270026"
                   value={formData?.phone}
                   onChange={(e) => handleInputChange('phone', e?.target?.value)}
                   error={errors?.phone}
                   required
                   disabled={mode === 'view'}
+                  pattern="[0-9]{11}"
+                  maxLength={11}
                 />
                 
                 <Select
@@ -320,9 +327,12 @@ const UserModal = ({
                 <Input
                   label="Emergency Contact Phone"
                   type="tel"
+                  placeholder="09948270026"
                   value={formData?.emergencyPhone}
                   onChange={(e) => handleInputChange('emergencyPhone', e?.target?.value)}
                   disabled={mode === 'view'}
+                  pattern="[0-9]{11}"
+                  maxLength={11}
                 />
               </div>
             </div>)

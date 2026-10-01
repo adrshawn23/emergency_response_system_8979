@@ -88,8 +88,8 @@ const EmergencyReport = () => {
 
     if (!formData?.contactPhone?.trim()) {
       newErrors.contactPhone = 'Contact phone is required';
-    } else if (!/^\+?[\d\s\-\(\)]{10,}$/?.test(formData?.contactPhone?.trim())) {
-      newErrors.contactPhone = 'Please enter a valid phone number';
+    } else if (!/^0\d{10}$/.test(formData?.contactPhone?.trim())) {
+      newErrors.contactPhone = 'Please enter a valid 11-digit phone number starting with 0 (e.g., 09948270026)';
     }
 
     setErrors(newErrors);
@@ -279,10 +279,12 @@ const EmergencyReport = () => {
                     <Input
                       label="Contact Phone"
                       type="tel"
-                      placeholder="+1 (555) 123-4567"
+                      placeholder="09948270026"
                       value={formData?.contactPhone}
                       onChange={(e) => handleInputChange('contactPhone', e?.target?.value)}
                       error={errors?.contactPhone}
+                      pattern="[0-9]{11}"
+                      maxLength={11}
                       required
                     />
                   </div>

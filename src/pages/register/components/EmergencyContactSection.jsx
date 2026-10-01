@@ -152,12 +152,14 @@ const EmergencyContactSection = ({
                   <Input
                     label="Phone Number"
                     type="tel"
-                    placeholder="(555) 123-4567"
+                    placeholder="09948270026"
                     value={contact?.phone}
                     onChange={(e) => updateEmergencyContact(contact?.id, 'phone', e?.target?.value)}
                     error={errors?.[`emergencyContact_${contact?.id}_phone`]}
                     required
                     className="w-full"
+                    pattern="[0-9]{11}"
+                    maxLength={11}
                   />
 
                   <Input

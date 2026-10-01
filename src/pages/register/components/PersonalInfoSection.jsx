@@ -54,13 +54,15 @@ const PersonalInfoSection = ({
           label="Phone Number"
           type="tel"
           name="phone"
-          placeholder="(555) 123-4567"
+          placeholder="09948270026"
           value={formData?.phone}
           onChange={onChange}
           error={errors?.phone}
-          description="Required for emergency communications"
+          description="Required for emergency communications (11 digits, starting with 0)"
           required
           className="w-full"
+          pattern="[0-9]{11}"
+          maxLength={11}
         />
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
