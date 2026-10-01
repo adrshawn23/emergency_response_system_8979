@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
 import Select from '../../../components/ui/Select';
 import Input from '../../../components/ui/Input';
+import { supabase } from '../../../lib/supabase';
 
 const AssignResponderModal = ({ 
   report, 
@@ -16,51 +17,30 @@ const AssignResponderModal = ({
   const [priority, setPriority] = useState(report?.priority || 'medium');
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
+  const [responders, setResponders] = useState([]);
+
+  useEffect(() => {
+    const fetchResponders = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('user_profiles')
+          .select('*, departments(*)')
+          .in('role', ['responder', 'dispatcher'])
+          .eq('is_active', true);
+        
+        if (error) throw error;
+        setResponders(data || []);
+      } catch (error) {
+        console.error('Error fetching responders:', error);
+      }
+    };
+
+    if (isOpen) {
+      fetchResponders();
+    }
+  }, [isOpen]);
 
   if (!isOpen || !report) return null;
-
-  const mockResponders = [
-    {
-      value: 'resp-001',
-      label: 'Officer John Martinez',
-      department: 'police',
-      status: 'available',
-      experience: '8 years',
-      currentLoad: 2
-    },
-    {
-      value: 'resp-002',
-      label: 'Firefighter Sarah Chen',
-      department: 'fire',
-      status: 'available',
-      experience: '5 years',
-      currentLoad: 1
-    },
-    {
-      value: 'resp-003',
-      label: 'Paramedic Mike Johnson',
-      department: 'medical',
-      status: 'busy',
-      experience: '12 years',
-      currentLoad: 4
-    },
-    {
-      value: 'resp-004',
-      label: 'Officer Lisa Thompson',
-      department: 'police',
-      status: 'available',
-      experience: '3 years',
-      currentLoad: 1
-    },
-    {
-      value: 'resp-005',
-      label: 'Fire Captain David Wilson',
-      department: 'fire',
-      status: 'available',
-      experience: '15 years',
-      currentLoad: 0
-    }
-  ];
 
   const departmentOptions = [
     { value: '', label: 'All Departments' },
@@ -77,33 +57,18 @@ const AssignResponderModal = ({
     { value: 'critical', label: 'Critical Priority' }
   ];
 
-  const filteredResponders = mockResponders?.filter(responder => 
-    !selectedDepartment || responder?.department === selectedDepartment
+  const filteredResponders = responders?.filter(responder => 
+    !selectedDepartment || responder?.department?.name === selectedDepartment
   );
 
   const responderOptions = filteredResponders?.map(responder => ({
-    value: responder?.value,
-    label: responder?.label,
-    description: `${responder?.department} • ${responder?.status} • Load: ${responder?.currentLoad}/5`,
-    disabled: responder?.status === 'busy' && responder?.currentLoad >= 4
+    value: responder?.id,
+    label: `${responder?.first_name} ${responder?.last_name}`,
+    description: `${responder?.department?.name || 'Unassigned'} • ${responder?.role}`,
+    disabled: false
   }));
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'available': return 'text-success';
-      case 'busy': return 'text-warning';
-      case 'unavailable': return 'text-destructive';
-      default: return 'text-muted-foreground';
-    }
-  };
-
-  const getLoadColor = (load) => {
-    if (load <= 2) return 'text-success';
-    if (load <= 3) return 'text-warning';
-    return 'text-destructive';
-  };
-
-  const selectedResponderData = mockResponders?.find(r => r?.value === selectedResponder);
+  const selectedResponderData = responders?.find(r => r?.id === selectedResponder);
 
   const handleAssign = async () => {
     if (!selectedResponder) return;
@@ -111,7 +76,7 @@ const AssignResponderModal = ({
     setLoading(true);
     try {
       await onAssign({
-        reportId: report?.id,
+        reportId: report?.report_id,
         responderId: selectedResponder,
         responderData: selectedResponderData,
         priority,
@@ -184,44 +149,23 @@ const AssignResponderModal = ({
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs text-muted-foreground">Status</span>
-                    <span className={`text-xs font-medium capitalize ${getStatusColor(selectedResponderData?.status)}`}>
-                      {selectedResponderData?.status}
-                    </span>
+                    <span className="text-xs text-muted-foreground">Role</span>
+                    <span className="text-xs font-medium capitalize">{selectedResponderData?.role}</span>
                   </div>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs text-muted-foreground">Experience</span>
-                    <span className="text-xs text-foreground">{selectedResponderData?.experience}</span>
+                    <span className="text-xs text-muted-foreground">Email</span>
+                    <span className="text-xs text-foreground">{selectedResponderData?.email}</span>
                   </div>
                 </div>
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs text-muted-foreground">Department</span>
-                    <span className="text-xs text-foreground capitalize">{selectedResponderData?.department}</span>
+                    <span className="text-xs text-foreground">{selectedResponderData?.department?.name || 'Unassigned'}</span>
                   </div>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs text-muted-foreground">Current Load</span>
-                    <span className={`text-xs font-medium ${getLoadColor(selectedResponderData?.currentLoad)}`}>
-                      {selectedResponderData?.currentLoad}/5
-                    </span>
+                    <span className="text-xs text-muted-foreground">Phone</span>
+                    <span className="text-xs text-foreground">{selectedResponderData?.phone}</span>
                   </div>
-                </div>
-              </div>
-              
-              {/* Load Bar */}
-              <div className="mt-3">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs text-muted-foreground">Workload</span>
-                  <span className="text-xs text-foreground">{(selectedResponderData?.currentLoad / 5 * 100)?.toFixed(0)}%</span>
-                </div>
-                <div className="w-full bg-border rounded-full h-2">
-                  <div 
-                    className={`h-2 rounded-full transition-emergency ${
-                      selectedResponderData?.currentLoad <= 2 ? 'bg-success' :
-                      selectedResponderData?.currentLoad <= 3 ? 'bg-warning' : 'bg-destructive'
-                    }`}
-                    style={{ width: `${(selectedResponderData?.currentLoad / 5) * 100}%` }}
-                  />
                 </div>
               </div>
             </div>
@@ -258,7 +202,7 @@ const AssignResponderModal = ({
             <div className="space-y-1 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Report:</span>
-                <span className="text-foreground">#{report?.id}</span>
+                <span className="text-foreground">#{report?.report_id}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Location:</span>
@@ -266,12 +210,12 @@ const AssignResponderModal = ({
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Incident Type:</span>
-                <span className="text-foreground capitalize">{report?.incidentType?.replace('-', ' ')}</span>
+                <span className="text-foreground capitalize">{report?.emergency_type?.replace('-', ' ')}</span>
               </div>
               {selectedResponderData && (
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Assigned To:</span>
-                  <span className="text-foreground">{selectedResponderData?.label}</span>
+                  <span className="text-foreground">{selectedResponderData?.first_name} {selectedResponderData?.last_name}</span>
                 </div>
               )}
               <div className="flex justify-between">

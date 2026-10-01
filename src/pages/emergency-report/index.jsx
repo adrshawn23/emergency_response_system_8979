@@ -12,19 +12,13 @@ import PrioritySelector from './components/PrioritySelector';
 import ImageUpload from './components/ImageUpload';
 import EmergencyContacts from './components/EmergencyContacts';
 import SubmissionProgress from './components/SubmissionProgress';
+import { useAuth } from '../../contexts/AuthContext';
+import { supabase } from '../../lib/supabase';
 
 const EmergencyReport = () => {
   const navigate = useNavigate();
+  const { user, profile } = useAuth();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  
-  // Mock user data
-  const [user] = useState({
-    id: 1,
-    name: "John Resident",
-    email: "john.resident@email.com",
-    role: "resident",
-    avatar: "https://randomuser.me/api/portraits/men/32.jpg"
-  });
 
   // Form state
   const [formData, setFormData] = useState({
@@ -113,18 +107,25 @@ const EmergencyReport = () => {
     setSubmissionError(null);
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      
-      // Generate mock report number
-      const reportNum = `ER-${Date.now()?.toString()?.slice(-6)}`;
-      setReportNumber(reportNum);
+      const { data: reportData, error: reportError } = await supabase.from('emergency_reports').insert({
+        reporter_id: user.id,
+        emergency_type: formData.emergencyType,
+        location: formData.location,
+        priority: formData.priority,
+        description: formData.description,
+        contact_name: formData.contactName,
+        contact_phone: formData.contactPhone,
+        status: 'pending',
+        images: formData.images
+      }).select().single();
+
+      if (reportError) throw reportError;
+
+      setReportNumber(reportData.report_id);
       setIsSubmitted(true);
       
-      // Clear draft from localStorage
       localStorage.removeItem('emergency-report-draft');
       
-      // Reset form after successful submission
       setTimeout(() => {
         setIsSubmitted(false);
         setFormData({

@@ -9,9 +9,12 @@ import RoleSelectionSection from './components/RoleSelectionSection';
 import IDUploadSection from './components/IDUploadSection';
 import EmergencyContactSection from './components/EmergencyContactSection';
 import TrustIndicators from './components/TrustIndicators';
+import { useAuth } from '../../contexts/AuthContext';
+import { supabase } from '../../lib/supabase';
 
 const Register = () => {
   const navigate = useNavigate();
+  const { signUp } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const totalSteps = 5;
@@ -156,13 +159,50 @@ const Register = () => {
     setIsLoading(true);
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Mock successful registration
-      console.log('Registration data:', formData);
-      
-      // Navigate to confirmation page or login
+      const { data, error: signUpError } = await signUp(
+        formData.email.trim(),
+        formData.password,
+        {
+          first_name: formData.firstName,
+          last_name: formData.lastName,
+          phone: formData.phone,
+          date_of_birth: formData.dateOfBirth,
+          address: formData.address,
+          role: formData.role
+        }
+      );
+
+      if (signUpError) throw signUpError;
+
+      const userId = data.user.id;
+
+      const { error: profileError } = await supabase.from('user_profiles').insert({
+        id: userId,
+        first_name: formData.firstName,
+        last_name: formData.lastName,
+        email: formData.email,
+        phone: formData.phone,
+        date_of_birth: formData.dateOfBirth,
+        address: formData.address,
+        role: formData.role,
+        is_active: false
+      });
+
+      if (profileError) throw profileError;
+
+      if (formData.emergencyContacts && formData.emergencyContacts.length > 0) {
+        const { error: contactsError } = await supabase.from('emergency_contacts').insert(
+          formData.emergencyContacts.map(contact => ({
+            user_id: userId,
+            name: contact.name,
+            phone: contact.phone,
+            relationship: contact.relationship
+          }))
+        );
+
+        if (contactsError) console.error('Failed to insert emergency contacts:', contactsError);
+      }
+
       navigate('/login', { 
         state: { 
           message: 'Registration successful! Please check your email for verification instructions.',
@@ -171,7 +211,7 @@ const Register = () => {
       });
     } catch (error) {
       console.error('Registration error:', error);
-      setErrors({ submit: 'Registration failed. Please try again.' });
+      setErrors({ submit: error?.message || 'Registration failed. Please try again.' });
     } finally {
       setIsLoading(false);
     }

@@ -10,176 +10,70 @@ import AssignResponderModal from './components/AssignResponderModal';
 import DeclineReasonModal from './components/DeclineReasonModal';
 import BulkActionsPanel from './components/BulkActionsPanel';
 import ReportStats from './components/ReportStats';
+import { useAuth } from '../../contexts/AuthContext';
+import { supabase } from '../../lib/supabase';
 
 const ReportManagement = () => {
+  const { user, profile } = useAuth();
   const [reports, setReports] = useState([]);
   const [filteredReports, setFilteredReports] = useState([]);
   const [selectedReports, setSelectedReports] = useState([]);
   const [filters, setFilters] = useState({});
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
-  const [currentView, setCurrentView] = useState('table'); // 'table', 'stats'
+  const [currentView, setCurrentView] = useState('table');
   
-  // Modal states
   const [selectedReport, setSelectedReport] = useState(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [showDeclineModal, setShowDeclineModal] = useState(false);
-
-  // Mock data
-  const mockReports = [
-    {
-      id: 'RPT-001',
-      incidentType: 'fire',
-      location: '123 Main Street, Downtown',
-      priority: 'critical',
-      status: 'pending',
-      reporter: {
-        name: 'John Smith',
-        phone: '+1 (555) 123-4567'
-      },
-      assignedTo: null,
-      description: `Large fire reported at residential building. Multiple residents trapped on upper floors. Heavy smoke visible from street level. Fire department response urgently needed.`,
-      timestamp: new Date(Date.now() - 900000), // 15 minutes ago
-      coordinates: { lat: 40.7128, lng: -74.0060 },
-      images: [
-        'https://images.unsplash.com/photo-1574869711319-2a4b1d2b3c5c?w=400',
-        'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400'
-      ]
-    },
-    {
-      id: 'RPT-002',
-      incidentType: 'medical',
-      location: '456 Oak Avenue, Midtown',
-      priority: 'high',
-      status: 'assigned',
-      reporter: {
-        name: 'Sarah Johnson',
-        phone: '+1 (555) 234-5678'
-      },
-      assignedTo: {
-        name: 'Paramedic Mike Johnson',
-        department: 'Medical Services'
-      },
-      description: `Elderly person collapsed at home. Conscious but experiencing chest pain and difficulty breathing. Family member requesting immediate medical assistance.`,
-      timestamp: new Date(Date.now() - 1800000), // 30 minutes ago
-      coordinates: { lat: 40.7589, lng: -73.9851 },
-      images: []
-    },
-    {
-      id: 'RPT-003',
-      incidentType: 'police',
-      location: '789 Pine Street, Uptown',
-      priority: 'medium',
-      status: 'in-progress',
-      reporter: {
-        name: 'Mike Davis',
-        phone: '+1 (555) 345-6789'
-      },
-      assignedTo: {
-        name: 'Officer John Martinez',
-        department: 'Police Department'
-      },
-      description: `Suspicious activity reported near commercial building. Multiple individuals seen attempting to access restricted areas after business hours.`,
-      timestamp: new Date(Date.now() - 2700000), // 45 minutes ago
-      coordinates: { lat: 40.7831, lng: -73.9712 },
-      images: [
-        'https://images.unsplash.com/photo-1589829085413-56de8ae18c73?w=400'
-      ]
-    },
-    {
-      id: 'RPT-004',
-      incidentType: 'accident',
-      location: '321 Elm Street, Southside',
-      priority: 'high',
-      status: 'resolved',
-      reporter: {
-        name: 'Lisa Chen',
-        phone: '+1 (555) 456-7890'
-      },
-      assignedTo: {
-        name: 'Officer Lisa Thompson',
-        department: 'Police Department'
-      },
-      description: `Multi-vehicle accident at busy intersection. Two cars involved with possible injuries. Traffic backup forming, need immediate response for scene management.`,
-      timestamp: new Date(Date.now() - 3600000), // 1 hour ago
-      coordinates: { lat: 40.7282, lng: -73.9942 },
-      images: []
-    },
-    {
-      id: 'RPT-005',
-      incidentType: 'natural',
-      location: '654 Maple Drive, Westside',
-      priority: 'low',
-      status: 'declined',
-      reporter: {
-        name: 'Robert Wilson',
-        phone: '+1 (555) 567-8901'
-      },
-      assignedTo: null,
-      description: `Tree branch fell across sidewalk after recent storm. No immediate danger to pedestrians but may need removal for accessibility.`,
-      timestamp: new Date(Date.now() - 5400000), // 1.5 hours ago
-      coordinates: { lat: 40.7505, lng: -73.9934 },
-      images: []
-    },
-    {
-      id: 'RPT-006',
-      incidentType: 'fire',
-      location: '987 Cedar Lane, Eastside',
-      priority: 'medium',
-      status: 'assigned',
-      reporter: {
-        name: 'Emma Thompson',
-        phone: '+1 (555) 678-9012'
-      },
-      assignedTo: {
-        name: 'Firefighter Sarah Chen',
-        department: 'Fire Department'
-      },
-      description: `Small kitchen fire reported in apartment building. Resident evacuated safely but smoke alarm system activated. Fire suppression needed.`,
-      timestamp: new Date(Date.now() - 7200000), // 2 hours ago
-      coordinates: { lat: 40.7614, lng: -73.9776 },
-      images: [
-        'https://images.unsplash.com/photo-1581833971358-2c8b550f87b3?w=400'
-      ]
-    }
-  ];
 
   const breadcrumbItems = [
     { label: 'Dashboard', path: '/' },
     { label: 'Report Management', path: '/report-management' }
   ];
 
-  // Calculate stats
   const stats = {
-    total: mockReports?.length,
-    pending: mockReports?.filter(r => r?.status === 'pending')?.length,
-    assigned: mockReports?.filter(r => r?.status === 'assigned')?.length,
-    inProgress: mockReports?.filter(r => r?.status === 'in-progress')?.length,
-    resolved: mockReports?.filter(r => r?.status === 'resolved')?.length,
-    declined: mockReports?.filter(r => r?.status === 'declined')?.length,
-    critical: mockReports?.filter(r => r?.priority === 'critical')?.length,
-    high: mockReports?.filter(r => r?.priority === 'high')?.length,
-    medium: mockReports?.filter(r => r?.priority === 'medium')?.length,
-    low: mockReports?.filter(r => r?.priority === 'low')?.length
+    total: reports?.length,
+    pending: reports?.filter(r => r?.status === 'pending')?.length,
+    assigned: reports?.filter(r => r?.status === 'assigned')?.length,
+    inProgress: reports?.filter(r => r?.status === 'in-progress')?.length,
+    resolved: reports?.filter(r => r?.status === 'resolved')?.length,
+    declined: reports?.filter(r => r?.status === 'declined')?.length,
+    critical: reports?.filter(r => r?.priority === 'critical')?.length,
+    high: reports?.filter(r => r?.priority === 'high')?.length,
+    medium: reports?.filter(r => r?.priority === 'medium')?.length,
+    low: reports?.filter(r => r?.priority === 'low')?.length
   };
 
   useEffect(() => {
-    // Simulate loading
-    const timer = setTimeout(() => {
-      setReports(mockReports);
-      setFilteredReports(mockReports);
-      setLoading(false);
-    }, 1000);
+    const fetchReports = async () => {
+      setLoading(true);
+      try {
+        let query = supabase.from('emergency_reports').select('*');
+        
+        if (profile?.role === 'resident') {
+          query = query.eq('reporter_id', user.id);
+        }
+        
+        const { data, error } = await query.order('created_at', { ascending: false });
+        
+        if (error) throw error;
+        setReports(data || []);
+        setFilteredReports(data || []);
+      } catch (error) {
+        console.error('Error fetching reports:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    return () => clearTimeout(timer);
-  }, []);
+    fetchReports();
+  }, [user, profile]);
 
   useEffect(() => {
-    // Apply filters and search
     let filtered = [...reports];
 
-    // Apply filters
     if (filters?.status && filters?.status !== 'all') {
       filtered = filtered?.filter(report => report?.status === filters?.status);
     }
@@ -187,16 +81,16 @@ const ReportManagement = () => {
       filtered = filtered?.filter(report => report?.priority === filters?.priority);
     }
     if (filters?.incidentType && filters?.incidentType !== 'all') {
-      filtered = filtered?.filter(report => report?.incidentType === filters?.incidentType);
+      filtered = filtered?.filter(report => report?.emergency_type === filters?.incidentType);
     }
     if (filters?.dateFrom) {
       const fromDate = new Date(filters.dateFrom);
-      filtered = filtered?.filter(report => new Date(report.timestamp) >= fromDate);
+      filtered = filtered?.filter(report => new Date(report.created_at) >= fromDate);
     }
     if (filters?.dateTo) {
       const toDate = new Date(filters.dateTo);
       toDate?.setHours(23, 59, 59, 999);
-      filtered = filtered?.filter(report => new Date(report.timestamp) <= toDate);
+      filtered = filtered?.filter(report => new Date(report.created_at) <= toDate);
     }
     if (filters?.location) {
       filtered = filtered?.filter(report => 
@@ -205,22 +99,16 @@ const ReportManagement = () => {
     }
     if (filters?.reporter) {
       filtered = filtered?.filter(report => 
-        report?.reporter?.name?.toLowerCase()?.includes(filters?.reporter?.toLowerCase())
-      );
-    }
-    if (filters?.responder) {
-      filtered = filtered?.filter(report => 
-        report?.assignedTo?.name?.toLowerCase()?.includes(filters?.responder?.toLowerCase())
+        report?.contact_name?.toLowerCase()?.includes(filters?.reporter?.toLowerCase())
       );
     }
 
-    // Apply search
     if (searchQuery) {
       filtered = filtered?.filter(report =>
-        report?.id?.toLowerCase()?.includes(searchQuery?.toLowerCase()) ||
+        report?.report_id?.toLowerCase()?.includes(searchQuery?.toLowerCase()) ||
         report?.location?.toLowerCase()?.includes(searchQuery?.toLowerCase()) ||
         report?.description?.toLowerCase()?.includes(searchQuery?.toLowerCase()) ||
-        report?.reporter?.name?.toLowerCase()?.includes(searchQuery?.toLowerCase())
+        report?.contact_name?.toLowerCase()?.includes(searchQuery?.toLowerCase())
       );
     }
 
@@ -247,7 +135,7 @@ const ReportManagement = () => {
     if (selectedReports?.length === filteredReports?.length) {
       setSelectedReports([]);
     } else {
-      setSelectedReports(filteredReports?.map(report => report?.id));
+      setSelectedReports(filteredReports?.map(report => report?.report_id));
     }
   };
 
@@ -273,63 +161,112 @@ const ReportManagement = () => {
     }
   };
 
-  const handleAcceptReport = (report) => {
-    setReports(prev => prev?.map(r => 
-      r?.id === report?.id 
-        ? { ...r, status: 'assigned' }
-        : r
-    ));
-  };
-
-  const handleAssignResponder = (assignmentData) => {
-    setReports(prev => prev?.map(r => 
-      r?.id === assignmentData?.reportId 
-        ? { 
-            ...r, 
-            status: 'assigned',
-            assignedTo: {
-              name: assignmentData?.responderData?.label,
-              department: assignmentData?.responderData?.department
-            },
-            priority: assignmentData?.priority
-          }
-        : r
-    ));
-    setShowAssignModal(false);
-  };
-
-  const handleDeclineReport = (declineData) => {
-    setReports(prev => prev?.map(r => 
-      r?.id === declineData?.reportId 
-        ? { ...r, status: 'declined' }
-        : r
-    ));
-    setShowDeclineModal(false);
-  };
-
-  const handleBulkAction = (actionData) => {
-    switch (actionData?.action) {
-      case 'accept':
-        setReports(prev => prev?.map(r => 
-          actionData?.reportIds?.includes(r?.id) 
-            ? { ...r, status: 'assigned' }
-            : r
-        ));
-        break;
-      case 'decline':
-        setReports(prev => prev?.map(r => 
-          actionData?.reportIds?.includes(r?.id) 
-            ? { ...r, status: 'declined' }
-            : r
-        ));
-        break;
-      case 'export':
-        console.log('Exporting reports:', actionData?.reportIds);
-        break;
-      default:
-        break;
+  const handleAcceptReport = async (report) => {
+    try {
+      const { error } = await supabase
+        .from('emergency_reports')
+        .update({ status: 'assigned' })
+        .eq('report_id', report.report_id);
+      
+      if (error) throw error;
+      
+      setReports(prev => prev?.map(r => 
+        r?.report_id === report?.report_id 
+          ? { ...r, status: 'assigned' }
+          : r
+      ));
+    } catch (error) {
+      console.error('Error accepting report:', error);
     }
-    setSelectedReports([]);
+  };
+
+  const handleAssignResponder = async (assignmentData) => {
+    try {
+      const { error } = await supabase
+        .from('emergency_reports')
+        .update({ 
+          status: 'assigned',
+          assigned_to: assignmentData.responderId,
+          priority: assignmentData.priority
+        })
+        .eq('report_id', assignmentData.reportId);
+      
+      if (error) throw error;
+      
+      setReports(prev => prev?.map(r => 
+        r?.report_id === assignmentData?.reportId 
+          ? { 
+              ...r, 
+              status: 'assigned',
+              assigned_to: assignmentData.responderId,
+              priority: assignmentData.priority
+            }
+          : r
+      ));
+      setShowAssignModal(false);
+    } catch (error) {
+      console.error('Error assigning responder:', error);
+    }
+  };
+
+  const handleDeclineReport = async (declineData) => {
+    try {
+      const { error } = await supabase
+        .from('emergency_reports')
+        .update({ 
+          status: 'declined',
+          decline_reason: declineData.reason
+        })
+        .eq('report_id', declineData.reportId);
+      
+      if (error) throw error;
+      
+      setReports(prev => prev?.map(r => 
+        r?.report_id === declineData?.reportId 
+          ? { ...r, status: 'declined', decline_reason: declineData.reason }
+          : r
+      ));
+      setShowDeclineModal(false);
+    } catch (error) {
+      console.error('Error declining report:', error);
+    }
+  };
+
+  const handleBulkAction = async (actionData) => {
+    try {
+      switch (actionData?.action) {
+        case 'accept':
+          await supabase
+            .from('emergency_reports')
+            .update({ status: 'assigned' })
+            .in('report_id', actionData.reportIds);
+          setReports(prev => prev?.map(r => 
+            actionData?.reportIds?.includes(r?.report_id) 
+              ? { ...r, status: 'assigned' }
+              : r
+          ));
+          break;
+        case 'decline':
+          await supabase
+            .from('emergency_reports')
+            .update({ status: 'declined' })
+            .in('report_id', actionData.reportIds);
+          setReports(prev => prev?.map(r => 
+            actionData?.reportIds?.includes(r?.report_id) 
+              ? { ...r, status: 'declined' }
+              : r
+          ));
+          break;
+        case 'export':
+          console.log('Exporting reports:', actionData?.reportIds);
+          break;
+        default:
+          break;
+      }
+      setSelectedReports([]);
+    } catch (error) {
+      console.error('Error performing bulk action:', error);
+    }
   };
 
   const handleNavigation = (path) => {

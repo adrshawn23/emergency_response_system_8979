@@ -46,33 +46,19 @@ const ReportDetailsModal = ({
     }
   };
 
-  const formatTimestamp = (timestamp) => {
-    return new Date(timestamp)?.toLocaleString();
-  };
-
   const mockResponseHistory = [
     {
       id: 1,
       action: 'Report Created',
-      user: report?.reporter?.name,
-      timestamp: report?.timestamp,
+      user: report?.contact_name,
+      timestamp: report?.created_at,
       details: 'Initial emergency report submitted'
-    },
-    {
-      id: 2,
-      action: 'Report Reviewed',
-      user: 'Dispatcher Sarah Johnson',
-      timestamp: new Date(report.timestamp.getTime() + 300000),
-      details: 'Report reviewed and validated'
-    },
-    {
-      id: 3,
-      action: 'Responder Assigned',
-      user: 'Dispatcher Sarah Johnson',
-      timestamp: new Date(report.timestamp.getTime() + 600000),
-      details: report?.assignedTo ? `Assigned to ${report?.assignedTo?.name}` : 'Awaiting assignment'
     }
   ];
+
+  const formatTimestamp = (timestamp) => {
+    return new Date(timestamp)?.toLocaleString();
+  };
 
   const tabs = [
     { id: 'details', label: 'Details', icon: 'FileText' },
@@ -88,16 +74,16 @@ const ReportDetailsModal = ({
         <div className="flex items-center justify-between p-6 border-b border-border">
           <div className="flex items-center space-x-3">
             <Icon 
-              name={getIncidentIcon(report?.incidentType)} 
+              name={getIncidentIcon(report?.emergency_type)} 
               size={24} 
               className="text-primary" 
             />
             <div>
               <h2 className="text-lg font-semibold text-foreground">
-                Emergency Report #{report?.id}
+                Emergency Report #{report?.report_id}
               </h2>
               <p className="text-sm text-muted-foreground capitalize">
-                {report?.incidentType?.replace('-', ' ')} Emergency
+                {report?.emergency_type?.replace('-', ' ')} Emergency
               </p>
             </div>
           </div>
@@ -148,12 +134,12 @@ const ReportDetailsModal = ({
                       <div className="flex items-center space-x-3">
                         <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
                           <span className="text-sm font-medium text-white">
-                            {report?.reporter?.name?.charAt(0)}
+                            {report?.contact_name?.charAt(0)}
                           </span>
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-foreground">{report?.reporter?.name}</p>
-                          <p className="text-xs text-muted-foreground">{report?.reporter?.phone}</p>
+                          <p className="text-sm font-medium text-foreground">{report?.contact_name}</p>
+                          <p className="text-xs text-muted-foreground">{report?.contact_phone}</p>
                         </div>
                       </div>
                     </div>
@@ -164,7 +150,7 @@ const ReportDetailsModal = ({
                     <div className="mt-2 space-y-2">
                       <div className="flex justify-between">
                         <span className="text-sm text-muted-foreground">Type:</span>
-                        <span className="text-sm text-foreground capitalize">{report?.incidentType?.replace('-', ' ')}</span>
+                        <span className="text-sm text-foreground capitalize">{report?.emergency_type?.replace('-', ' ')}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-sm text-muted-foreground">Priority:</span>
@@ -180,7 +166,7 @@ const ReportDetailsModal = ({
                       </div>
                       <div className="flex justify-between">
                         <span className="text-sm text-muted-foreground">Reported:</span>
-                        <span className="text-sm text-foreground">{formatTimestamp(report?.timestamp)}</span>
+                        <span className="text-sm text-foreground">{formatTimestamp(report?.created_at)}</span>
                       </div>
                     </div>
                   </div>
@@ -190,16 +176,16 @@ const ReportDetailsModal = ({
                   <div>
                     <label className="text-sm font-medium text-foreground">Assignment Information</label>
                     <div className="mt-2 p-3 bg-muted rounded-md">
-                      {report?.assignedTo ? (
+                      {report?.assigned_to ? (
                         <div className="flex items-center space-x-3">
                           <div className="w-10 h-10 bg-accent rounded-full flex items-center justify-center">
                             <span className="text-sm font-medium text-white">
-                              {report?.assignedTo?.name?.charAt(0)}
+                              A
                             </span>
                           </div>
                           <div>
-                            <p className="text-sm font-medium text-foreground">{report?.assignedTo?.name}</p>
-                            <p className="text-xs text-muted-foreground">{report?.assignedTo?.department}</p>
+                            <p className="text-sm font-medium text-foreground">Assigned</p>
+                            <p className="text-xs text-muted-foreground">ID: {report?.assigned_to}</p>
                           </div>
                         </div>
                       ) : (
@@ -208,23 +194,6 @@ const ReportDetailsModal = ({
                           <p className="text-sm text-muted-foreground">No responder assigned</p>
                         </div>
                       )}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-medium text-foreground">Response Time</label>
-                    <div className="mt-2 space-y-2">
-                      <div className="flex justify-between">
-                        <span className="text-sm text-muted-foreground">Target Response:</span>
-                        <span className="text-sm text-foreground">15 minutes</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm text-muted-foreground">Elapsed Time:</span>
-                        <span className="text-sm text-warning font-medium">8 minutes</span>
-                      </div>
-                      <div className="w-full bg-muted rounded-full h-2">
-                        <div className="bg-warning h-2 rounded-full" style={{ width: '53%' }}></div>
-                      </div>
                     </div>
                   </div>
                 </div>

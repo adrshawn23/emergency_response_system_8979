@@ -10,9 +10,12 @@ import UserModal from './components/UserModal';
 import DepartmentDistribution from './components/DepartmentDistribution';
 import Button from '../../components/ui/Button';
 import Icon from '../../components/AppIcon';
+import { useAuth } from '../../contexts/AuthContext';
+import { supabase } from '../../lib/supabase';
 
 const UserManagement = () => {
   const navigate = useNavigate();
+  const { user, profile } = useAuth();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState('users');
   const [searchTerm, setSearchTerm] = useState('');
@@ -20,160 +23,65 @@ const UserManagement = () => {
   const [selectedDepartment, setSelectedDepartment] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('');
   const [userModal, setUserModal] = useState({ isOpen: false, user: null, mode: 'view' });
+  const [users, setUsers] = useState([]);
+  const [pendingUsers, setPendingUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // Mock current user (admin)
-  const currentUser = {
-    id: 1,
-    name: "Sarah Johnson",
-    email: "sarah.johnson@emergency.gov",
-    role: "admin",
-    avatar: "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150"
-  };
+  useEffect(() => {
+    const fetchUsers = async () => {
+      setLoading(true);
+      try {
+        const { data: activeUsers, error: activeError } = await supabase
+          .from('user_profiles')
+          .select('*, department:departments(*)')
+          .eq('is_active', true)
+          .order('created_at', { ascending: false });
+        
+        if (activeError) throw activeError;
 
-  // Mock users data
-  const [users, setUsers] = useState([
-    {
-      id: 1,
-      name: "Michael Rodriguez",
-      email: "michael.rodriguez@fire.gov",
-      phone: "+1 (555) 123-4567",
-      role: "responder",
-      department: "Fire Department",
-      status: "active",
-      registrationDate: "2024-01-15",
-      lastActive: "2025-01-05T10:30:00Z",
-      avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150",
-      isOnline: true,
-      address: "123 Main St, Springfield",
-      emergencyContact: "Maria Rodriguez",
-      emergencyPhone: "+1 (555) 987-6543"
-    },
-    {
-      id: 2,
-      name: "Jennifer Chen",
-      email: "jennifer.chen@police.gov",
-      phone: "+1 (555) 234-5678",
-      role: "dispatcher",
-      department: "Police Department",
-      status: "active",
-      registrationDate: "2024-02-20",
-      lastActive: "2025-01-05T09:15:00Z",
-      avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150",
-      isOnline: true,
-      address: "456 Oak Ave, Springfield",
-      emergencyContact: "David Chen",
-      emergencyPhone: "+1 (555) 876-5432"
-    },
-    {
-      id: 3,
-      name: "Robert Thompson",
-      email: "robert.thompson@medical.gov",
-      phone: "+1 (555) 345-6789",
-      role: "responder",
-      department: "Medical Services",
-      status: "inactive",
-      registrationDate: "2024-03-10",
-      lastActive: "2025-01-03T14:20:00Z",
-      avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150",
-      isOnline: false,
-      address: "789 Pine St, Springfield",
-      emergencyContact: "Lisa Thompson",
-      emergencyPhone: "+1 (555) 765-4321"
-    },
-    {
-      id: 4,
-      name: "Emily Davis",
-      email: "emily.davis@resident.com",
-      phone: "+1 (555) 456-7890",
-      role: "resident",
-      department: "N/A",
-      status: "active",
-      registrationDate: "2024-04-05",
-      lastActive: "2025-01-04T16:45:00Z",
-      avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150",
-      isOnline: false,
-      address: "321 Elm St, Springfield",
-      emergencyContact: "John Davis",
-      emergencyPhone: "+1 (555) 654-3210"
-    },
-    {
-      id: 5,
-      name: "James Wilson",
-      email: "james.wilson@admin.gov",
-      phone: "+1 (555) 567-8901",
-      role: "admin",
-      department: "Administration",
-      status: "active",
-      registrationDate: "2024-01-01",
-      lastActive: "2025-01-05T11:00:00Z",
-      avatar: "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150",
-      isOnline: true,
-      address: "654 Maple Dr, Springfield",
-      emergencyContact: "Susan Wilson",
-      emergencyPhone: "+1 (555) 543-2109"
-    }
-  ]);
+        const { data: pendingUsersData, error: pendingError } = await supabase
+          .from('user_profiles')
+          .select('*, department:departments(*)')
+          .eq('is_active', false)
+          .order('created_at', { ascending: false });
+        
+        if (pendingError) throw pendingError;
 
-  // Mock pending registrations
-  const [pendingUsers, setPendingUsers] = useState([
-    {
-      id: 101,
-      name: "Alex Martinez",
-      email: "alex.martinez@gmail.com",
-      phone: "+1 (555) 678-9012",
-      requestedRole: "responder",
-      requestedDepartment: "Fire Department",
-      applicationDate: "2025-01-03T08:30:00Z",
-      avatar: "https://images.unsplash.com/photo-1519244703995-f4e0f30006d5?w=150",
-      address: "987 Cedar Ln, Springfield",
-      message: "I have 5 years of experience as a volunteer firefighter and would like to join the emergency response team.",
-      idDocuments: [
-        { name: "Driver\'s License", url: "https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=300" },
-        { name: "Fire Safety Certificate", url: "https://images.unsplash.com/photo-1554224154-26032fced8bd?w=300" }
-      ]
-    },
-    {
-      id: 102,
-      name: "Lisa Park",
-      email: "lisa.park@yahoo.com",
-      phone: "+1 (555) 789-0123",
-      requestedRole: "dispatcher",
-      requestedDepartment: "Police Department",
-      applicationDate: "2025-01-02T14:15:00Z",
-      avatar: "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150",
-      address: "147 Birch St, Springfield",
-      message: "Former 911 operator with 3 years of experience. Looking to contribute to emergency response coordination.",
-      idDocuments: [
-        { name: "State ID", url: "https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=300" }
-      ]
-    }
-  ]);
+        setUsers(activeUsers || []);
+        setPendingUsers(pendingUsersData || []);
+      } catch (error) {
+        console.error('Error fetching users:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  // Filter users based on search and filters
+    fetchUsers();
+  }, []);
+
   const filteredUsers = users?.filter(user => {
-    const matchesSearch = user?.name?.toLowerCase()?.includes(searchTerm?.toLowerCase()) ||
+    const matchesSearch = user?.first_name?.toLowerCase()?.includes(searchTerm?.toLowerCase()) ||
+                         user?.last_name?.toLowerCase()?.includes(searchTerm?.toLowerCase()) ||
                          user?.email?.toLowerCase()?.includes(searchTerm?.toLowerCase());
     const matchesRole = !selectedRole || user?.role === selectedRole;
-    const matchesDepartment = !selectedDepartment || user?.department?.toLowerCase()?.includes(selectedDepartment?.toLowerCase());
-    const matchesStatus = !selectedStatus || user?.status === selectedStatus;
+    const matchesDepartment = !selectedDepartment || user?.department?.name?.toLowerCase()?.includes(selectedDepartment?.toLowerCase());
+    const matchesStatus = !selectedStatus || user?.is_active === (selectedStatus === 'active');
     
     return matchesSearch && matchesRole && matchesDepartment && matchesStatus;
   });
 
-  // Calculate stats
   const stats = {
     totalUsers: users?.length,
-    activeUsers: users?.filter(u => u?.status === 'active')?.length,
+    activeUsers: users?.filter(u => u?.is_active)?.length,
     pendingApprovals: pendingUsers?.length,
-    onlineUsers: users?.filter(u => u?.isOnline)?.length
+    onlineUsers: 0
   };
 
-  // Department distribution data
   const departmentData = [
-    { name: 'Fire Department', value: users?.filter(u => u?.department === 'Fire Department')?.length, color: '#EF4444' },
-    { name: 'Police Department', value: users?.filter(u => u?.department === 'Police Department')?.length, color: '#3B82F6' },
-    { name: 'Medical Services', value: users?.filter(u => u?.department === 'Medical Services')?.length, color: '#10B981' },
-    { name: 'Administration', value: users?.filter(u => u?.department === 'Administration')?.length, color: '#F59E0B' }
+    { name: 'Fire Department', value: users?.filter(u => u?.department?.name === 'Fire Department')?.length, color: '#EF4444' },
+    { name: 'Police Department', value: users?.filter(u => u?.department?.name === 'Police Department')?.length, color: '#3B82F6' },
+    { name: 'Medical Services', value: users?.filter(u => u?.department?.name === 'Medical Services')?.length, color: '#10B981' },
+    { name: 'Administration', value: users?.filter(u => u?.department?.name === 'Administration')?.length, color: '#F59E0B' }
   ];
 
   const breadcrumbItems = [
@@ -193,83 +101,114 @@ const UserManagement = () => {
     setUserModal({ isOpen: true, user, mode: 'view' });
   };
 
-  const handleDeleteUser = (user) => {
-    if (window.confirm(`Are you sure you want to delete ${user?.name}?`)) {
-      setUsers(prev => prev?.filter(u => u?.id !== user?.id));
+  const handleDeleteUser = async (user) => {
+    if (window.confirm(`Are you sure you want to delete ${user?.first_name} ${user?.last_name}?`)) {
+      try {
+        const { error } = await supabase
+          .from('user_profiles')
+          .delete()
+          .eq('id', user.id);
+        
+        if (error) throw error;
+        setUsers(prev => prev?.filter(u => u?.id !== user?.id));
+      } catch (error) {
+        console.error('Error deleting user:', error);
+      }
     }
   };
 
-  const handleToggleUserStatus = (user) => {
-    const newStatus = user?.status === 'active' ? 'inactive' : 'active';
-    setUsers(prev => prev?.map(u => 
-      u?.id === user?.id ? { ...u, status: newStatus } : u
-    ));
+  const handleToggleUserStatus = async (user) => {
+    try {
+      const newStatus = !user?.is_active;
+      const { error } = await supabase
+        .from('user_profiles')
+        .update({ is_active: newStatus })
+        .eq('id', user.id);
+      
+      if (error) throw error;
+      setUsers(prev => prev?.map(u => 
+        u?.id === user?.id ? { ...u, is_active: newStatus } : u
+      ));
+    } catch (error) {
+      console.error('Error toggling user status:', error);
+    }
   };
 
   const handleCreateUser = () => {
     setUserModal({ isOpen: true, user: null, mode: 'create' });
   };
 
-  const handleSaveUser = (userData) => {
-    if (userModal?.mode === 'create') {
-      const newUser = {
-        ...userData,
-        id: Math.max(...users?.map(u => u?.id)) + 1,
-        registrationDate: new Date()?.toISOString()?.split('T')?.[0],
-        lastActive: new Date()?.toISOString(),
-        avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150",
-        isOnline: false
-      };
-      setUsers(prev => [...prev, newUser]);
-    } else if (userModal?.mode === 'edit') {
-      setUsers(prev => prev?.map(u => 
-        u?.id === userModal?.user?.id ? { ...u, ...userData } : u
-      ));
+  const handleSaveUser = async (userData) => {
+    try {
+      if (userModal?.mode === 'create') {
+        const { data, error } = await supabase
+          .from('user_profiles')
+          .insert(userData)
+          .select()
+          .single();
+        
+        if (error) throw error;
+        setUsers(prev => [...prev, data]);
+      } else if (userModal?.mode === 'edit') {
+        const { error } = await supabase
+          .from('user_profiles')
+          .update(userData)
+          .eq('id', userModal?.user?.id);
+        
+        if (error) throw error;
+        setUsers(prev => prev?.map(u => 
+          u?.id === userModal?.user?.id ? { ...u, ...userData } : u
+        ));
+      }
+    } catch (error) {
+      console.error('Error saving user:', error);
     }
   };
 
-  const handleApproveUser = (userId) => {
-    const pendingUser = pendingUsers?.find(u => u?.id === userId);
-    if (pendingUser) {
-      const newUser = {
-        id: Math.max(...users?.map(u => u?.id)) + 1,
-        name: pendingUser?.name,
-        email: pendingUser?.email,
-        phone: pendingUser?.phone,
-        role: pendingUser?.requestedRole,
-        department: pendingUser?.requestedDepartment,
-        status: 'active',
-        registrationDate: new Date()?.toISOString()?.split('T')?.[0],
-        lastActive: new Date()?.toISOString(),
-        avatar: pendingUser?.avatar,
-        isOnline: false,
-        address: pendingUser?.address,
-        emergencyContact: '',
-        emergencyPhone: ''
-      };
+  const handleApproveUser = async (userId) => {
+    try {
+      const { error } = await supabase
+        .from('user_profiles')
+        .update({ is_active: true })
+        .eq('id', userId);
       
-      setUsers(prev => [...prev, newUser]);
-      setPendingUsers(prev => prev?.filter(u => u?.id !== userId));
+      if (error) throw error;
+      
+      const approvedUser = pendingUsers?.find(u => u?.id === userId);
+      if (approvedUser) {
+        setUsers(prev => [...prev, { ...approvedUser, is_active: true }]);
+        setPendingUsers(prev => prev?.filter(u => u?.id !== userId));
+      }
+    } catch (error) {
+      console.error('Error approving user:', error);
     }
   };
 
-  const handleRejectUser = (userId, reason) => {
-    setPendingUsers(prev => prev?.filter(u => u?.id !== userId));
-    // In a real app, you would send a rejection email with the reason
-    console.log(`User ${userId} rejected with reason: ${reason}`);
+  const handleRejectUser = async (userId, reason) => {
+    try {
+      const { error } = await supabase
+        .from('user_profiles')
+        .delete()
+        .eq('id', userId);
+      
+      if (error) throw error;
+      setPendingUsers(prev => prev?.filter(u => u?.id !== userId));
+    } catch (error) {
+      console.error('Error rejecting user:', error);
+    }
   };
 
   return (
     <div className="min-h-screen bg-background">
       <Header 
-        user={currentUser} 
+        user={profile || user} 
         notificationCount={3}
         onNavigate={handleNavigation}
       />
       <Sidebar 
         isCollapsed={isSidebarCollapsed}
         onToggleCollapse={setIsSidebarCollapsed}
-        user={currentUser}
+        user={profile || user}
         onNavigate={handleNavigation}
       />
       <main className={`pt-16 transition-emergency ${

@@ -7,6 +7,8 @@ import Select from '../../components/ui/Select';
 import Header from '../../components/ui/Header';
 import Sidebar from '../../components/ui/Sidebar';
 import BreadcrumbNavigation from '../../components/ui/BreadcrumbNavigation';
+import { useAuth } from '../../contexts/AuthContext';
+import { supabase } from '../../lib/supabase';
 
 // Import components
 import DepartmentCard from './components/DepartmentCard';
@@ -18,126 +20,19 @@ import BulkOperationsPanel from './components/BulkOperationsPanel';
 
 const DepartmentManagement = () => {
   const navigate = useNavigate();
+  const { user, profile } = useAuth();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [viewMode, setViewMode] = useState('grid'); // grid, list, hierarchy
+  const [viewMode, setViewMode] = useState('grid');
   const [selectedDepartments, setSelectedDepartments] = useState([]);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isAssignmentPanelOpen, setIsAssignmentPanelOpen] = useState(false);
   const [selectedDepartmentForAssignment, setSelectedDepartmentForAssignment] = useState(null);
   const [draggedDepartment, setDraggedDepartment] = useState(null);
-
-  // Mock user data
-  const currentUser = {
-    id: 1,
-    name: "Admin User",
-    email: "admin@emergency.gov",
-    role: "admin"
-  };
-
-  // Mock departments data
-  const [departments, setDepartments] = useState([
-    {
-      id: 'fire-dept',
-      name: 'Fire Department',
-      description: 'Emergency fire response and rescue operations',
-      icon: 'Flame',
-      status: 'active',
-      parentDepartment: null,
-      totalMembers: 45,
-      activeResponders: 38,
-      avgResponseTime: '4m',
-      incidentsHandled: 127,
-      lastUpdated: '2 hours ago',
-      createdAt: '2024-01-15T10:00:00Z',
-      capacity: 60,
-      members: [
-        { id: 1, name: 'John Smith', email: 'john.smith@fire.gov', role: 'responder', isActive: true },
-        { id: 2, name: 'Sarah Johnson', email: 'sarah.johnson@fire.gov', role: 'dispatcher', isActive: true }
-      ],
-      recentActivity: [
-        { icon: 'AlertTriangle', message: 'Responded to building fire on Main St', time: '1h ago', type: 'emergency' },
-        { icon: 'UserPlus', message: 'New responder John Doe joined', time: '3h ago', type: 'user' }
-      ]
-    },
-    {
-      id: 'police-dept',
-      name: 'Police Department',
-      description: 'Law enforcement and public safety',
-      icon: 'Shield',
-      status: 'active',
-      parentDepartment: null,
-      totalMembers: 62,
-      activeResponders: 55,
-      avgResponseTime: '3m',
-      incidentsHandled: 203,
-      lastUpdated: '1 hour ago',
-      createdAt: '2024-01-10T08:00:00Z',
-      capacity: 80,
-      members: [
-        { id: 3, name: 'Mike Wilson', email: 'mike.wilson@police.gov', role: 'responder', isActive: true },
-        { id: 4, name: 'Lisa Brown', email: 'lisa.brown@police.gov', role: 'dispatcher', isActive: false }
-      ],
-      recentActivity: [
-        { icon: 'Car', message: 'Traffic incident on Highway 101', time: '30m ago', type: 'emergency' },
-        { icon: 'Settings', message: 'Equipment maintenance completed', time: '2h ago', type: 'system' }
-      ]
-    },
-    {
-      id: 'medical-dept',
-      name: 'Medical Emergency',
-      description: 'Emergency medical services and ambulance dispatch',
-      icon: 'Heart',
-      status: 'active',
-      parentDepartment: null,
-      totalMembers: 38,
-      activeResponders: 32,
-      avgResponseTime: '5m',
-      incidentsHandled: 156,
-      lastUpdated: '45 minutes ago',
-      createdAt: '2024-01-20T12:00:00Z',
-      capacity: 50,
-      members: [
-        { id: 5, name: 'Dr. Emily Davis', email: 'emily.davis@medical.gov', role: 'responder', isActive: true },
-        { id: 6, name: 'Tom Anderson', email: 'tom.anderson@medical.gov', role: 'dispatcher', isActive: true }
-      ],
-      recentActivity: [
-        { icon: 'Ambulance', message: 'Medical emergency at City Park', time: '45m ago', type: 'emergency' },
-        { icon: 'Users', message: 'Training session completed', time: '4h ago', type: 'system' }
-      ]
-    },
-    {
-      id: 'hazmat-dept',
-      name: 'Hazmat Response',
-      description: 'Hazardous materials and chemical emergency response',
-      icon: 'AlertTriangle',
-      status: 'maintenance',
-      parentDepartment: 'fire-dept',
-      totalMembers: 12,
-      activeResponders: 8,
-      avgResponseTime: '8m',
-      incidentsHandled: 23,
-      lastUpdated: '6 hours ago',
-      createdAt: '2024-02-01T14:00:00Z',
-      capacity: 20,
-      members: [
-        { id: 7, name: 'Robert Chen', email: 'robert.chen@hazmat.gov', role: 'responder', isActive: false }
-      ],
-      recentActivity: [
-        { icon: 'Wrench', message: 'Equipment maintenance in progress', time: '6h ago', type: 'system' },
-        { icon: 'AlertCircle', message: 'Chemical spill response completed', time: '1d ago', type: 'emergency' }
-      ]
-    }
-  ]);
-
-  // Mock available users for assignment
-  const availableUsers = [
-    { id: 8, name: 'Alex Rodriguez', email: 'alex.rodriguez@emergency.gov', role: 'responder' },
-    { id: 9, name: 'Maria Garcia', email: 'maria.garcia@emergency.gov', role: 'dispatcher' },
-    { id: 10, name: 'David Kim', email: 'david.kim@emergency.gov', role: 'responder' },
-    { id: 11, name: 'Jennifer Lee', email: 'jennifer.lee@emergency.gov', role: 'admin' }
-  ];
+  const [departments, setDepartments] = useState([]);
+  const [availableUsers, setAvailableUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   const breadcrumbItems = [
     { label: 'Dashboard', path: '/' },
@@ -157,7 +52,35 @@ const DepartmentManagement = () => {
     { value: 'hierarchy', label: 'Hierarchy View' }
   ];
 
-  // Filter departments
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const { data: deptData, error: deptError } = await supabase
+          .from('departments')
+          .select('*')
+          .order('created_at', { ascending: false });
+        
+        if (deptError) throw deptError;
+        setDepartments(deptData || []);
+
+        const { data: userData, error: userError } = await supabase
+          .from('user_profiles')
+          .select('*, departments(*)')
+          .eq('is_active', true);
+        
+        if (userError) throw userError;
+        setAvailableUsers(userData || []);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
   const filteredDepartments = departments?.filter(dept => {
     const matchesSearch = dept?.name?.toLowerCase()?.includes(searchTerm?.toLowerCase()) ||
                          dept?.description?.toLowerCase()?.includes(searchTerm?.toLowerCase());
@@ -170,37 +93,53 @@ const DepartmentManagement = () => {
     navigate(path);
   };
 
-  // Department operations
   const handleCreateDepartment = async (departmentData) => {
-    const newDepartment = {
-      ...departmentData,
-      id: `dept-${Date.now()}`,
-      totalMembers: 0,
-      activeResponders: 0,
-      avgResponseTime: '0m',
-      incidentsHandled: 0,
-      lastUpdated: 'Just now',
-      members: [],
-      recentActivity: [
-        { icon: 'Plus', message: 'Department created', time: 'Just now', type: 'system' }
-      ]
-    };
-    
-    setDepartments(prev => [...prev, newDepartment]);
+    try {
+      const { data, error } = await supabase
+        .from('departments')
+        .insert(departmentData)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      setDepartments(prev => [...prev, data]);
+    } catch (error) {
+      console.error('Error creating department:', error);
+    }
   };
 
-  const handleEditDepartment = (departmentId, updates) => {
-    setDepartments(prev => prev?.map(dept => 
-      dept?.id === departmentId 
-        ? { ...dept, ...updates, lastUpdated: 'Just now' }
-        : dept
-    ));
+  const handleEditDepartment = async (departmentId, updates) => {
+    try {
+      const { error } = await supabase
+        .from('departments')
+        .update(updates)
+        .eq('id', departmentId);
+      
+      if (error) throw error;
+      setDepartments(prev => prev?.map(dept => 
+        dept?.id === departmentId 
+          ? { ...dept, ...updates }
+          : dept
+      ));
+    } catch (error) {
+      console.error('Error updating department:', error);
+    }
   };
 
-  const handleDeleteDepartment = (departmentId) => {
+  const handleDeleteDepartment = async (departmentId) => {
     if (window.confirm('Are you sure you want to delete this department? This action cannot be undone.')) {
-      setDepartments(prev => prev?.filter(dept => dept?.id !== departmentId));
-      setSelectedDepartments(prev => prev?.filter(dept => dept?.id !== departmentId));
+      try {
+        const { error } = await supabase
+          .from('departments')
+          .delete()
+          .eq('id', departmentId);
+        
+        if (error) throw error;
+        setDepartments(prev => prev?.filter(dept => dept?.id !== departmentId));
+        setSelectedDepartments(prev => prev?.filter(dept => dept?.id !== departmentId));
+      } catch (error) {
+        console.error('Error deleting department:', error);
+      }
     }
   };
 
@@ -283,14 +222,14 @@ const DepartmentManagement = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header 
-        user={currentUser} 
+        user={profile || user} 
         notificationCount={3}
         onNavigate={handleNavigation}
       />
       <Sidebar 
         isCollapsed={isSidebarCollapsed}
         onToggleCollapse={setIsSidebarCollapsed}
-        user={currentUser}
+        user={profile || user}
         onNavigate={handleNavigation}
       />
       <main className={`pt-16 transition-emergency ${
