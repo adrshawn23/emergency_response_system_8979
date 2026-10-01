@@ -6,6 +6,19 @@ const PersonalInfoSection = ({
   errors, 
   onChange 
 }) => {
+  const formatPhoneNumber = (value) => {
+    if (!value) return '';
+    const cleaned = value.replace(/\D/g, '');
+    if (cleaned.length === 0) return '';
+    if (cleaned.length <= 3) return `(${cleaned}`;
+    if (cleaned.length <= 6) return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3)}`;
+    return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6, 10)}`;
+  };
+
+  const handlePhoneChange = (e) => {
+    const formatted = formatPhoneNumber(e?.target?.value);
+    onChange({ target: { name: 'phone', value: formatted } });
+  };
   return (
     <div className="space-y-6">
       <div>
@@ -56,7 +69,7 @@ const PersonalInfoSection = ({
           name="phone"
           placeholder="(555) 123-4567"
           value={formData?.phone}
-          onChange={onChange}
+          onChange={handlePhoneChange}
           error={errors?.phone}
           description="Required for emergency communications"
           required
