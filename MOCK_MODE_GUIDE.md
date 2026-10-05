@@ -118,7 +118,8 @@ Mock mode allows you to test all features of the application using pre-defined m
 - ✅ Add new emergency contacts
 - ✅ Edit contact information
 - ✅ Delete contacts
-- ✅ Set primary contact
+- ✅ Submit emergency report with location
+- ✅ View GPS Location (always uses real-time GPS regardless of mode)
 
 ### 7. Location Map (View GPS Location)
 **Features to Test:**
