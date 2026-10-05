@@ -103,6 +103,12 @@ const UserTable = ({
     let aValue = a?.[sortField];
     let bValue = b?.[sortField];
     
+    // Handle nested objects like department
+    if (sortField === 'department') {
+      aValue = a?.department?.name || a?.department || '';
+      bValue = b?.department?.name || b?.department || '';
+    }
+    
     if (typeof aValue === 'string') {
       aValue = aValue?.toLowerCase();
       bValue = bValue?.toLowerCase();
