@@ -5,15 +5,20 @@ import LoginHeader from './components/LoginHeader';
 import LoginFooter from './components/LoginFooter';
 import TrustSignals from './components/TrustSignals';
 import { useAuth } from '../../contexts/AuthContext';
-import { supabase } from '../../lib/supabase';
+import { useMockData } from '../../contexts/MockDataContext';
 
 const Login = () => {
   const navigate = useNavigate();
   const { signIn, user, profile } = useAuth();
+  const { useMock } = useMockData();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  useEffect(() => { if (user && profile) navigate('/', { replace: true }); }, [user, profile, navigate]);
+  useEffect(() => { 
+    if (user && profile) {
+      navigate('/', { replace: true }); 
+    }
+  }, [user, profile, navigate]);
 
   const handleLogin = async (formData) => {
     setIsLoading(true);
@@ -22,12 +27,18 @@ const Login = () => {
     try {
       const { data, error: authError } = await signIn(formData.email.trim(), formData.password);
       if (authError) throw authError;
-      const { data: userProfile } = await supabase.from('user_profiles').select('*').eq('id', data.user.id).single();
-      if (userProfile?.is_active === false) {
-        await supabase.auth.signOut();
+      
+      // Profile is already set by AuthContext, no need for additional Supabase call
+      if (profile?.is_active === false) {
         throw new Error('Your account is awaiting administrator approval.');
       }
-      navigate(userProfile?.role === 'resident' ? '/emergency-report' : '/dashboard', { replace: true });
+      
+      // Navigate to appropriate page based on role
+      if (profile?.role === 'resident') {
+        navigate('/emergency-report', { replace: true });
+      } else {
+        navigate('/', { replace: true });
+      }
     } catch (err) {
       setError(err?.message || 'Login failed. Please try again later.');
     } finally {
