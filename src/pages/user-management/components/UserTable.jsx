@@ -302,7 +302,7 @@ const UserTable = ({
                       )}
                     </div>
                     <div>
-                      <p className="font-medium text-foreground">{user?.name}</p>
+                      <p className="font-medium text-foreground">{user?.full_name || user?.name || 'Unknown'}</p>
                       <p className="text-sm text-muted-foreground">{user?.email}</p>
                     </div>
                   </div>
