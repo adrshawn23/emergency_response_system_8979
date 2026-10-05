@@ -11,10 +11,13 @@ import DeclineReasonModal from './components/DeclineReasonModal';
 import BulkActionsPanel from './components/BulkActionsPanel';
 import ReportStats from './components/ReportStats';
 import { useAuth } from '../../contexts/AuthContext';
+import { useMockData } from '../../contexts/MockDataContext';
 import { supabase } from '../../lib/supabase';
+import { mockEmergencyReports } from '../../data/mockData';
 
 const ReportManagement = () => {
   const { user, profile } = useAuth();
+  const { useMock } = useMockData();
   const [reports, setReports] = useState([]);
   const [filteredReports, setFilteredReports] = useState([]);
   const [selectedReports, setSelectedReports] = useState([]);
@@ -50,17 +53,28 @@ const ReportManagement = () => {
     const fetchReports = async () => {
       setLoading(true);
       try {
-        let query = supabase.from('emergency_reports').select('*');
-        
-        if (profile?.role === 'resident') {
-          query = query.eq('reporter_id', user.id);
+        if (useMock) {
+          // Use mock data
+          let mockData = [...mockEmergencyReports];
+          if (profile?.role === 'resident') {
+            mockData = mockData.filter(r => r.reporter_id === user.id);
+          }
+          setReports(mockData);
+          setFilteredReports(mockData);
+        } else {
+          // Use Supabase
+          let query = supabase.from('emergency_reports').select('*');
+          
+          if (profile?.role === 'resident') {
+            query = query.eq('reporter_id', user.id);
+          }
+          
+          const { data, error } = await query.order('created_at', { ascending: false });
+          
+          if (error) throw error;
+          setReports(data || []);
+          setFilteredReports(data || []);
         }
-        
-        const { data, error } = await query.order('created_at', { ascending: false });
-        
-        if (error) throw error;
-        setReports(data || []);
-        setFilteredReports(data || []);
       } catch (error) {
         console.error('Error fetching reports:', error);
       } finally {
@@ -69,7 +83,7 @@ const ReportManagement = () => {
     };
 
     fetchReports();
-  }, [user, profile]);
+  }, [user, profile, useMock]);
 
   useEffect(() => {
     let filtered = [...reports];

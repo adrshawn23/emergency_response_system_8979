@@ -1,8 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Icon from '../AppIcon';
 import Button from './Button';
+import { useMockData } from '../../contexts/MockDataContext';
 
 const Header = ({ user = null, notificationCount = 0, onNavigate = () => {} }) => {
+  const { useMock, toggleMockMode } = useMockData();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
@@ -104,6 +106,20 @@ const Header = ({ user = null, notificationCount = 0, onNavigate = () => {} }) =
 
         {/* Right Side Actions */}
         <div className="flex items-center space-x-4">
+          {/* Mock Mode Toggle */}
+          <button
+            onClick={toggleMockMode}
+            className={`flex items-center space-x-2 px-3 py-1.5 text-xs font-medium rounded-md transition-emergency ${
+              useMock 
+                ? 'bg-primary text-primary-foreground' 
+                : 'bg-muted text-muted-foreground hover:bg-muted/80'
+            }`}
+            title={useMock ? 'Mock Mode Enabled' : 'Mock Mode Disabled'}
+          >
+            <Icon name={useMock ? 'Database' : 'Cloud'} size={14} />
+            <span className="hidden sm:inline">{useMock ? 'Mock' : 'Live'}</span>
+          </button>
+
           {/* Notifications */}
           {user && (
             <div className="relative" ref={notificationRef}>

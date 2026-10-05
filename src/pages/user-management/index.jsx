@@ -11,11 +11,14 @@ import DepartmentDistribution from './components/DepartmentDistribution';
 import Button from '../../components/ui/Button';
 import Icon from '../../components/AppIcon';
 import { useAuth } from '../../contexts/AuthContext';
+import { useMockData } from '../../contexts/MockDataContext';
 import { supabase } from '../../lib/supabase';
+import { mockUsers, mockDepartments } from '../../data/mockData';
 
 const UserManagement = () => {
   const navigate = useNavigate();
   const { user, profile } = useAuth();
+  const { useMock } = useMockData();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState('users');
   const [searchTerm, setSearchTerm] = useState('');
@@ -31,24 +34,33 @@ const UserManagement = () => {
     const fetchUsers = async () => {
       setLoading(true);
       try {
-        const { data: activeUsers, error: activeError } = await supabase
-          .from('user_profiles')
-          .select('*, department:departments(*)')
-          .eq('is_active', true)
-          .order('created_at', { ascending: false });
-        
-        if (activeError) throw activeError;
+        if (useMock) {
+          // Use mock data
+          const activeUsers = mockUsers.filter(u => u.is_active);
+          const pendingUsersData = mockUsers.filter(u => !u.is_active);
+          setUsers(activeUsers);
+          setPendingUsers(pendingUsersData);
+        } else {
+          // Use Supabase
+          const { data: activeUsers, error: activeError } = await supabase
+            .from('user_profiles')
+            .select('*, department:departments(*)')
+            .eq('is_active', true)
+            .order('created_at', { ascending: false });
+          
+          if (activeError) throw activeError;
 
-        const { data: pendingUsersData, error: pendingError } = await supabase
-          .from('user_profiles')
-          .select('*, department:departments(*)')
-          .eq('is_active', false)
-          .order('created_at', { ascending: false });
-        
-        if (pendingError) throw pendingError;
+          const { data: pendingUsersData, error: pendingError } = await supabase
+            .from('user_profiles')
+            .select('*, department:departments(*)')
+            .eq('is_active', false)
+            .order('created_at', { ascending: false });
+          
+          if (pendingError) throw pendingError;
 
-        setUsers(activeUsers || []);
-        setPendingUsers(pendingUsersData || []);
+          setUsers(activeUsers || []);
+          setPendingUsers(pendingUsersData || []);
+        }
       } catch (error) {
         console.error('Error fetching users:', error);
       } finally {
@@ -57,7 +69,7 @@ const UserManagement = () => {
     };
 
     fetchUsers();
-  }, []);
+  }, [useMock]);
 
   const filteredUsers = users?.filter(user => {
     const matchesSearch = user?.first_name?.toLowerCase()?.includes(searchTerm?.toLowerCase()) ||
@@ -104,13 +116,19 @@ const UserManagement = () => {
   const handleDeleteUser = async (user) => {
     if (window.confirm(`Are you sure you want to delete ${user?.first_name} ${user?.last_name}?`)) {
       try {
-        const { error } = await supabase
-          .from('user_profiles')
-          .delete()
-          .eq('id', user.id);
-        
-        if (error) throw error;
-        setUsers(prev => prev?.filter(u => u?.id !== user?.id));
+        if (useMock) {
+          // Mock mode: remove from local state
+          setUsers(prev => prev?.filter(u => u?.id !== user?.id));
+        } else {
+          // Supabase mode
+          const { error } = await supabase
+            .from('user_profiles')
+            .delete()
+            .eq('id', user.id);
+          
+          if (error) throw error;
+          setUsers(prev => prev?.filter(u => u?.id !== user?.id));
+        }
       } catch (error) {
         console.error('Error deleting user:', error);
       }
@@ -120,15 +138,23 @@ const UserManagement = () => {
   const handleToggleUserStatus = async (user) => {
     try {
       const newStatus = !user?.is_active;
-      const { error } = await supabase
-        .from('user_profiles')
-        .update({ is_active: newStatus })
-        .eq('id', user.id);
-      
-      if (error) throw error;
-      setUsers(prev => prev?.map(u => 
-        u?.id === user?.id ? { ...u, is_active: newStatus } : u
-      ));
+      if (useMock) {
+        // Mock mode: update local state
+        setUsers(prev => prev?.map(u => 
+          u?.id === user?.id ? { ...u, is_active: newStatus } : u
+        ));
+      } else {
+        // Supabase mode
+        const { error } = await supabase
+          .from('user_profiles')
+          .update({ is_active: newStatus })
+          .eq('id', user.id);
+        
+        if (error) throw error;
+        setUsers(prev => prev?.map(u => 
+          u?.id === user?.id ? { ...u, is_active: newStatus } : u
+        ));
+      }
     } catch (error) {
       console.error('Error toggling user status:', error);
     }

@@ -13,11 +13,14 @@ import ImageUpload from './components/ImageUpload';
 import EmergencyContacts from './components/EmergencyContacts';
 import SubmissionProgress from './components/SubmissionProgress';
 import { useAuth } from '../../contexts/AuthContext';
+import { useMockData } from '../../contexts/MockDataContext';
 import { supabase } from '../../lib/supabase';
+import { mockEmergencyReports } from '../../data/mockData';
 
 const EmergencyReport = () => {
   const navigate = useNavigate();
   const { user, profile } = useAuth();
+  const { useMock } = useMockData();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   // Form state
@@ -107,19 +110,44 @@ const EmergencyReport = () => {
     setSubmissionError(null);
 
     try {
-      const { data: reportData, error: reportError } = await supabase.from('emergency_reports').insert({
-        reporter_id: user.id,
-        emergency_type: formData.emergencyType,
-        location: formData.location,
-        priority: formData.priority,
-        description: formData.description,
-        contact_name: formData.contactName,
-        contact_phone: formData.contactPhone,
-        status: 'pending',
-        images: formData.images
-      }).select().single();
+      let reportData;
+      
+      if (useMock) {
+        // Mock mode: add to mock data
+        const newReport = {
+          report_id: `REP-${String(mockEmergencyReports.length + 1).padStart(3, '0')}`,
+          reporter_id: user.id,
+          emergency_type: formData.emergencyType,
+          location: formData.location,
+          priority: formData.priority,
+          description: formData.description,
+          contact_name: formData.contactName,
+          contact_phone: formData.contactPhone,
+          status: 'pending',
+          images: formData.images,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          assigned_to: null
+        };
+        mockEmergencyReports.unshift(newReport);
+        reportData = newReport;
+      } else {
+        // Supabase mode
+        const { data, error: reportError } = await supabase.from('emergency_reports').insert({
+          reporter_id: user.id,
+          emergency_type: formData.emergencyType,
+          location: formData.location,
+          priority: formData.priority,
+          description: formData.description,
+          contact_name: formData.contactName,
+          contact_phone: formData.contactPhone,
+          status: 'pending',
+          images: formData.images
+        }).select().single();
 
-      if (reportError) throw reportError;
+        if (reportError) throw reportError;
+        reportData = data;
+      }
 
       setReportNumber(reportData.report_id);
       setIsSubmitted(true);

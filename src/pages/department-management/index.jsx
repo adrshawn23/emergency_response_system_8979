@@ -8,7 +8,9 @@ import Header from '../../components/ui/Header';
 import Sidebar from '../../components/ui/Sidebar';
 import BreadcrumbNavigation from '../../components/ui/BreadcrumbNavigation';
 import { useAuth } from '../../contexts/AuthContext';
+import { useMockData } from '../../contexts/MockDataContext';
 import { supabase } from '../../lib/supabase';
+import { mockDepartments, mockUsers } from '../../data/mockData';
 
 // Import components
 import DepartmentCard from './components/DepartmentCard';
@@ -21,6 +23,7 @@ import BulkOperationsPanel from './components/BulkOperationsPanel';
 const DepartmentManagement = () => {
   const navigate = useNavigate();
   const { user, profile } = useAuth();
+  const { useMock } = useMockData();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -56,21 +59,29 @@ const DepartmentManagement = () => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const { data: deptData, error: deptError } = await supabase
-          .from('departments')
-          .select('*')
-          .order('created_at', { ascending: false });
-        
-        if (deptError) throw deptError;
-        setDepartments(deptData || []);
+        if (useMock) {
+          // Use mock data
+          setDepartments(mockDepartments);
+          const activeUsers = mockUsers.filter(u => u.is_active);
+          setAvailableUsers(activeUsers);
+        } else {
+          // Use Supabase
+          const { data: deptData, error: deptError } = await supabase
+            .from('departments')
+            .select('*')
+            .order('created_at', { ascending: false });
+          
+          if (deptError) throw deptError;
+          setDepartments(deptData || []);
 
-        const { data: userData, error: userError } = await supabase
-          .from('user_profiles')
-          .select('*, departments(*)')
-          .eq('is_active', true);
-        
-        if (userError) throw userError;
-        setAvailableUsers(userData || []);
+          const { data: userData, error: userError } = await supabase
+            .from('user_profiles')
+            .select('*, departments(*)')
+            .eq('is_active', true);
+          
+          if (userError) throw userError;
+          setAvailableUsers(userData || []);
+        }
       } catch (error) {
         console.error('Error fetching data:', error);
       } finally {
@@ -79,7 +90,7 @@ const DepartmentManagement = () => {
     };
 
     fetchData();
-  }, []);
+  }, [useMock]);
 
   const filteredDepartments = departments?.filter(dept => {
     const matchesSearch = dept?.name?.toLowerCase()?.includes(searchTerm?.toLowerCase()) ||
