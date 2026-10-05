@@ -28,17 +28,8 @@ const Login = () => {
       const { data, error: authError } = await signIn(formData.email.trim(), formData.password);
       if (authError) throw authError;
       
-      // Profile is already set by AuthContext, no need for additional Supabase call
-      if (profile?.is_active === false) {
-        throw new Error('Your account is awaiting administrator approval.');
-      }
-      
-      // Navigate to appropriate page based on role
-      if (profile?.role === 'resident') {
-        navigate('/emergency-report', { replace: true });
-      } else {
-        navigate('/', { replace: true });
-      }
+      // Navigate to home page - ProtectedRoute will handle role-based redirects
+      navigate('/', { replace: true });
     } catch (err) {
       setError(err?.message || 'Login failed. Please try again later.');
     } finally {
