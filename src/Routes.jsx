@@ -11,6 +11,7 @@ import UserManagement from './pages/user-management';
 import ReportManagement from './pages/report-management';
 import EmergencyReport from './pages/emergency-report';
 import Register from './pages/register';
+import Profile from './pages/profile';
 
 const Routes = () => {
   return (
@@ -28,6 +29,7 @@ const Routes = () => {
               <Route path="/report-management" element={<ReportManagement />} />
               <Route path="/emergency-report" element={<EmergencyReport />} />
               <Route path="/register" element={<Register />} />
+              <Route path="/profile" element={<Profile />} />
               <Route path="*" element={<NotFound />} />
             </RouterRoutes>
           </ErrorBoundary>

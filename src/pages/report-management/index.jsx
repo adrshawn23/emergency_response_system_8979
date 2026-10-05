@@ -8,6 +8,7 @@ import ReportTable from './components/ReportTable';
 import ReportDetailsModal from './components/ReportDetailsModal';
 import AssignResponderModal from './components/AssignResponderModal';
 import DeclineReasonModal from './components/DeclineReasonModal';
+import TurnoverReportModal from './components/TurnoverReportModal';
 import BulkActionsPanel from './components/BulkActionsPanel';
 import ReportStats from './components/ReportStats';
 import { useAuth } from '../../contexts/AuthContext';
@@ -30,6 +31,7 @@ const ReportManagement = () => {
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [showDeclineModal, setShowDeclineModal] = useState(false);
+  const [showTurnoverModal, setShowTurnoverModal] = useState(false);
 
   const breadcrumbItems = [
     { label: 'Dashboard', path: '/' },
@@ -170,6 +172,9 @@ const ReportManagement = () => {
       case 'accept':
         handleAcceptReport(report);
         break;
+      case 'turnover':
+        setShowTurnoverModal(true);
+        break;
       default:
         break;
     }
@@ -225,24 +230,78 @@ const ReportManagement = () => {
 
   const handleDeclineReport = async (declineData) => {
     try {
-      const { error } = await supabase
-        .from('emergency_reports')
-        .update({ 
-          status: 'declined',
-          decline_reason: declineData.reason
-        })
-        .eq('report_id', declineData.reportId);
-      
-      if (error) throw error;
-      
-      setReports(prev => prev?.map(r => 
-        r?.report_id === declineData?.reportId 
-          ? { ...r, status: 'declined', decline_reason: declineData.reason }
-          : r
-      ));
+      if (useMock) {
+        // Mock mode: update local state
+        setReports(prev => prev?.map(r => 
+          r?.report_id === declineData?.reportId 
+            ? { ...r, status: 'declined', decline_reason: declineData.reason }
+            : r
+        ));
+      } else {
+        // Supabase mode
+        const { error } = await supabase
+          .from('emergency_reports')
+          .update({ 
+            status: 'declined',
+            decline_reason: declineData.reason
+          })
+          .eq('report_id', declineData.reportId);
+        
+        if (error) throw error;
+        
+        setReports(prev => prev?.map(r => 
+          r?.report_id === declineData?.reportId 
+            ? { ...r, status: 'declined', decline_reason: declineData.reason }
+            : r
+        ));
+      }
       setShowDeclineModal(false);
     } catch (error) {
       console.error('Error declining report:', error);
+    }
+  };
+
+  const handleTurnoverReport = async (turnoverData) => {
+    try {
+      if (useMock) {
+        // Mock mode: update local state with turnover report
+        setReports(prev => prev?.map(r => 
+          r?.report_id === turnoverData?.reportId 
+            ? { 
+                ...r, 
+                status: 'resolved',
+                turnover_report: turnoverData,
+                resolved_at: turnoverData.submittedAt
+              }
+            : r
+        ));
+      } else {
+        // Supabase mode
+        const { error } = await supabase
+          .from('emergency_reports')
+          .update({ 
+            status: 'resolved',
+            turnover_report: turnoverData,
+            resolved_at: turnoverData.submittedAt
+          })
+          .eq('report_id', turnoverData.reportId);
+        
+        if (error) throw error;
+        
+        setReports(prev => prev?.map(r => 
+          r?.report_id === turnoverData?.reportId 
+            ? { 
+                ...r, 
+                status: 'resolved',
+                turnover_report: turnoverData,
+                resolved_at: turnoverData.submittedAt
+              }
+            : r
+        ));
+      }
+      setShowTurnoverModal(false);
+    } catch (error) {
+      console.error('Error submitting turnover report:', error);
     }
   };
 
@@ -469,6 +528,16 @@ const ReportManagement = () => {
             setSelectedReport(null);
           }}
           onDecline={handleDeclineReport}
+        />
+
+        <TurnoverReportModal
+          report={selectedReport}
+          isOpen={showTurnoverModal}
+          onClose={() => {
+            setShowTurnoverModal(false);
+            setSelectedReport(null);
+          }}
+          onSubmit={handleTurnoverReport}
         />
       </div>
     </div>

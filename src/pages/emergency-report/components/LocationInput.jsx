@@ -2,43 +2,67 @@ import React, { useState, useEffect } from 'react';
 import Icon from '../../../components/AppIcon';
 import Input from '../../../components/ui/Input';
 import Button from '../../../components/ui/Button';
+import { useMockData } from '../../../contexts/MockDataContext';
 
 const LocationInput = ({ 
   location, 
   onLocationChange, 
   error = null 
 }) => {
+  const { useMock } = useMockData();
   const [isDetecting, setIsDetecting] = useState(false);
   const [coordinates, setCoordinates] = useState(null);
 
-  const detectLocation = () => {
-    if (!navigator.geolocation) {
-      alert('Geolocation is not supported by this browser.');
-      return;
-    }
+  // Mock GPS locations for testing
+  const mockLocations = [
+    { lat: 14.6091, lng: 121.0225, address: '123 Main Street, Downtown Manila' },
+    { lat: 14.6100, lng: 121.0230, address: '456 Oak Avenue, Residential Area' },
+    { lat: 14.6110, lng: 121.0240, address: '789 Highway 1, Intersection' },
+    { lat: 14.6080, lng: 121.0210, address: '321 Riverside Drive, Flood Zone' },
+    { lat: 14.6095, lng: 121.0228, address: '654 Commercial Street, Business District' }
+  ];
 
+  const detectLocation = () => {
     setIsDetecting(true);
-    navigator.geolocation?.getCurrentPosition(
-      (position) => {
-        const { latitude, longitude } = position?.coords;
-        setCoordinates({ lat: latitude, lng: longitude });
-        
-        // Mock reverse geocoding - in real app, use Google Maps API
-        const mockAddress = `${latitude?.toFixed(4)}, ${longitude?.toFixed(4)} (GPS Coordinates)`;
-        onLocationChange(mockAddress);
+    
+    if (useMock) {
+      // Mock mode: use a random mock location
+      setTimeout(() => {
+        const randomLocation = mockLocations[Math.floor(Math.random() * mockLocations.length)];
+        setCoordinates({ lat: randomLocation.lat, lng: randomLocation.lng });
+        onLocationChange(randomLocation.address);
         setIsDetecting(false);
-      },
-      (error) => {
-        console.error('Error detecting location:', error);
+      }, 1000);
+    } else {
+      // Live mode: use actual GPS
+      if (!navigator.geolocation) {
+        alert('Geolocation is not supported by this browser.');
         setIsDetecting(false);
-        alert('Unable to detect location. Please enter manually.');
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 60000
+        return;
       }
-    );
+
+      navigator.geolocation?.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position?.coords;
+          setCoordinates({ lat: latitude, lng: longitude });
+          
+          // Mock reverse geocoding - in real app, use Google Maps API
+          const mockAddress = `${latitude?.toFixed(4)}, ${longitude?.toFixed(4)} (GPS Coordinates)`;
+          onLocationChange(mockAddress);
+          setIsDetecting(false);
+        },
+        (error) => {
+          console.error('Error detecting location:', error);
+          setIsDetecting(false);
+          alert('Unable to detect location. Please enter manually.');
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 60000
+        }
+      );
+    }
   };
 
   return (

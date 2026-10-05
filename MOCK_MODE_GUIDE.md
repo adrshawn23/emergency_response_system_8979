@@ -134,7 +134,7 @@ Mock mode allows you to test all features of the application using pre-defined m
 | Las Piñas, Kryshan Aleizel | Account Management | Login | ✅ |
 | | | View Profile | ✅ |
 | | | Edit/Update Profile | ✅ |
-| | | Change Password | ⚠️ |
+| | | Change Password | ✅ |
 | | | Logout | ✅ |
 | Dagatan, Shawn Michael | Emergency Report | Send Emergency Report | ✅ |
 | | | View Reports | ✅ |
@@ -142,14 +142,12 @@ Mock mode allows you to test all features of the application using pre-defined m
 | Frejoles, Cindy | Broadcasting | Confirm/Receive Broadcast Alert | ✅ |
 | Las Piñas, Kryshan Aleizel | Report Handling | Accept/Decline Report | ✅ |
 | | | Assign Responder | ✅ |
-| | | Submit Turnover Report | ⚠️ |
+| | | Submit Turnover Report | ✅ |
 | Frejoles, Cindy | Emergency Contact | View Emergency Contacts | ✅ |
-| Las Piñas, Kryshan Aleizel | Location Map | View GPS Location | ⚠️ |
+| Las Piñas, Kryshan Aleizel | Location Map | View GPS Location | ✅ |
 
 **Legend:**
 - ✅ Fully functional with mock data
-- ⚠️ Partially implemented / UI only
-- ❌ Not implemented
 
 ## Switching Between Mock and Live Mode
 
