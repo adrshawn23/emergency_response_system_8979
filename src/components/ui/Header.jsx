@@ -2,9 +2,11 @@ import React, { useState, useRef, useEffect } from 'react';
 import Icon from '../AppIcon';
 import Button from './Button';
 import { useMockData } from '../../contexts/MockDataContext';
+import { useAuth } from '../../contexts/AuthContext';
 
 const Header = ({ user = null, notificationCount = 0, onNavigate = () => {} }) => {
   const { useMock, toggleMockMode } = useMockData();
+  const { signOut } = useAuth();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
@@ -51,8 +53,9 @@ const Header = ({ user = null, notificationCount = 0, onNavigate = () => {} }) =
     setIsMobileMenuOpen(false);
   };
 
-  const handleLogout = () => {
-    onNavigate('/login');
+  const handleLogout = async () => {
+    await signOut();
+    window.location.href = '/login';
     setIsUserMenuOpen(false);
   };
 

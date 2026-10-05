@@ -95,7 +95,7 @@ const Profile = () => {
 
   const handleLogout = async () => {
     await signOut();
-    navigate('/login');
+    window.location.href = '/login';
   };
 
   return (
