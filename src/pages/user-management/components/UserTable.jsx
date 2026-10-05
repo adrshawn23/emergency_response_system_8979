@@ -310,7 +310,7 @@ const UserTable = ({
                 </td>
                 
                 <td className="p-4">
-                  <span className="text-sm text-foreground">{user?.department}</span>
+                  <span className="text-sm text-foreground">{user?.department?.name || user?.department || 'Not assigned'}</span>
                 </td>
                 
                 <td className="p-4">
