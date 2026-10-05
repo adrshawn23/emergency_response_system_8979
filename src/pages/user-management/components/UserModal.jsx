@@ -215,7 +215,7 @@ const UserModal = ({
                   </div>
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">Department</label>
-                    <p className="text-foreground">{user?.department || 'Not assigned'}</p>
+                    <p className="text-foreground">{user?.department?.name || user?.department || 'Not assigned'}</p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">Registration Date</label>
