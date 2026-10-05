@@ -55,7 +55,9 @@ const Header = ({ user = null, notificationCount = 0, onNavigate = () => {} }) =
 
   const handleLogout = async () => {
     await signOut();
-    window.location.href = '/login';
+    setTimeout(() => {
+      window.location.href = '/login';
+    }, 100);
     setIsUserMenuOpen(false);
   };
 

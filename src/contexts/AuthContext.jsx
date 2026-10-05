@@ -117,7 +117,6 @@ export const AuthProvider = ({ children }) => {
     signOut: async () => {
       if (useMock) {
         localStorage.removeItem('mock_session');
-        localStorage.removeItem('useMockData');
         setUser(null);
         setProfile(null);
         return { error: null };
