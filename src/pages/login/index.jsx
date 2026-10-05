@@ -6,11 +6,12 @@ import LoginFooter from './components/LoginFooter';
 import TrustSignals from './components/TrustSignals';
 import { useAuth } from '../../contexts/AuthContext';
 import { useMockData } from '../../contexts/MockDataContext';
+import Icon from '../../components/AppIcon';
 
 const Login = () => {
   const navigate = useNavigate();
   const { signIn, user, profile } = useAuth();
-  const { useMock } = useMockData();
+  const { useMock, toggleMockMode } = useMockData();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -48,6 +49,22 @@ const Login = () => {
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-md">
+        {/* Mock Mode Toggle */}
+        <div className="mb-4 flex justify-end">
+          <button
+            onClick={toggleMockMode}
+            className={`flex items-center space-x-2 px-4 py-2 text-sm font-medium rounded-lg transition-emergency ${
+              useMock 
+                ? 'bg-primary text-primary-foreground' 
+                : 'bg-muted text-muted-foreground hover:bg-muted/80'
+            }`}
+            title={useMock ? 'Mock Mode Enabled' : 'Live Mode Enabled'}
+          >
+            <Icon name={useMock ? 'Database' : 'Cloud'} size={16} />
+            <span>{useMock ? 'Mock Mode' : 'Live Mode'}</span>
+          </button>
+        </div>
+
         <div className="bg-card border border-border rounded-xl shadow-emergency-lg p-8">
           <LoginHeader />
           
