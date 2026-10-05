@@ -54,11 +54,9 @@ const Header = ({ user = null, notificationCount = 0, onNavigate = () => {} }) =
   };
 
   const handleLogout = async () => {
-    await signOut();
-    setTimeout(() => {
-      window.location.href = '/login';
-    }, 100);
     setIsUserMenuOpen(false);
+    await signOut();
+    window.location.reload();
   };
 
   const getPriorityColor = (priority) => {
