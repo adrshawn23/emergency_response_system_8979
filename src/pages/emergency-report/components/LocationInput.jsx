@@ -25,44 +25,34 @@ const LocationInput = ({
   const detectLocation = () => {
     setIsDetecting(true);
     
-    if (useMock) {
-      // Mock mode: use a random mock location
-      setTimeout(() => {
-        const randomLocation = mockLocations[Math.floor(Math.random() * mockLocations.length)];
-        setCoordinates({ lat: randomLocation.lat, lng: randomLocation.lng });
-        onLocationChange(randomLocation.address);
-        setIsDetecting(false);
-      }, 1000);
-    } else {
-      // Live mode: use actual GPS
-      if (!navigator.geolocation) {
-        alert('Geolocation is not supported by this browser.');
-        setIsDetecting(false);
-        return;
-      }
-
-      navigator.geolocation?.getCurrentPosition(
-        (position) => {
-          const { latitude, longitude } = position?.coords;
-          setCoordinates({ lat: latitude, lng: longitude });
-          
-          // Mock reverse geocoding - in real app, use Google Maps API
-          const mockAddress = `${latitude?.toFixed(4)}, ${longitude?.toFixed(4)} (GPS Coordinates)`;
-          onLocationChange(mockAddress);
-          setIsDetecting(false);
-        },
-        (error) => {
-          console.error('Error detecting location:', error);
-          setIsDetecting(false);
-          alert('Unable to detect location. Please enter manually.');
-        },
-        {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 60000
-        }
-      );
+    // Always use real GPS regardless of mock mode
+    if (!navigator.geolocation) {
+      alert('Geolocation is not supported by this browser.');
+      setIsDetecting(false);
+      return;
     }
+
+    navigator.geolocation?.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position?.coords;
+        setCoordinates({ lat: latitude, lng: longitude });
+        
+        // Mock reverse geocoding - in real app, use Google Maps API
+        const mockAddress = `${latitude?.toFixed(4)}, ${longitude?.toFixed(4)} (GPS Coordinates)`;
+        onLocationChange(mockAddress);
+        setIsDetecting(false);
+      },
+      (error) => {
+        console.error('Error detecting location:', error);
+        setIsDetecting(false);
+        alert('Unable to detect location. Please enter manually.');
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 60000
+      }
+    );
   };
 
   return (
