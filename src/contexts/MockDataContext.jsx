@@ -13,7 +13,17 @@ export const useMockData = () => {
 
 export const MockDataProvider = ({ children }) => {
   const [useMock, setUseMock] = useState(() => {
-    return localStorage.getItem('useMockData') === 'true';
+    // Default to mock mode if Supabase env vars are missing
+    const hasSupabaseUrl = import.meta.env?.VITE_SUPABASE_URL;
+    const hasSupabaseKey = import.meta.env?.VITE_SUPABASE_ANON_KEY;
+    const localStorageValue = localStorage.getItem('useMockData');
+    
+    if (localStorageValue !== null) {
+      return localStorageValue === 'true';
+    }
+    
+    // Auto-enable mock mode if Supabase credentials are missing
+    return !hasSupabaseUrl || !hasSupabaseKey;
   });
 
   useEffect(() => {

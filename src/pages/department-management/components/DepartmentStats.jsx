@@ -3,17 +3,17 @@ import Icon from '../../../components/AppIcon';
 
 const DepartmentStats = ({ departments = [] }) => {
   // Calculate statistics
-  const totalDepartments = departments?.length;
-  const activeDepartments = departments?.filter(d => d?.status === 'active')?.length;
-  const totalMembers = departments?.reduce((sum, d) => sum + d?.totalMembers, 0);
-  const totalActiveResponders = departments?.reduce((sum, d) => sum + d?.activeResponders, 0);
+  const totalDepartments = departments?.length || 0;
+  const activeDepartments = departments?.filter(d => d?.status === 'active')?.length || 0;
+  const totalMembers = departments?.reduce((sum, d) => sum + (d?.totalMembers || 0), 0) || 0;
+  const totalActiveResponders = departments?.reduce((sum, d) => sum + (d?.activeResponders || 0), 0) || 0;
   const avgResponseTime = departments?.length > 0 
     ? Math.round(departments?.reduce((sum, d) => {
         const time = parseInt(d?.avgResponseTime?.replace('m', '')) || 0;
         return sum + time;
       }, 0) / departments?.length)
     : 0;
-  const totalIncidents = departments?.reduce((sum, d) => sum + d?.incidentsHandled, 0);
+  const totalIncidents = departments?.reduce((sum, d) => sum + (d?.incidentsHandled || 0), 0) || 0;
 
   const stats = [
     {
