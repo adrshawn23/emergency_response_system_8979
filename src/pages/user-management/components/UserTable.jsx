@@ -320,12 +320,12 @@ const UserTable = ({
                 </td>
                 
                 <td className="p-4">
-                  {getStatusBadge(user?.status)}
+                  {getStatusBadge(user?.is_active ? 'active' : 'inactive')}
                 </td>
                 
                 <td className="p-4">
                   <span className="text-sm text-muted-foreground">
-                    {new Date(user.registrationDate)?.toLocaleDateString()}
+                    {user?.created_at ? new Date(user.created_at)?.toLocaleDateString() : user?.registrationDate ? new Date(user.registrationDate)?.toLocaleDateString() : 'Unknown'}
                   </span>
                 </td>
                 
