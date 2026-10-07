@@ -3,17 +3,38 @@
 -- Integration Type: Complete schema creation with authentication and RLS policies
 -- Dependencies: auth.users (Supabase managed)
 
--- 1. ENUMS AND TYPES
-CREATE TYPE public.user_role AS ENUM ('admin', 'dispatcher', 'responder', 'resident');
-CREATE TYPE public.incident_type AS ENUM ('fire', 'medical', 'police', 'accident', 'natural');
-CREATE TYPE public.priority_level AS ENUM ('low', 'medium', 'high', 'critical');
-CREATE TYPE public.report_status AS ENUM ('pending', 'assigned', 'in-progress', 'resolved', 'declined');
-CREATE TYPE public.department_type AS ENUM ('fire', 'medical', 'police', 'emergency_management');
+-- 1. ENUMS AND TYPES (with error handling for existing types)
+DO $$
+BEGIN
+    -- Create enums if they don't exist
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role') THEN
+        CREATE TYPE public.user_role AS ENUM ('admin', 'dispatcher', 'responder', 'resident');
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'incident_type') THEN
+        CREATE TYPE public.incident_type AS ENUM ('fire', 'medical', 'police', 'accident', 'natural');
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'priority_level') THEN
+        CREATE TYPE public.priority_level AS ENUM ('low', 'medium', 'high', 'critical');
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'report_status') THEN
+        CREATE TYPE public.report_status AS ENUM ('pending', 'assigned', 'in-progress', 'resolved', 'declined');
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'department_type') THEN
+        CREATE TYPE public.department_type AS ENUM ('fire', 'medical', 'police', 'emergency_management');
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'Error creating types: %', SQLERRM;
+END $$;
 
 -- 2. CORE TABLES (No foreign keys first)
 
 -- User profiles table (intermediary for auth.users)
-CREATE TABLE public.user_profiles (
+CREATE TABLE IF NOT EXISTS public.user_profiles (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     email TEXT NOT NULL UNIQUE,
     full_name TEXT NOT NULL,
@@ -27,7 +48,7 @@ CREATE TABLE public.user_profiles (
 );
 
 -- Departments table
-CREATE TABLE public.departments (
+CREATE TABLE IF NOT EXISTS public.departments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
     type public.department_type NOT NULL,
@@ -41,7 +62,7 @@ CREATE TABLE public.departments (
 );
 
 -- Emergency reports table
-CREATE TABLE public.emergency_reports (
+CREATE TABLE IF NOT EXISTS public.emergency_reports (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     report_id TEXT NOT NULL UNIQUE, -- RPT-001 format
     incident_type public.incident_type NOT NULL,
@@ -65,12 +86,23 @@ CREATE TABLE public.emergency_reports (
 -- 3. DEPENDENT TABLES (With foreign keys to existing tables)
 
 -- Add department foreign key to user_profiles
-ALTER TABLE public.user_profiles 
-ADD CONSTRAINT fk_user_profiles_department 
-FOREIGN KEY (department_id) REFERENCES public.departments(id) ON DELETE SET NULL;
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'fk_user_profiles_department'
+    ) THEN
+        ALTER TABLE public.user_profiles 
+        ADD CONSTRAINT fk_user_profiles_department 
+        FOREIGN KEY (department_id) REFERENCES public.departments(id) ON DELETE SET NULL;
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'Error adding foreign key: %', SQLERRM;
+END $$;
 
 -- Report updates/notes table
-CREATE TABLE public.report_updates (
+CREATE TABLE IF NOT EXISTS public.report_updates (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     report_id UUID REFERENCES public.emergency_reports(id) ON DELETE CASCADE,
     user_id UUID REFERENCES public.user_profiles(id) ON DELETE CASCADE,
@@ -82,7 +114,7 @@ CREATE TABLE public.report_updates (
 );
 
 -- Emergency contacts table
-CREATE TABLE public.emergency_contacts (
+CREATE TABLE IF NOT EXISTS public.emergency_contacts (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES public.user_profiles(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
@@ -93,17 +125,55 @@ CREATE TABLE public.emergency_contacts (
 );
 
 -- 4. INDEXES
-CREATE INDEX idx_user_profiles_role ON public.user_profiles(role);
-CREATE INDEX idx_user_profiles_department ON public.user_profiles(department_id);
-CREATE INDEX idx_departments_type ON public.departments(type);
-CREATE INDEX idx_emergency_reports_status ON public.emergency_reports(status);
-CREATE INDEX idx_emergency_reports_priority ON public.emergency_reports(priority);
-CREATE INDEX idx_emergency_reports_incident_type ON public.emergency_reports(incident_type);
-CREATE INDEX idx_emergency_reports_reporter ON public.emergency_reports(reporter_id);
-CREATE INDEX idx_emergency_reports_assigned_to ON public.emergency_reports(assigned_to);
-CREATE INDEX idx_emergency_reports_created_at ON public.emergency_reports(created_at DESC);
-CREATE INDEX idx_report_updates_report_id ON public.report_updates(report_id);
-CREATE INDEX idx_emergency_contacts_user_id ON public.emergency_contacts(user_id);
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_user_profiles_role') THEN
+        CREATE INDEX idx_user_profiles_role ON public.user_profiles(role);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_user_profiles_department') THEN
+        CREATE INDEX idx_user_profiles_department ON public.user_profiles(department_id);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_departments_type') THEN
+        CREATE INDEX idx_departments_type ON public.departments(type);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_emergency_reports_status') THEN
+        CREATE INDEX idx_emergency_reports_status ON public.emergency_reports(status);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_emergency_reports_priority') THEN
+        CREATE INDEX idx_emergency_reports_priority ON public.emergency_reports(priority);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_emergency_reports_incident_type') THEN
+        CREATE INDEX idx_emergency_reports_incident_type ON public.emergency_reports(incident_type);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_emergency_reports_reporter') THEN
+        CREATE INDEX idx_emergency_reports_reporter ON public.emergency_reports(reporter_id);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_emergency_reports_assigned_to') THEN
+        CREATE INDEX idx_emergency_reports_assigned_to ON public.emergency_reports(assigned_to);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_emergency_reports_created_at') THEN
+        CREATE INDEX idx_emergency_reports_created_at ON public.emergency_reports(created_at DESC);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_report_updates_report_id') THEN
+        CREATE INDEX idx_report_updates_report_id ON public.report_updates(report_id);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_emergency_contacts_user_id') THEN
+        CREATE INDEX idx_emergency_contacts_user_id ON public.emergency_contacts(user_id);
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'Error creating indexes: %', SQLERRM;
+END $$;
 
 -- 5. FUNCTIONS (Before RLS policies)
 
@@ -165,14 +235,50 @@ BEGIN
 END;
 $$;
 
--- 6. ENABLE RLS
-ALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.departments ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.emergency_reports ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.report_updates ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.emergency_contacts ENABLE ROW LEVEL SECURITY;
+-- Trigger to auto-generate report ID
+CREATE OR REPLACE FUNCTION public.auto_generate_report_id()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    IF NEW.report_id IS NULL OR NEW.report_id = '' THEN
+        NEW.report_id = public.generate_report_id();
+    END IF;
+    RETURN NEW;
+END;
+$$;
 
--- 7. RLS POLICIES
+-- 6. ENABLE RLS
+DO $$
+BEGIN
+    ALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;
+    ALTER TABLE public.departments ENABLE ROW LEVEL SECURITY;
+    ALTER TABLE public.emergency_reports ENABLE ROW LEVEL SECURITY;
+    ALTER TABLE public.report_updates ENABLE ROW LEVEL SECURITY;
+    ALTER TABLE public.emergency_contacts ENABLE ROW LEVEL SECURITY;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'Error enabling RLS: %', SQLERRM;
+END $$;
+
+-- 7. RLS POLICIES (with IF NOT EXISTS checks)
+
+-- Drop existing policies if they exist
+DO $$
+BEGIN
+    DROP POLICY IF EXISTS "users_manage_own_user_profiles" ON public.user_profiles;
+    DROP POLICY IF EXISTS "admin_view_all_profiles" ON public.user_profiles;
+    DROP POLICY IF EXISTS "public_can_read_departments" ON public.departments;
+    DROP POLICY IF EXISTS "admin_manage_departments" ON public.departments;
+    DROP POLICY IF EXISTS "residents_manage_own_reports" ON public.emergency_reports;
+    DROP POLICY IF EXISTS "staff_view_all_reports" ON public.emergency_reports;
+    DROP POLICY IF EXISTS "staff_update_reports" ON public.emergency_reports;
+    DROP POLICY IF EXISTS "users_manage_own_report_updates" ON public.report_updates;
+    DROP POLICY IF EXISTS "users_manage_own_emergency_contacts" ON public.emergency_contacts;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'Error dropping policies: %', SQLERRM;
+END $$;
 
 -- User profiles policies (Pattern 1 - Core user table)
 CREATE POLICY "users_manage_own_user_profiles"
@@ -279,7 +385,17 @@ TO authenticated
 USING (user_id = auth.uid())
 WITH CHECK (user_id = auth.uid());
 
--- 8. TRIGGERS
+-- 8. TRIGGERS (with IF NOT EXISTS checks)
+DO $$
+BEGIN
+    DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+    DROP TRIGGER IF EXISTS update_emergency_reports_timestamp ON public.emergency_reports;
+    DROP TRIGGER IF EXISTS generate_report_id_trigger ON public.emergency_reports;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'Error dropping triggers: %', SQLERRM;
+END $$;
+
 CREATE TRIGGER on_auth_user_created
     AFTER INSERT ON auth.users
     FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
@@ -287,19 +403,6 @@ CREATE TRIGGER on_auth_user_created
 CREATE TRIGGER update_emergency_reports_timestamp
     BEFORE UPDATE ON public.emergency_reports
     FOR EACH ROW EXECUTE FUNCTION public.update_report_timestamp();
-
--- Trigger to auto-generate report ID
-CREATE OR REPLACE FUNCTION public.auto_generate_report_id()
-RETURNS TRIGGER
-LANGUAGE plpgsql
-AS $$
-BEGIN
-    IF NEW.report_id IS NULL OR NEW.report_id = '' THEN
-        NEW.report_id = public.generate_report_id();
-    END IF;
-    RETURN NEW;
-END;
-$$;
 
 CREATE TRIGGER generate_report_id_trigger
     BEFORE INSERT ON public.emergency_reports
