@@ -305,100 +305,88 @@ CREATE TRIGGER generate_report_id_trigger
     BEFORE INSERT ON public.emergency_reports
     FOR EACH ROW EXECUTE FUNCTION public.auto_generate_report_id();
 
--- 9. MOCK DATA
+-- 9. MOCK DATA (Public tables only - auth users must be created via Supabase Dashboard)
 DO $$
 DECLARE
-    admin_uuid UUID := gen_random_uuid();
-    dispatcher_uuid UUID := gen_random_uuid();
-    responder_uuid UUID := gen_random_uuid();
-    resident_uuid UUID := gen_random_uuid();
     fire_dept_id UUID := gen_random_uuid();
     police_dept_id UUID := gen_random_uuid();
     medical_dept_id UUID := gen_random_uuid();
     report1_id UUID := gen_random_uuid();
     report2_id UUID := gen_random_uuid();
     report3_id UUID := gen_random_uuid();
+    -- These UUIDs should match actual auth users created via Supabase Dashboard
+    -- Replace with actual UUIDs after creating users
+    admin_uuid UUID := '00000000-0000-0000-0000-000000000000'::UUID;
+    dispatcher_uuid UUID := '00000000-0000-0000-0000-000000000001'::UUID;
+    responder_uuid UUID := '00000000-0000-0000-0000-000000000002'::UUID;
+    resident_uuid UUID := '00000000-0000-0000-0000-000000000003'::UUID;
 BEGIN
-    -- Create auth users with all required fields
-    INSERT INTO auth.users (
-        id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
-        created_at, updated_at, raw_user_meta_data, raw_app_meta_data,
-        is_sso_user, is_anonymous, confirmation_token, confirmation_sent_at,
-        recovery_token, recovery_sent_at, email_change_token_new, email_change,
-        email_change_sent_at, email_change_token_current, email_change_confirm_status,
-        reauthentication_token, reauthentication_sent_at, phone, phone_change,
-        phone_change_token, phone_change_sent_at
-    ) VALUES
-        (admin_uuid, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
-         'admin@emergency.gov', crypt('admin123', gen_salt('bf', 10)), now(), now(), now(),
-         '{"full_name": "System Administrator", "role": "admin"}'::jsonb, '{"provider": "email", "providers": ["email"]}'::jsonb,
-         false, false, '', null, '', null, '', '', null, '', 0, '', null, null, '', '', null),
-        (dispatcher_uuid, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
-         'dispatcher@emergency.gov', crypt('dispatch123', gen_salt('bf', 10)), now(), now(), now(),
-         '{"full_name": "Emergency Dispatcher", "role": "dispatcher"}'::jsonb, '{"provider": "email", "providers": ["email"]}'::jsonb,
-         false, false, '', null, '', null, '', '', null, '', 0, '', null, null, '', '', null),
-        (responder_uuid, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
-         'responder@emergency.gov', crypt('respond123', gen_salt('bf', 10)), now(), now(), now(),
-         '{"full_name": "First Responder", "role": "responder"}'::jsonb, '{"provider": "email", "providers": ["email"]}'::jsonb,
-         false, false, '', null, '', null, '', '', null, '', 0, '', null, null, '', '', null),
-        (resident_uuid, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
-         'resident@community.com', crypt('resident123', gen_salt('bf', 10)), now(), now(), now(),
-         '{"full_name": "Community Resident", "role": "resident"}'::jsonb, '{"provider": "email", "providers": ["email"]}'::jsonb,
-         false, false, '', null, '', null, '', '', null, '', 0, '', null, null, '', '', null);
-
     -- Create departments
     INSERT INTO public.departments (id, name, type, description, contact_email, contact_phone, address) VALUES
         (fire_dept_id, 'Fire Department', 'fire', 'Emergency fire response and prevention services', 'fire@emergency.gov', '555-FIRE', '123 Fire Station Rd'),
         (police_dept_id, 'Police Department', 'police', 'Law enforcement and public safety', 'police@emergency.gov', '555-POLICE', '456 Police Plaza'),
         (medical_dept_id, 'Emergency Medical Services', 'medical', 'Emergency medical response and ambulance services', 'ems@emergency.gov', '555-MEDIC', '789 Hospital Way');
 
-    -- Update user profiles with departments (using direct UPDATE since trigger creates base profiles)
-    UPDATE public.user_profiles 
-    SET phone_number = '+1 (555) 123-0001', department_id = fire_dept_id
-    WHERE id = admin_uuid;
+    -- Create user profiles (only if auth users exist)
+    -- Skip if placeholder UUIDs are used
+    IF admin_uuid::text != '00000000-0000-0000-0000-000000000000' THEN
+        INSERT INTO public.user_profiles (id, email, full_name, role, phone_number, department_id, is_active)
+        VALUES (admin_uuid, 'admin@emergency.gov', 'System Administrator', 'admin', '+1 (555) 123-0001', fire_dept_id, true)
+        ON CONFLICT (id) DO UPDATE SET phone_number = '+1 (555) 123-0001', department_id = fire_dept_id;
+    END IF;
 
-    UPDATE public.user_profiles 
-    SET phone_number = '+1 (555) 123-0002', department_id = police_dept_id
-    WHERE id = dispatcher_uuid;
+    IF dispatcher_uuid::text != '00000000-0000-0000-0000-000000000001' THEN
+        INSERT INTO public.user_profiles (id, email, full_name, role, phone_number, department_id, is_active)
+        VALUES (dispatcher_uuid, 'dispatcher@emergency.gov', 'Emergency Dispatcher', 'dispatcher', '+1 (555) 123-0002', police_dept_id, true)
+        ON CONFLICT (id) DO UPDATE SET phone_number = '+1 (555) 123-0002', department_id = police_dept_id;
+    END IF;
 
-    UPDATE public.user_profiles 
-    SET phone_number = '+1 (555) 123-0003', department_id = fire_dept_id
-    WHERE id = responder_uuid;
+    IF responder_uuid::text != '00000000-0000-0000-0000-000000000002' THEN
+        INSERT INTO public.user_profiles (id, email, full_name, role, phone_number, department_id, is_active)
+        VALUES (responder_uuid, 'responder@emergency.gov', 'First Responder', 'responder', '+1 (555) 123-0003', fire_dept_id, true)
+        ON CONFLICT (id) DO UPDATE SET phone_number = '+1 (555) 123-0003', department_id = fire_dept_id;
+    END IF;
 
-    UPDATE public.user_profiles 
-    SET phone_number = '+1 (555) 123-0004'
-    WHERE id = resident_uuid;
+    IF resident_uuid::text != '00000000-0000-0000-0000-000000000003' THEN
+        INSERT INTO public.user_profiles (id, email, full_name, role, phone_number, is_active)
+        VALUES (resident_uuid, 'resident@community.com', 'Community Resident', 'resident', '+1 (555) 123-0004', true)
+        ON CONFLICT (id) DO UPDATE SET phone_number = '+1 (555) 123-0004';
+    END IF;
 
-    -- Create emergency reports
-    INSERT INTO public.emergency_reports (
-        id, incident_type, priority, status, location, coordinates, description,
-        reporter_id, reporter_name, reporter_phone, assigned_to, assigned_department_id, images
-    ) VALUES
-        (report1_id, 'fire', 'critical', 'pending', '123 Main Street, Downtown',
-         '{"lat": 40.7128, "lng": -74.0060}'::jsonb,
-         'Large fire reported at residential building. Multiple residents trapped on upper floors. Heavy smoke visible from street level.',
-         resident_uuid, 'John Smith', '+1 (555) 123-4567', NULL, fire_dept_id,
-         ARRAY['https://images.unsplash.com/photo-1574869711319-2a4b1d2b3c5c?w=400']),
-        (report2_id, 'medical', 'high', 'assigned', '456 Oak Avenue, Midtown',
-         '{"lat": 40.7589, "lng": -73.9851}'::jsonb,
-         'Elderly person collapsed at home. Conscious but experiencing chest pain and difficulty breathing.',
-         resident_uuid, 'Sarah Johnson', '+1 (555) 234-5678', responder_uuid, medical_dept_id,
-         ARRAY[]::TEXT[]),
-        (report3_id, 'accident', 'high', 'resolved', '321 Elm Street, Southside',
-         '{"lat": 40.7282, "lng": -73.9942}'::jsonb,
-         'Multi-vehicle accident at busy intersection. Two cars involved with possible injuries.',
-         resident_uuid, 'Lisa Chen', '+1 (555) 456-7890', responder_uuid, police_dept_id,
-         ARRAY[]::TEXT[]);
+    -- Create emergency reports (using resident_uuid if it exists, otherwise skip)
+    IF resident_uuid::text != '00000000-0000-0000-0000-000000000003' THEN
+        INSERT INTO public.emergency_reports (
+            id, incident_type, priority, status, location, coordinates, description,
+            reporter_id, reporter_name, reporter_phone, assigned_to, assigned_department_id, images
+        ) VALUES
+            (report1_id, 'fire', 'critical', 'pending', '123 Main Street, Downtown',
+             '{"lat": 40.7128, "lng": -74.0060}'::jsonb,
+             'Large fire reported at residential building. Multiple residents trapped on upper floors. Heavy smoke visible from street level.',
+             resident_uuid, 'John Smith', '+1 (555) 123-4567', NULL, fire_dept_id,
+             ARRAY['https://images.unsplash.com/photo-1574869711319-2a4b1d2b3c5c?w=400']),
+            (report2_id, 'medical', 'high', 'assigned', '456 Oak Avenue, Midtown',
+             '{"lat": 40.7589, "lng": -73.9851}'::jsonb,
+             'Elderly person collapsed at home. Conscious but experiencing chest pain and difficulty breathing.',
+             resident_uuid, 'Sarah Johnson', '+1 (555) 234-5678', responder_uuid, medical_dept_id,
+             ARRAY[]::TEXT[]),
+            (report3_id, 'accident', 'high', 'resolved', '321 Elm Street, Southside',
+             '{"lat": 40.7282, "lng": -73.9942}'::jsonb,
+             'Multi-vehicle accident at busy intersection. Two cars involved with possible injuries.',
+             resident_uuid, 'Lisa Chen', '+1 (555) 456-7890', responder_uuid, police_dept_id,
+             ARRAY[]::TEXT[]);
 
-    -- Add emergency contacts
-    INSERT INTO public.emergency_contacts (user_id, name, relationship, phone_number, is_primary) VALUES
-        (resident_uuid, 'Mary Smith', 'Spouse', '+1 (555) 987-6543', true),
-        (resident_uuid, 'David Smith', 'Son', '+1 (555) 876-5432', false);
+        -- Add emergency contacts
+        INSERT INTO public.emergency_contacts (user_id, name, relationship, phone_number, is_primary) VALUES
+            (resident_uuid, 'Mary Smith', 'Spouse', '+1 (555) 987-6543', true),
+            (resident_uuid, 'David Smith', 'Son', '+1 (555) 876-5432', false);
 
-    -- Add report updates
-    INSERT INTO public.report_updates (report_id, user_id, update_type, message, old_status, new_status) VALUES
-        (report2_id, dispatcher_uuid, 'assignment', 'Assigned to paramedic team', 'pending', 'assigned'),
-        (report3_id, responder_uuid, 'status_change', 'Scene secured and cleared', 'in-progress', 'resolved');
+        -- Add report updates
+        INSERT INTO public.report_updates (report_id, user_id, update_type, message, old_status, new_status) VALUES
+            (report2_id, dispatcher_uuid, 'assignment', 'Assigned to paramedic team', 'pending', 'assigned'),
+            (report3_id, responder_uuid, 'status_change', 'Scene secured and cleared', 'in-progress', 'resolved');
+    END IF;
+
+    RAISE NOTICE 'Mock data created successfully. Note: Auth users must be created via Supabase Dashboard first.';
 
 EXCEPTION
     WHEN OTHERS THEN
