@@ -65,32 +65,32 @@ const Routes = () => {
               } />
               <Route path="/department-management" element={
                 <ProtectedRoute>
-                  <RoleRoute roles={['admin']}><DepartmentManagement /></RoleRoute>
+                  <RoleRoute roles={['admin']}><Dashboard section="departments" /></RoleRoute>
                 </ProtectedRoute>
               } />
               <Route path="/user-management" element={
                 <ProtectedRoute>
-                  <RoleRoute roles={['admin']}><UserManagement /></RoleRoute>
+                  <RoleRoute roles={['admin']}><Dashboard section="residents" /></RoleRoute>
                 </ProtectedRoute>
               } />
               <Route path="/report-management" element={
                 <ProtectedRoute>
-                  <RoleRoute roles={['dispatcher', 'responder', 'admin']}><ReportManagement /></RoleRoute>
+                  <RoleRoute roles={['dispatcher', 'responder', 'admin']}><Dashboard section="queue" /></RoleRoute>
                 </ProtectedRoute>
               } />
               <Route path="/emergency-report" element={
                 <ProtectedRoute>
-                  <RoleRoute roles={['resident', 'dispatcher', 'responder']}><EmergencyReport /></RoleRoute>
+                  <RoleRoute roles={['resident', 'dispatcher', 'responder', 'admin']}><Dashboard section="new" /></RoleRoute>
                 </ProtectedRoute>
               } />
               <Route path="/profile" element={
                 <ProtectedRoute>
-                  <Profile />
+                  <Dashboard section="profile" />
                 </ProtectedRoute>
               } />
               <Route path="/settings" element={
                 <ProtectedRoute>
-                  <RoleRoute roles={['admin']}><Settings /></RoleRoute>
+                  <RoleRoute roles={['admin']}><Dashboard section="settings" /></RoleRoute>
                 </ProtectedRoute>
               } />
               <Route path="*" element={<NotFound />} />

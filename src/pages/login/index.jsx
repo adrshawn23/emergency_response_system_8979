@@ -75,6 +75,20 @@ const Login = () => {
             onForgotPassword={handleForgotPassword}
             onCreateAccount={handleCreateAccount}
           />
+          {useMock && (
+            <button
+              type="button"
+              onClick={() => handleLogin({ email: 'admin@emergency.gov', password: 'mock-admin' })}
+              className="mt-4 w-full rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 text-sm font-semibold text-primary hover:bg-primary/10"
+            >
+              Open demo Administrator account
+            </button>
+          )}
+          {!useMock && (
+            <p className="mt-4 rounded-lg bg-muted p-3 text-xs leading-5 text-muted-foreground">
+              You are in Live Mode. Sign in with an account created in Supabase, or switch to Mock Mode above to use the demo Administrator account.
+            </p>
+          )}
           
           <TrustSignals />
         </div>
