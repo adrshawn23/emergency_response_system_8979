@@ -13,6 +13,7 @@ import EmergencyReport from './pages/emergency-report';
 import Register from './pages/register';
 import Profile from './pages/profile';
 import Settings from './pages/settings';
+import Dashboard from './pages/dashboard';
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -35,6 +36,17 @@ const ProtectedRoute = ({ children }) => {
   return children;
 };
 
+const RoleRoute = ({ roles, children }) => {
+  const { profile } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (profile && !roles.includes(profile.role)) navigate('/', { replace: true });
+  }, [profile, roles, navigate]);
+
+  return !profile || roles.includes(profile.role) ? children : null;
+};
+
 const Routes = () => {
   return (
     <BrowserRouter>
@@ -48,27 +60,27 @@ const Routes = () => {
               <Route path="/register" element={<Register />} />
               <Route path="/" element={
                 <ProtectedRoute>
-                  <DepartmentManagement />
+                  <Dashboard />
                 </ProtectedRoute>
               } />
               <Route path="/department-management" element={
                 <ProtectedRoute>
-                  <DepartmentManagement />
+                  <RoleRoute roles={['admin']}><DepartmentManagement /></RoleRoute>
                 </ProtectedRoute>
               } />
               <Route path="/user-management" element={
                 <ProtectedRoute>
-                  <UserManagement />
+                  <RoleRoute roles={['admin']}><UserManagement /></RoleRoute>
                 </ProtectedRoute>
               } />
               <Route path="/report-management" element={
                 <ProtectedRoute>
-                  <ReportManagement />
+                  <RoleRoute roles={['dispatcher', 'responder', 'admin']}><ReportManagement /></RoleRoute>
                 </ProtectedRoute>
               } />
               <Route path="/emergency-report" element={
                 <ProtectedRoute>
-                  <EmergencyReport />
+                  <RoleRoute roles={['resident', 'dispatcher', 'responder']}><EmergencyReport /></RoleRoute>
                 </ProtectedRoute>
               } />
               <Route path="/profile" element={
@@ -78,7 +90,7 @@ const Routes = () => {
               } />
               <Route path="/settings" element={
                 <ProtectedRoute>
-                  <Settings />
+                  <RoleRoute roles={['admin']}><Settings /></RoleRoute>
                 </ProtectedRoute>
               } />
               <Route path="*" element={<NotFound />} />

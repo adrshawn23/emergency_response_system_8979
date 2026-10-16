@@ -3,15 +3,30 @@ import Icon from '../../../components/AppIcon';
 import Input from '../../../components/ui/Input';
 import Button from '../../../components/ui/Button';
 import { useMockData } from '../../../contexts/MockDataContext';
+import { mockServiceBoundary } from '../../../data/mockData';
 
 const LocationInput = ({ 
   location, 
   onLocationChange, 
+  onLocationMetadataChange = () => {},
   error = null 
 }) => {
   const { useMock } = useMockData();
   const [isDetecting, setIsDetecting] = useState(false);
   const [coordinates, setCoordinates] = useState(null);
+
+  const isInsideBoundary = (point, polygon) => {
+    let inside = false;
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      const a = polygon[i], b = polygon[j];
+      const intersects = ((a.lng > point.lng) !== (b.lng > point.lng)) &&
+        (point.lat < (b.lat - a.lat) * (point.lng - a.lng) / (b.lng - a.lng) + a.lat);
+      if (intersects) inside = !inside;
+    }
+    return inside;
+  };
+
+  const insideServiceArea = coordinates ? isInsideBoundary(coordinates, mockServiceBoundary.points) : null;
 
   // Mock GPS locations for testing
   const mockLocations = [
@@ -35,7 +50,14 @@ const LocationInput = ({
     navigator.geolocation?.getCurrentPosition(
       (position) => {
         const { latitude, longitude } = position?.coords;
-        setCoordinates({ lat: latitude, lng: longitude });
+        const positionCoordinates = { lat: latitude, lng: longitude };
+        setCoordinates(positionCoordinates);
+        onLocationMetadataChange({
+          source: 'gps',
+          accuracy: position.coords.accuracy,
+          coordinates: positionCoordinates,
+          serviceArea: isInsideBoundary(positionCoordinates, mockServiceBoundary.points) ? 'inside' : 'outside'
+        });
         
         // Mock reverse geocoding - in real app, use Google Maps API
         const mockAddress = `${latitude?.toFixed(4)}, ${longitude?.toFixed(4)} (GPS Coordinates)`;
@@ -67,7 +89,10 @@ const LocationInput = ({
               type="text"
               placeholder="Enter address or description of location"
               value={location}
-              onChange={(e) => onLocationChange(e?.target?.value)}
+              onChange={(e) => {
+                onLocationChange(e?.target?.value);
+                onLocationMetadataChange({ source: 'manual', accuracy: null, coordinates: null, serviceArea: 'unverified' });
+              }}
               error={error}
             />
           </div>
@@ -96,6 +121,13 @@ const LocationInput = ({
           <p className="text-sm text-muted-foreground">
             Latitude: {coordinates?.lat?.toFixed(6)}, Longitude: {coordinates?.lng?.toFixed(6)}
           </p>
+          <div className={`mt-3 rounded-md p-3 text-sm ${insideServiceArea ? 'bg-success/10 text-success' : 'bg-warning/15 text-amber-800'}`}>
+            <Icon name={insideServiceArea ? 'ShieldCheck' : 'TriangleAlert'} size={16} className="mr-2 inline" />
+            {insideServiceArea
+              ? 'Inside the configured Barangay Kalubihan service boundary.'
+              : 'Outside the configured service boundary. Your report will still be submitted as Outside Service Area for dispatcher triage.'}
+          </div>
+          <p className="mt-2 text-xs text-muted-foreground">Boundary: {mockServiceBoundary.name}. This demo polygon is replaced by the Administrator-managed GIS boundary in production.</p>
           <div className="mt-3">
             <iframe
               width="100%"

@@ -11,10 +11,12 @@ import EmergencyContactSection from './components/EmergencyContactSection';
 import TrustIndicators from './components/TrustIndicators';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
+import { useMockData } from '../../contexts/MockDataContext';
 
 const Register = () => {
   const navigate = useNavigate();
   const { signUp } = useAuth();
+  const { useMock } = useMockData();
   const [isLoading, setIsLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const totalSteps = 5;
@@ -178,17 +180,23 @@ const Register = () => {
 
       const userId = data.user.id;
 
-      const { error: profileError } = await supabase.from('user_profiles').insert({
-        id: userId,
+      // Mock mode demonstrates manual approval without an OCR or storage provider.
+      if (useMock) {
+        navigate('/login', { state: { message: 'Registration received. An administrator will review your account and ID before activation.', type: 'success' } });
+        return;
+      }
+
+      const { error: profileError } = await supabase.from('user_profiles').update({
         first_name: formData.firstName,
         last_name: formData.lastName,
         email: formData.email,
-        phone: formData.phone,
-        date_of_birth: formData.dateOfBirth,
+        phone_number: formData.phone,
+        birthdate: formData.dateOfBirth,
         address: formData.address,
-        role: formData.role,
-        is_active: false
-      });
+        role: 'resident',
+        is_active: false,
+        account_status: 'pending'
+      }).eq('id', userId);
 
       if (profileError) throw profileError;
 

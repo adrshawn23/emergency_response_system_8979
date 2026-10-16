@@ -116,7 +116,7 @@ const IDUploadSection = ({
         <h3 className="text-lg font-semibold text-foreground mb-4">Identity Verification</h3>
         <p className="text-sm text-muted-foreground mb-4">
           Upload a clear photo of your government-issued ID (Driver's License, Passport, State ID, etc.) 
-          for identity verification. This is required for all account types.
+          for an administrator-reviewed registration check. OCR may compare the name and date of birth you entered; it never makes the final account decision.
         </p>
 
         <div className="space-y-4">
@@ -197,7 +197,7 @@ const IDUploadSection = ({
                   <div className="flex items-center space-x-2 mt-2">
                     <div className="flex items-center space-x-1 text-success">
                       <Icon name="CheckCircle" size={14} />
-                      <span className="text-xs">Uploaded successfully</span>
+                      <span className="text-xs">Ready for secure review after registration</span>
                     </div>
                   </div>
                 </div>
@@ -228,10 +228,10 @@ const IDUploadSection = ({
             <div>
               <h4 className="text-sm font-medium text-foreground mb-1">Security & Privacy</h4>
               <ul className="text-xs text-muted-foreground space-y-1">
-                <li>• Your ID document is encrypted and stored securely</li>
-                <li>• Only authorized personnel can access verification documents</li>
-                <li>• Documents are automatically deleted after verification (30 days)</li>
-                <li>• We comply with all data protection regulations</li>
+                <li>• IDs are stored only in a private, encrypted storage bucket</li>
+                <li>• Only authorized administrators can review verification documents</li>
+                <li>• OCR can return likely match, mismatch, or unable to read; an administrator decides</li>
+                <li>• Retention and deletion periods are configured by the Barangay administrator</li>
               </ul>
             </div>
           </div>

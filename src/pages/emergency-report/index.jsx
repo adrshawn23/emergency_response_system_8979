@@ -31,7 +31,8 @@ const EmergencyReport = () => {
     description: '',
     contactName: '',
     contactPhone: '',
-    images: []
+    images: [],
+    locationMetadata: { source: 'manual', serviceArea: 'unverified' }
   });
 
   const [errors, setErrors] = useState({});
@@ -124,6 +125,10 @@ const EmergencyReport = () => {
           contact_name: formData.contactName,
           contact_phone: formData.contactPhone,
           status: 'pending',
+          location_source: formData.locationMetadata?.source,
+          location_accuracy: formData.locationMetadata?.accuracy,
+          coordinates: formData.locationMetadata?.coordinates,
+          service_area_status: formData.locationMetadata?.serviceArea === 'outside' ? 'outside' : 'inside',
           images: formData.images,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
@@ -142,6 +147,10 @@ const EmergencyReport = () => {
           contact_name: formData.contactName,
           contact_phone: formData.contactPhone,
           status: 'pending',
+          location_source: formData.locationMetadata?.source,
+          location_accuracy: formData.locationMetadata?.accuracy,
+          coordinates: formData.locationMetadata?.coordinates,
+          service_area_status: formData.locationMetadata?.serviceArea,
           images: formData.images
         }).select().single();
 
@@ -163,7 +172,8 @@ const EmergencyReport = () => {
           description: '',
           contactName: '',
           contactPhone: '',
-          images: []
+          images: [],
+          locationMetadata: { source: 'manual', serviceArea: 'unverified' }
         });
         navigate('/');
       }, 5000);
@@ -246,6 +256,7 @@ const EmergencyReport = () => {
                     <LocationInput
                       location={formData?.location}
                       onLocationChange={(location) => handleInputChange('location', location)}
+                      onLocationMetadataChange={(metadata) => handleInputChange('locationMetadata', metadata)}
                       error={errors?.location}
                     />
 

@@ -12,16 +12,6 @@ const RoleSelectionSection = ({
       value: 'resident', 
       label: 'Resident/Boarder',
       description: 'Community member who can report emergencies and receive alerts'
-    },
-    { 
-      value: 'responder', 
-      label: 'Emergency Responder',
-      description: 'First responder (Police, Fire, Medical) - Requires approval'
-    },
-    { 
-      value: 'dispatcher', 
-      label: 'Emergency Dispatcher',
-      description: 'Emergency service coordinator - Requires approval'
     }
   ];
 
@@ -38,9 +28,9 @@ const RoleSelectionSection = ({
     switch (role) {
       case 'resident':
         return {
-          approval: false,
+          approval: true,
           requirements: ['Valid ID verification', 'Address confirmation'],
-          timeline: 'Instant activation after ID verification'
+          timeline: 'Account activation follows administrator review'
         };
       case 'responder':
         return {
@@ -68,7 +58,7 @@ const RoleSelectionSection = ({
         
         <Select
           label="Select Your Role"
-          description="Choose the role that best describes your position in the emergency response system"
+          description="Resident and boarder accounts are created here. Department responder and dispatcher access is assigned only by an Administrator."
           options={roleOptions}
           value={formData?.role}
           onChange={(value) => onChange({ target: { name: 'role', value } })}

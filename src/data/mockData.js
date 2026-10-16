@@ -1,6 +1,18 @@
 // Mock Data for Emergency Response System
 // Use this for testing without Supabase connection
 
+// Demonstration boundary only. Production uses the administrator-managed,
+// versioned Barangay Kalubihan GIS polygon rather than a radius.
+export const mockServiceBoundary = {
+  id: 'kalubihan-demo-v1',
+  name: 'Barangay Kalubihan service area (demo)',
+  buffer_meters: 150,
+  points: [
+    { lat: 14.6075, lng: 121.0205 }, { lat: 14.6120, lng: 121.0212 },
+    { lat: 14.6124, lng: 121.0251 }, { lat: 14.6080, lng: 121.0258 }
+  ]
+};
+
 export const mockUsers = [
   {
     id: '1',

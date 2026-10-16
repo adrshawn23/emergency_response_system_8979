@@ -12,7 +12,9 @@ export default defineConfig({
   plugins: [
     tsconfigPaths(),
     react(),
-    tagger(),
+    // The visual editor tagger walks parent folders in some environments.
+    // Keep it available for Rocket editing, but allow constrained CI builds to opt out.
+    ...(process.env.VITE_DISABLE_TAGGER ? [] : [tagger()]),
   ],
 
   server: {

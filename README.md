@@ -1,107 +1,42 @@
-# React
+# Barangay Kalubihan Emergency Response System
 
-A modern React-based project utilizing the latest frontend technologies and tools for building responsive web applications.
+A responsive command, resident, and responder interface for receiving emergency reports, dispatching the right department, and tracking targeted assistance requests.
 
-## 🚀 Features
+## Included workflows
 
-- **React 18** - React version with improved rendering and concurrent features
-- **Vite** - Lightning-fast build tool and development server
-- **Redux Toolkit** - State management with simplified Redux setup
-- **TailwindCSS** - Utility-first CSS framework with extensive customization
-- **React Router v6** - Declarative routing for React applications
-- **Data Visualization** - Integrated D3.js and Recharts for powerful data visualization
-- **Form Management** - React Hook Form for efficient form handling
-- **Animation** - Framer Motion for smooth UI animations
-- **Testing** - Jest and React Testing Library setup
+- Role-aware resident, dispatcher/admin command center, and responder views
+- Emergency reports with optional GPS, manual fallback, media, and outside-service-area triage flagging
+- Configurable/persisted service-boundary data model with audit-friendly versioning
+- Targeted department assistance workflow with confirmation and acknowledgement-oriented UI
+- Administrator-only route protection for users, departments, department memberships, and settings
+- Registration with private-ID/AI-review data model; OCR outcomes are always human-reviewable
+- Supabase migration for the relational incident, membership, notification, verification, audit, and retention model
 
-## 📋 Prerequisites
+## Run locally
 
-- Node.js (v14.x or higher)
-- npm or yarn
-
-## 🛠️ Installation
-
-1. Install dependencies:
-   ```bash
-   npm install
-   # or
-   yarn install
-   ```
-   
-2. Start the development server:
-   ```bash
-   npm start
-   # or
-   yarn start
-   ```
-
-## 📁 Project Structure
-
-```
-react_app/
-├── public/             # Static assets
-├── src/
-│   ├── components/     # Reusable UI components
-│   ├── pages/          # Page components
-│   ├── styles/         # Global styles and Tailwind configuration
-│   ├── App.jsx         # Main application component
-│   ├── Routes.jsx      # Application routes
-│   └── index.jsx       # Application entry point
-├── .env                # Environment variables
-├── index.html          # HTML template
-├── package.json        # Project dependencies and scripts
-├── tailwind.config.js  # Tailwind CSS configuration
-└── vite.config.js      # Vite configuration
+```bash
+npm install
+npm start
 ```
 
-## 🧩 Adding Routes
+The project enters mock mode automatically without `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`. Test accounts are defined in `src/data/mockData.js` (for example, `dispatcher1@emergency.gov`, `resident1@example.com`, and `responder1@emergency.gov`; mock mode accepts any password for active accounts).
 
-To add new routes to the application, update the `Routes.jsx` file:
-
-```jsx
-import { useRoutes } from "react-router-dom";
-import HomePage from "pages/HomePage";
-import AboutPage from "pages/AboutPage";
-
-const ProjectRoutes = () => {
-  let element = useRoutes([
-    { path: "/", element: <HomePage /> },
-    { path: "/about", element: <AboutPage /> },
-    // Add more routes as needed
-  ]);
-
-  return element;
-};
-```
-
-## 🎨 Styling
-
-This project uses Tailwind CSS for styling. The configuration includes:
-
-- Forms plugin for form styling
-- Typography plugin for text styling
-- Aspect ratio plugin for responsive elements
-- Container queries for component-specific responsive design
-- Fluid typography for responsive text
-- Animation utilities
-
-## 📱 Responsive Design
-
-The app is built with responsive design using Tailwind CSS breakpoints.
-
-
-## 📦 Deployment
-
-Build the application for production:
+Build with:
 
 ```bash
 npm run build
 ```
 
-## 🙏 Acknowledgments
+If the Rocket visual-editor tagger cannot access parent folders in a constrained environment, build with `VITE_DISABLE_TAGGER=1`.
 
-- Built with [Rocket.new](https://rocket.new)
-- Powered by React and Vite
-- Styled with Tailwind CSS
+## Required production setup
 
-Built with ❤️ on Rocket.new
+Apply both migrations in `supabase/migrations/`. Configure HTTPS and private Supabase Storage buckets before accepting ID or incident-media files. The application intentionally does not expose raw document paths publicly.
+
+These integrations require configuration and are not claimed to be active in mock mode:
+
+- **Maps/GIS:** provide the administrator-approved Barangay Kalubihan boundary polygon. The UI's demo polygon is illustrative only.
+- **OCR/AI:** connect an approved OCR provider server-side, save field-level results and confidence to `registration_documents`, and send mismatch/low-confidence/unreadable results to an administrator. Never use ID images for face matching or model training.
+- **SMS, email, and push:** configure provider credentials and delivery webhooks. Sent, delivered, and acknowledged must remain distinct states.
+
+Local emergency phone services remain the fallback for urgent emergencies and for offline or provider-unavailable states.
