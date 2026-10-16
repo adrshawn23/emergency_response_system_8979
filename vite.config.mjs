@@ -3,7 +3,7 @@ import react from "@vitejs/plugin-react";
 import tsconfigPaths from "vite-tsconfig-paths";
 import tagger from "@dhiwise/component-tagger";
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   build: {
     outDir: "dist",
     chunkSizeWarningLimit: 2000,
@@ -12,9 +12,9 @@ export default defineConfig({
   plugins: [
     tsconfigPaths(),
     react(),
-    // The visual editor tagger walks parent folders in some environments.
-    // Keep it available for Rocket editing, but allow constrained CI builds to opt out.
-    ...(process.env.VITE_DISABLE_TAGGER ? [] : [tagger()]),
+    // Keep Rocket's editor tagger out of deployed builds: its preview runtime
+    // makes cross-origin tracking calls that production hosts may block.
+    ...(mode === "development" && !process.env.VITE_DISABLE_TAGGER ? [tagger()] : []),
   ],
 
   server: {
@@ -26,4 +26,4 @@ export default defineConfig({
       ".builtwithrocket.new",
     ],
   },
-});
+}));
