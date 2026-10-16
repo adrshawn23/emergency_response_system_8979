@@ -37,14 +37,16 @@ const ProtectedRoute = ({ children }) => {
 };
 
 const RoleRoute = ({ roles, children }) => {
-  const { profile } = useAuth();
+  const { profile, loading } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
     if (profile && !roles.includes(profile.role)) navigate('/', { replace: true });
   }, [profile, roles, navigate]);
 
-  return !profile || roles.includes(profile.role) ? children : null;
+  if (loading || !profile) return <div className="flex items-center justify-center min-h-screen">Loading permissions...</div>;
+
+  return roles.includes(profile.role) ? children : null;
 };
 
 const Routes = () => {

@@ -2,7 +2,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Icon from '../../components/AppIcon';
 import { useAuth } from '../../contexts/AuthContext';
-import { mockEmergencyReports, mockDepartments } from '../../data/mockData';
+import { useMockData } from '../../contexts/MockDataContext';
+import { mockEmergencyReports, mockDepartments, mockServiceBoundary } from '../../data/mockData';
+import { isPointInBoundary } from '../../utils/geofence';
 import ResidentHome from '../resident-home';
 import ResponderView from '../responder-view';
 
@@ -33,19 +35,19 @@ const sectionCopy = {
 
 function WorkspacePage({ section, profile, signOut, onSectionChange }) {
   const navigate = useNavigate();
-  const [reports, setReports] = useState(mockEmergencyReports);
+  const { reports, setReports } = useMockData();
   const [status, setStatus] = useState('all');
-  const [draft, setDraft] = useState({ type: 'fire', priority: 'high', location: '', description: '', callback: '', latitude: null, longitude: null });
+  const [draft, setDraft] = useState({ type: 'fire', priority: 'high', location: '', description: '', callback: '', latitude: null, longitude: null, serviceAreaStatus: 'manual' });
   const [gpsStatus, setGpsStatus] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const links = [
-    { key: 'command', label: 'Command center', icon: 'LayoutDashboard', path: '/' },
-    { key: 'queue', label: 'Incident queue', icon: 'Siren', path: '/report-management' },
-    { key: 'new', label: 'New incident', icon: 'PlusCircle', path: '/emergency-report' },
-    { key: 'residents', label: 'Residents & review', icon: 'Users', path: '/user-management' },
-    { key: 'departments', label: 'Departments', icon: 'Building2', path: '/department-management' },
-    { key: 'settings', label: 'System settings', icon: 'Settings', path: '/settings' }
-  ];
+    { key: 'command', label: 'Command center', icon: 'LayoutDashboard', path: '/', roles: ['admin', 'dispatcher'] },
+    { key: 'queue', label: 'Incident queue', icon: 'Siren', path: '/report-management', roles: ['admin', 'dispatcher'] },
+    { key: 'new', label: 'New incident', icon: 'PlusCircle', path: '/emergency-report', roles: ['admin', 'dispatcher'] },
+    { key: 'residents', label: 'Residents & review', icon: 'Users', path: '/user-management', roles: ['admin'] },
+    { key: 'departments', label: 'Departments', icon: 'Building2', path: '/department-management', roles: ['admin'] },
+    { key: 'settings', label: 'System settings', icon: 'Settings', path: '/settings', roles: ['admin'] }
+  ].filter(link => link.roles.includes(profile?.role));
   const current = sectionCopy[section];
   const visibleReports = status === 'all' ? reports : reports.filter(report => report.status === status);
   const handleNavigation = link => onSectionChange(link.key);
@@ -66,13 +68,18 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
         if (!isCurrent) return;
         const latitude = Number(coords.latitude.toFixed(6));
         const longitude = Number(coords.longitude.toFixed(6));
+        const inServiceArea = isPointInBoundary({ latitude, longitude }, mockServiceBoundary.points);
+        const serviceAreaStatus = inServiceArea ? 'inside' : 'outside';
         setDraft(value => ({
           ...value,
           location: value.location || `GPS: ${latitude}, ${longitude}`,
           latitude,
-          longitude
+          longitude,
+          serviceAreaStatus
         }));
-        setGpsStatus(`Current GPS location captured (+/-${Math.round(coords.accuracy)} m). You can still edit the location.`);
+        setGpsStatus(inServiceArea
+          ? `Current GPS location captured (+/-${Math.round(coords.accuracy)} m). You can still edit the location.`
+          : 'GPS location is outside the Barangay Kalubihan service area. Your emergency report will still be sent to dispatch for triage.');
       },
       () => {
         if (isCurrent) setGpsStatus('GPS permission was not granted. Enter a location manually.');
@@ -86,9 +93,9 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
   const submitIncident = event => {
     event.preventDefault();
     if (!draft.location.trim() || !draft.description.trim()) return;
-    setReports(items => [{ report_id: `REP-${String(items.length + 1).padStart(3, '0')}`, emergency_type: draft.type, priority: draft.priority, status: 'pending', location: draft.location, latitude: draft.latitude, longitude: draft.longitude, description: draft.description, contact_name: profile?.full_name || 'Command user', contact_phone: draft.callback, reporter_id: profile?.id, created_at: new Date().toISOString() }, ...items]);
+    setReports(items => [{ report_id: `REP-${String(items.length + 1).padStart(3, '0')}`, emergency_type: draft.type, priority: draft.priority, status: 'pending', location: draft.location, latitude: draft.latitude, longitude: draft.longitude, service_area_status: draft.serviceAreaStatus, description: draft.description, contact_name: profile?.full_name || 'Command user', contact_phone: draft.callback, reporter_id: profile?.id, created_at: new Date().toISOString() }, ...items]);
     setSubmitted(true);
-    setDraft({ type: 'fire', priority: 'high', location: '', description: '', callback: '', latitude: null, longitude: null });
+    setDraft({ type: 'fire', priority: 'high', location: '', description: '', callback: '', latitude: null, longitude: null, serviceAreaStatus: 'manual' });
   };
   return <div className="min-h-screen bg-slate-50 text-slate-900"><div className="flex min-h-screen">
     <aside className="sticky top-0 flex h-screen w-20 shrink-0 flex-col overflow-x-hidden bg-slate-950 text-slate-300 sm:w-72"><div className="flex h-20 items-center justify-center gap-3 border-b border-slate-800 px-3 sm:justify-start sm:px-7"><div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-red-500 text-white"><Icon name="Siren" size={22}/></div><div className="hidden sm:block"><p className="font-semibold text-white">Kalubihan</p><p className="text-xs text-slate-500">Emergency Command</p></div></div><div className="flex-1 px-3 py-7 sm:px-4"><p className="mb-3 hidden px-3 text-[10px] font-bold uppercase tracking-[.16em] text-slate-500 sm:block">Operations</p><nav className="space-y-1">{links.map(link => <button key={link.key} onClick={() => handleNavigation(link)} title={link.label} className={`flex w-full items-center justify-center gap-3 rounded-xl px-3 py-3 text-left text-sm transition sm:justify-start ${link.key === section ? 'bg-white/10 font-medium text-white' : 'hover:bg-white/5 hover:text-white'}`}><Icon name={link.icon} size={18}/><span className="hidden flex-1 sm:block">{link.label}</span>{link.key === 'queue' && <span className="hidden rounded-full bg-red-500 px-2 py-0.5 text-xs font-bold text-white sm:block">{reports.filter(r => r.status === 'pending').length}</span>}</button>)}</nav></div><div className="m-3 rounded-2xl bg-slate-900 p-3 sm:m-4 sm:p-4"><div className="flex items-center justify-center gap-3 sm:justify-start"><div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-blue-700 text-sm font-bold text-white">{profile?.first_name?.[0] || 'A'}</div><div className="hidden min-w-0 flex-1 sm:block"><p className="truncate text-sm font-medium text-white">{profile?.full_name || 'Administrator'}</p><p className="text-xs capitalize text-slate-500">{profile?.role}</p></div><button onClick={signOut} className="hidden text-slate-500 hover:text-white sm:block"><Icon name="LogOut" size={17}/></button></div></div></aside>
@@ -106,12 +113,12 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
             <span className={`w-fit rounded-full px-2 py-1 text-[10px] font-bold uppercase ${priorityStyles[report.priority]}`}>{report.priority}</span>
             <div className="flex min-w-0 items-center gap-2">
               <span className={`inline-flex h-8 min-w-[84px] items-center justify-center rounded-full px-2 text-xs font-medium capitalize ${statusStyles[report.status] || 'bg-slate-100 text-slate-700'}`}>{formatStatus(report.status)}</span>
-              {report.status !== 'resolved' && <button onClick={() => setReportStatus(report.report_id, report.status === 'pending' ? 'assigned' : 'resolved')} className="inline-flex h-8 min-w-[72px] items-center justify-center rounded-lg border border-blue-200 bg-blue-50 px-3 text-xs font-bold text-blue-700 transition hover:border-blue-300 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">{report.status === 'pending' ? 'Assign' : 'Resolve'}</button>}
+              {profile?.role === 'dispatcher' && report.status !== 'resolved' && <button onClick={() => setReportStatus(report.report_id, report.status === 'pending' ? 'assigned' : 'resolved')} className="inline-flex h-8 min-w-[72px] items-center justify-center rounded-lg border border-blue-200 bg-blue-50 px-3 text-xs font-bold text-blue-700 transition hover:border-blue-300 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">{report.status === 'pending' ? 'Assign' : 'Resolve'}</button>}
             </div>
           </div>)}
         </div>
       </>}
-      {section === 'new' && gpsStatus && <div className="mt-5 flex items-center gap-2 rounded-xl bg-blue-50 px-4 py-3 text-sm font-medium text-blue-800"><Icon name="Crosshair" size={16}/>{gpsStatus}</div>}
+      {section === 'new' && gpsStatus && <div className={`mt-5 flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-medium ${draft.serviceAreaStatus === 'outside' ? 'bg-amber-50 text-amber-900 ring-1 ring-amber-200' : 'bg-blue-50 text-blue-800'}`}><Icon name={draft.serviceAreaStatus === 'outside' ? 'TriangleAlert' : 'Crosshair'} size={16}/>{gpsStatus}</div>}
       {section === 'new' && <form onSubmit={submitIncident} className="mt-7 grid gap-5 lg:grid-cols-[1.4fr_.6fr]"><div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><div className="grid gap-5 sm:grid-cols-2"><label className="text-sm font-semibold">Emergency type<select value={draft.type} onChange={e => setDraft(value => ({...value, type: e.target.value}))} className="mt-2 w-full rounded-xl border-slate-200 bg-white text-sm"><option value="fire">Fire</option><option value="medical">Medical</option><option value="accident">Accident</option><option value="police">Public safety</option><option value="natural">Natural hazard</option></select></label><label className="text-sm font-semibold">Priority<select value={draft.priority} onChange={e => setDraft(value => ({...value, priority: e.target.value}))} className="mt-2 w-full rounded-xl border-slate-200 bg-white text-sm"><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="critical">Critical</option></select></label></div><label className="mt-5 block text-sm font-semibold">Incident location<input required value={draft.location} onChange={e => setDraft(value => ({...value, location: e.target.value}))} placeholder="Address, landmark, or selected map pin" className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-3 text-sm"/></label><div className="mt-3 flex items-center gap-2 rounded-xl bg-blue-50 p-3 text-xs text-blue-800"><Icon name="MapPin" size={15}/>GPS and map provider are optional. A manual location is always accepted; outside-boundary reports go to dispatch for triage.</div><label className="mt-5 block text-sm font-semibold">What is happening?<textarea required value={draft.description} onChange={e => setDraft(value => ({...value, description: e.target.value}))} placeholder="Describe hazards, people involved, and immediate risks." rows="6" className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-3 text-sm"/></label><label className="mt-5 block text-sm font-semibold">Callback number <span className="font-normal text-slate-400">(optional)</span><input value={draft.callback} onChange={e => setDraft(value => ({...value, callback: e.target.value}))} placeholder="09XXXXXXXXX" className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-3 text-sm"/></label><div className="mt-6 flex justify-end"><button className="rounded-xl bg-red-500 px-5 py-3 text-sm font-bold text-white hover:bg-red-600"><Icon name="Send" size={16} className="mr-2 inline"/>Submit incident report</button></div>{submitted && <div className="mt-4 rounded-xl bg-emerald-50 p-3 text-sm font-medium text-emerald-800"><Icon name="CheckCircle2" size={16} className="mr-2 inline"/>Report created and placed in the live incident queue.</div>}</div><aside className="space-y-5"><div className="rounded-2xl border border-amber-200 bg-amber-50 p-5"><div className="flex items-center gap-2 font-bold text-amber-900"><Icon name="PhoneCall" size={18}/>Urgent safety guidance</div><p className="mt-3 text-sm leading-6 text-amber-800">This application does not replace local emergency phone services. Use the appropriate emergency call channel whenever it is safe to do so.</p></div><div className="rounded-2xl border border-slate-200 bg-white p-5"><h3 className="font-bold">Evidence</h3><p className="mt-2 text-sm leading-6 text-slate-500">Photo and video uploads require private storage configuration. In this demo, evidence is not uploaded or shared publicly.</p></div></aside></form>}
       {section === 'residents' && <div className="mt-7 grid gap-5 lg:grid-cols-2"><div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><div className="flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-xl bg-amber-50 text-amber-700"><Icon name="FileSearch" size={20}/></div><div><h3 className="font-bold">ID verification queue</h3><p className="text-sm text-slate-500">2 records awaiting human review</p></div></div><div className="mt-5 space-y-3">{['Alex Williams · Unable to read', 'Priya Santos · Likely match'].map(item => <div key={item} className="flex items-center justify-between rounded-xl bg-slate-50 p-3 text-sm"><span>{item}</span><button className="font-semibold text-blue-700">Review</button></div>)}</div><p className="mt-5 text-xs leading-5 text-slate-500">OCR is assistive only. Approval, clearer-upload requests, and rejection decisions are made by an authorized administrator.</p></div><div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><h3 className="font-bold">Account access</h3><p className="mt-1 text-sm text-slate-500">Department access cannot be self-granted.</p><div className="mt-5 divide-y divide-slate-100">{mockDepartments.map(dept => <div key={dept.id} className="flex items-center justify-between py-3"><span className="text-sm font-medium">{dept.name}</span><button onClick={() => navigate('/department-management')} className="text-sm font-semibold text-blue-700">Manage membership</button></div>)}</div></div></div>}
       {section === 'departments' && <div className="mt-7 rounded-2xl border border-slate-200 bg-white shadow-sm"><div className="flex items-center justify-between border-b border-slate-100 p-5"><div><h3 className="font-bold">Department directory</h3><p className="text-sm text-slate-500">Administrator-controlled departments and access roles</p></div><button className="rounded-xl bg-blue-700 px-4 py-2 text-sm font-semibold text-white">Add department</button></div>{mockDepartments.map(dept => <div key={dept.id} className="flex items-center justify-between border-b border-slate-100 p-5 last:border-0"><div><p className="font-semibold">{dept.name}</p><p className="mt-1 text-sm text-slate-500">{dept.description}</p></div><button className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold">Manage roles</button></div>)}</div>}
@@ -123,7 +130,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
 export default function Dashboard({ section = 'command' }) {
   const navigate = useNavigate();
   const { profile, signOut } = useAuth();
-  const [reports, setReports] = useState(mockEmergencyReports);
+  const { reports, setReports } = useMockData();
   const [activeReport, setActiveReport] = useState(mockEmergencyReports[0]);
   const [showBroadcast, setShowBroadcast] = useState(false);
   const [selectedDepartments, setSelectedDepartments] = useState(['dept-3']);
@@ -146,13 +153,13 @@ export default function Dashboard({ section = 'command' }) {
   const toggleDepartment = id => setSelectedDepartments(ids => ids.includes(id) ? ids.filter(item => item !== id) : [...ids, id]);
 
   const sidebarLinks = [
-    { label: 'Command center', icon: 'LayoutDashboard', path: '/' },
-    { label: 'Incident queue', icon: 'Siren', path: '/report-management', badge: pendingCount },
-    { label: 'New incident', icon: 'PlusCircle', path: '/emergency-report' },
-    { label: 'Residents & review', icon: 'Users', path: '/user-management' },
-    { label: 'Departments', icon: 'Building2', path: '/department-management' },
-    { label: 'System settings', icon: 'Settings', path: '/settings' }
-  ];
+    { label: 'Command center', icon: 'LayoutDashboard', path: '/', roles: ['admin', 'dispatcher'] },
+    { label: 'Incident queue', icon: 'Siren', path: '/report-management', badge: pendingCount, roles: ['admin', 'dispatcher'] },
+    { label: 'New incident', icon: 'PlusCircle', path: '/emergency-report', roles: ['admin', 'dispatcher'] },
+    { label: 'Residents & review', icon: 'Users', path: '/user-management', roles: ['admin'] },
+    { label: 'Departments', icon: 'Building2', path: '/department-management', roles: ['admin'] },
+    { label: 'System settings', icon: 'Settings', path: '/settings', roles: ['admin'] }
+  ].filter(link => link.roles.includes(profile?.role));
 
   return <div className="min-h-screen bg-slate-50 text-slate-900">
     <div className="flex min-h-screen">

@@ -19,7 +19,7 @@ npm install
 npm start
 ```
 
-The project enters mock mode automatically without `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`. Test accounts are defined in `src/data/mockData.js` (for example, `dispatcher1@emergency.gov`, `resident1@example.com`, and `responder1@emergency.gov`; mock mode accepts any password for active accounts).
+The project enters mock mode automatically without `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` (the legacy `VITE_SUPABASE_ANON_KEY` is also supported). Test accounts are defined in `src/data/mockData.js` (for example, `dispatcher1@emergency.gov`, `resident1@example.com`, and `responder1@emergency.gov`; mock mode accepts any password for active accounts).
 
 Build with:
 

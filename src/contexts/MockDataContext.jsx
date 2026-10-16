@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { mockAuth, mockDb } from '../data/mockData';
+import { mockAuth, mockDb, mockEmergencyReports } from '../data/mockData';
 
 const MockDataContext = createContext();
 
@@ -12,10 +12,12 @@ export const useMockData = () => {
 };
 
 export const MockDataProvider = ({ children }) => {
+  const [reports, setReports] = useState(mockEmergencyReports);
   const [useMock, setUseMock] = useState(() => {
     // Default to mock mode if Supabase env vars are missing
     const hasSupabaseUrl = import.meta.env?.VITE_SUPABASE_URL;
-    const hasSupabaseKey = import.meta.env?.VITE_SUPABASE_ANON_KEY;
+    const hasSupabaseKey = import.meta.env?.VITE_SUPABASE_PUBLISHABLE_KEY
+      || import.meta.env?.VITE_SUPABASE_ANON_KEY;
     const localStorageValue = localStorage.getItem('useMockData');
     
     if (localStorageValue !== null) {
@@ -38,7 +40,9 @@ export const MockDataProvider = ({ children }) => {
     useMock,
     toggleMockMode,
     mockAuth,
-    mockDb
+    mockDb,
+    reports,
+    setReports
   };
 
   return (

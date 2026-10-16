@@ -2,12 +2,13 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import Icon from '../../components/AppIcon';
 import { useAuth } from '../../contexts/AuthContext';
-import { mockEmergencyReports } from '../../data/mockData';
+import { useMockData } from '../../contexts/MockDataContext';
 
 export default function ResidentHome() {
   const navigate = useNavigate();
   const { profile, signOut } = useAuth();
-  const myReports = mockEmergencyReports.filter(r => r.reporter_id === profile?.id).slice(0, 3);
+  const { reports } = useMockData();
+  const myReports = reports.filter(r => r.reporter_id === profile?.id).slice(0, 3);
   return <div className="min-h-screen bg-slate-50 text-slate-900">
     <header className="border-b border-slate-200 bg-white"><div className="mx-auto flex max-w-5xl items-center justify-between px-5 py-4"><div className="flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-xl bg-red-500 text-white"><Icon name="Siren" size={21}/></div><div><p className="font-bold">Kalubihan Emergency</p><p className="text-xs text-slate-500">Resident safety portal</p></div></div><div className="flex items-center gap-3"><button className="relative rounded-xl p-2 text-slate-500 hover:bg-slate-100"><Icon name="Bell" size={19}/><span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-red-500"/></button><button onClick={signOut} className="rounded-xl p-2 text-slate-500 hover:bg-slate-100" title="Sign out"><Icon name="LogOut" size={19}/></button></div></div></header>
     <main className="mx-auto max-w-5xl space-y-6 px-5 py-8">
