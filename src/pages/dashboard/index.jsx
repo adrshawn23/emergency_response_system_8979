@@ -78,11 +78,14 @@ export default function Dashboard({ section = 'command' }) {
   const [sent, setSent] = useState(false);
   const [activeSection, setActiveSection] = useState(section);
 
+  // Hooks must run in the same order when switching between command-center
+  // sections. Keep this before the section-specific early returns below.
+  const openCount = useMemo(() => reports.filter(r => r.status !== 'resolved').length, [reports]);
+
   if (profile?.role === 'resident' && activeSection === 'command') return <ResidentHome />;
   if (profile?.role === 'responder') return <ResponderView />;
   if (activeSection !== 'command') return <WorkspacePage section={activeSection} profile={profile} signOut={signOut} onSectionChange={setActiveSection} />;
 
-  const openCount = useMemo(() => reports.filter(r => r.status !== 'resolved').length, [reports]);
   const pendingCount = reports.filter(r => r.status === 'pending').length;
   const updateStatus = (report, status) => {
     setReports(current => current.map(item => item.report_id === report.report_id ? { ...item, status } : item));
