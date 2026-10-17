@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import Icon from '../../components/AppIcon';
 import { useAuth } from '../../contexts/AuthContext';
 import { useMockData } from '../../contexts/MockDataContext';
-import { mockEmergencyReports, mockDepartments, mockServiceBoundary } from '../../data/mockData';
+import { mockServiceBoundary } from '../../data/mockData';
 import { isPointInBoundary } from '../../utils/geofence';
+import { supabase } from '../../lib/supabase';
 import ResidentHome from '../resident-home';
 import ResponderView from '../responder-view';
 
@@ -40,6 +41,44 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
   const [draft, setDraft] = useState({ type: 'fire', priority: 'high', location: '', description: '', callback: '', latitude: null, longitude: null, serviceAreaStatus: 'manual' });
   const [gpsStatus, setGpsStatus] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  // Fetch reports from Supabase
+  useEffect(() => {
+    const fetchReports = async () => {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('emergency_reports')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (data && !error) {
+        setReports(data);
+      }
+      setLoading(false);
+    };
+
+    fetchReports();
+
+    // Set up real-time subscription for reports
+    const subscription = supabase
+      .channel('emergency_reports_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'emergency_reports' }, (payload) => {
+        if (payload.eventType === 'INSERT') {
+          setReports(prev => [payload.new, ...prev]);
+        } else if (payload.eventType === 'UPDATE') {
+          setReports(prev => prev.map(r => r.report_id === payload.new.report_id ? payload.new : r));
+        } else if (payload.eventType === 'DELETE') {
+          setReports(prev => prev.filter(r => r.report_id !== payload.old.report_id));
+        }
+      })
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
   const links = [
     { key: 'command', label: 'Command center', icon: 'LayoutDashboard', path: '/', roles: ['admin', 'dispatcher'] },
     { key: 'queue', label: 'Incident queue', icon: 'Siren', path: '/report-management', roles: ['admin', 'dispatcher'] },
@@ -51,7 +90,11 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
   const current = sectionCopy[section];
   const visibleReports = status === 'all' ? reports : reports.filter(report => report.status === status);
   const handleNavigation = link => onSectionChange(link.key);
-  const setReportStatus = (id, nextStatus) => setReports(items => items.map(item => item.report_id === id ? { ...item, status: nextStatus } : item));
+  const setReportStatus = (id, nextStatus) => {
+    setReports(items => items.map(item => item.report_id === id ? { ...item, status: nextStatus } : item));
+    // Update in Supabase
+    supabase.from('emergency_reports').update({ status: nextStatus }).eq('report_id', id);
+  };
 
   useEffect(() => {
     if (section !== 'new') return undefined;
@@ -90,12 +133,29 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
     return () => { isCurrent = false; };
   }, [section]);
 
-  const submitIncident = event => {
+  const submitIncident = async event => {
     event.preventDefault();
     if (!draft.location.trim() || !draft.description.trim()) return;
-    setReports(items => [{ report_id: `REP-${String(items.length + 1).padStart(3, '0')}`, emergency_type: draft.type, priority: draft.priority, status: 'pending', location: draft.location, latitude: draft.latitude, longitude: draft.longitude, service_area_status: draft.serviceAreaStatus, description: draft.description, contact_name: profile?.full_name || 'Command user', contact_phone: draft.callback, reporter_id: profile?.id, created_at: new Date().toISOString() }, ...items]);
-    setSubmitted(true);
-    setDraft({ type: 'fire', priority: 'high', location: '', description: '', callback: '', latitude: null, longitude: null, serviceAreaStatus: 'manual' });
+    
+    // Insert into Supabase
+    const { data, error } = await supabase.from('emergency_reports').insert({
+      emergency_type: draft.type,
+      priority: draft.priority,
+      status: 'pending',
+      location: draft.location,
+      latitude: draft.latitude,
+      longitude: draft.longitude,
+      service_area_status: draft.serviceAreaStatus,
+      description: draft.description,
+      contact_name: profile?.full_name || 'Command user',
+      contact_phone: draft.callback,
+      reporter_id: profile?.id
+    }).select().single();
+
+    if (!error && data) {
+      setSubmitted(true);
+      setDraft({ type: 'fire', priority: 'high', location: '', description: '', callback: '', latitude: null, longitude: null, serviceAreaStatus: 'manual' });
+    }
   };
   return <div className="min-h-screen bg-slate-50 text-slate-900"><div className="flex min-h-screen">
     <aside className="sticky top-0 flex h-screen w-20 shrink-0 flex-col overflow-x-hidden bg-slate-950 text-slate-300 sm:w-72"><div className="flex h-20 items-center justify-center gap-3 border-b border-slate-800 px-3 sm:justify-start sm:px-7"><div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-red-500 text-white"><Icon name="Siren" size={22}/></div><div className="hidden sm:block"><p className="font-semibold text-white">Kalubihan</p><p className="text-xs text-slate-500">Emergency Command</p></div></div><div className="flex-1 px-3 py-7 sm:px-4"><p className="mb-3 hidden px-3 text-[10px] font-bold uppercase tracking-[.16em] text-slate-500 sm:block">Operations</p><nav className="space-y-1">{links.map(link => <button key={link.key} onClick={() => handleNavigation(link)} title={link.label} className={`flex w-full items-center justify-center gap-3 rounded-xl px-3 py-3 text-left text-sm transition sm:justify-start ${link.key === section ? 'bg-white/10 font-medium text-white' : 'hover:bg-white/5 hover:text-white'}`}><Icon name={link.icon} size={18}/><span className="hidden flex-1 sm:block">{link.label}</span>{link.key === 'queue' && <span className="hidden rounded-full bg-red-500 px-2 py-0.5 text-xs font-bold text-white sm:block">{reports.filter(r => r.status === 'pending').length}</span>}</button>)}</nav></div><div className="m-3 rounded-2xl bg-slate-900 p-3 sm:m-4 sm:p-4"><div className="flex items-center justify-center gap-3 sm:justify-start"><div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-blue-700 text-sm font-bold text-white">{profile?.first_name?.[0] || 'A'}</div><div className="hidden min-w-0 flex-1 sm:block"><p className="truncate text-sm font-medium text-white">{profile?.full_name || 'Administrator'}</p><p className="text-xs capitalize text-slate-500">{profile?.role}</p></div><button onClick={signOut} className="hidden text-slate-500 hover:text-white sm:block"><Icon name="LogOut" size={17}/></button></div></div></aside>

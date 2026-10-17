@@ -15,7 +15,6 @@ import SubmissionProgress from './components/SubmissionProgress';
 import { useAuth } from '../../contexts/AuthContext';
 import { useMockData } from '../../contexts/MockDataContext';
 import { supabase } from '../../lib/supabase';
-import { mockEmergencyReports } from '../../data/mockData';
 
 const EmergencyReport = () => {
   const navigate = useNavigate();

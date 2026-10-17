@@ -10,7 +10,6 @@ import BreadcrumbNavigation from '../../components/ui/BreadcrumbNavigation';
 import { useAuth } from '../../contexts/AuthContext';
 import { useMockData } from '../../contexts/MockDataContext';
 import { supabase } from '../../lib/supabase';
-import { mockDepartments, mockUsers } from '../../data/mockData';
 
 // Import components
 import DepartmentCard from './components/DepartmentCard';

@@ -8,7 +8,6 @@ import Input from '../../components/ui/Input';
 import Icon from '../../components/AppIcon';
 import { useAuth } from '../../contexts/AuthContext';
 import { useMockData } from '../../contexts/MockDataContext';
-import { mockUsers } from '../../data/mockData';
 
 const Profile = () => {
   const navigate = useNavigate();

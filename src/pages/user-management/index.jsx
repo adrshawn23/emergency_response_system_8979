@@ -13,7 +13,6 @@ import Icon from '../../components/AppIcon';
 import { useAuth } from '../../contexts/AuthContext';
 import { useMockData } from '../../contexts/MockDataContext';
 import { supabase } from '../../lib/supabase';
-import { mockUsers, mockDepartments } from '../../data/mockData';
 
 const UserManagement = () => {
   const navigate = useNavigate();

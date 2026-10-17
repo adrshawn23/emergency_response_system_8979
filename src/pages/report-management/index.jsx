@@ -14,7 +14,6 @@ import ReportStats from './components/ReportStats';
 import { useAuth } from '../../contexts/AuthContext';
 import { useMockData } from '../../contexts/MockDataContext';
 import { supabase } from '../../lib/supabase';
-import { mockEmergencyReports } from '../../data/mockData';
 
 const ReportManagement = () => {
   const { user, profile } = useAuth();
