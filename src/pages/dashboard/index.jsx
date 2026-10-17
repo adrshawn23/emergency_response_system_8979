@@ -137,19 +137,22 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
     event.preventDefault();
     if (!draft.location.trim() || !draft.description.trim()) return;
     
-    // Insert into Supabase
+    // Insert into Supabase - match actual database schema
     const { data, error } = await supabase.from('emergency_reports').insert({
-      emergency_type: draft.type,
-      priority: draft.priority,
-      status: 'pending',
-      location: draft.location,
-      latitude: draft.latitude,
-      longitude: draft.longitude,
-      service_area_status: draft.serviceAreaStatus,
-      description: draft.description,
-      contact_name: profile?.full_name || 'Command user',
-      contact_phone: draft.callback,
-      reporter_id: profile?.id
+      incident_id: null,
+      reporter_id: profile?.id,
+      report_type: draft.type,
+      content: draft.description,
+      attachments: {
+        location: draft.location,
+        priority: draft.priority,
+        status: 'pending',
+        latitude: draft.latitude,
+        longitude: draft.longitude,
+        service_area_status: draft.serviceAreaStatus,
+        contact_name: profile?.full_name || 'Command user',
+        contact_phone: draft.callback
+      }
     }).select().single();
 
     if (!error && data) {
