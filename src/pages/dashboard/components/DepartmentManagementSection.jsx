@@ -5,12 +5,15 @@ import CreateDepartmentModal from '../../department-management/components/Create
 
 const DepartmentManagementSection = () => {
   const [departments, setDepartments] = useState([]);
+  const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+  const [selectedDepartment, setSelectedDepartment] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    const fetchDepartments = async () => {
+    const fetchData = async () => {
       setLoading(true);
       try {
         const { data: deptData, error: deptError } = await supabase
@@ -25,8 +28,16 @@ const DepartmentManagementSection = () => {
           totalMembers: dept.user_profiles?.[0]?.count || 0
         }));
         setDepartments(departmentsWithCounts);
+
+        const { data: userData, error: userError } = await supabase
+          .from('user_profiles')
+          .select('*')
+          .eq('is_active', true);
+        
+        if (userError) throw userError;
+        setUsers(userData || []);
       } catch (error) {
-        console.error('Error fetching departments:', error);
+        console.error('Error fetching data:', error);
         console.error('Error details:', {
           message: error?.message,
           code: error?.code,
@@ -38,7 +49,7 @@ const DepartmentManagementSection = () => {
       }
     };
 
-    fetchDepartments();
+    fetchData();
   }, []);
 
   const filteredDepartments = departments?.filter(dept => {
@@ -97,6 +108,94 @@ const DepartmentManagementSection = () => {
         });
         throw error;
       }
+    }
+  };
+
+  const handleAssignUsers = async (departmentId, selectedUserIds) => {
+    try {
+      for (const userId of selectedUserIds) {
+        const { error } = await supabase
+          .from('user_profiles')
+          .update({ department_id: departmentId })
+          .eq('id', userId);
+        
+        if (error) throw error;
+      }
+      
+      // Refresh departments to get updated member counts
+      const { data: deptData, error: deptError } = await supabase
+        .from('departments')
+        .select('*, user_profiles(count)')
+        .order('created_at', { ascending: false });
+      
+      if (deptError) throw deptError;
+      
+      const departmentsWithCounts = (deptData || []).map(dept => ({
+        ...dept,
+        totalMembers: dept.user_profiles?.[0]?.count || 0
+      }));
+      setDepartments(departmentsWithCounts);
+      
+      // Refresh users
+      const { data: userData, error: userError } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('is_active', true);
+      
+      if (userError) throw userError;
+      setUsers(userData || []);
+    } catch (error) {
+      console.error('Error assigning users:', error);
+      console.error('Error details:', {
+        message: error?.message,
+        code: error?.code,
+        details: error?.details,
+        hint: error?.hint
+      });
+      throw error;
+    }
+  };
+
+  const handleRemoveUser = async (userId) => {
+    try {
+      const { error } = await supabase
+        .from('user_profiles')
+        .update({ department_id: null })
+        .eq('id', userId);
+      
+      if (error) throw error;
+      
+      // Refresh departments to get updated member counts
+      const { data: deptData, error: deptError } = await supabase
+        .from('departments')
+        .select('*, user_profiles(count)')
+        .order('created_at', { ascending: false });
+      
+      if (deptError) throw deptError;
+      
+      const departmentsWithCounts = (deptData || []).map(dept => ({
+        ...dept,
+        totalMembers: dept.user_profiles?.[0]?.count || 0
+      }));
+      setDepartments(departmentsWithCounts);
+      
+      // Refresh users
+      const { data: userData, error: userError } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('is_active', true);
+      
+      if (userError) throw userError;
+      setUsers(userData || []);
+    } catch (error) {
+      console.error('Error removing user:', error);
+      console.error('Error details:', {
+        message: error?.message,
+        code: error?.code,
+        details: error?.details,
+        hint: error?.hint
+      });
+      throw error;
     }
   };
 
@@ -166,6 +265,17 @@ const DepartmentManagementSection = () => {
                   <div className="mt-3 flex items-center gap-4 text-xs text-slate-500">
                     <span><strong>{department?.totalMembers || 0}</strong> members</span>
                   </div>
+                  <div className="mt-3 flex items-center gap-2">
+                    <button
+                      onClick={() => {
+                        setSelectedDepartment(department);
+                        setIsAssignModalOpen(true);
+                      }}
+                      className="text-xs text-blue-600 hover:text-blue-800"
+                    >
+                      Assign members
+                    </button>
+                  </div>
                 </div>
                 <button
                   onClick={() => handleDeleteDepartment(department?.id)}
@@ -185,6 +295,56 @@ const DepartmentManagementSection = () => {
         onClose={() => setIsCreateModalOpen(false)}
         onCreateDepartment={handleCreateDepartment}
       />
+
+      {/* Assign Users Modal */}
+      {isAssignModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4">
+          <div className="bg-white border border-slate-200 rounded-lg shadow-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-4 border-b border-slate-200">
+              <h3 className="font-bold text-lg">
+                Assign members to {selectedDepartment?.name}
+              </h3>
+              <button
+                onClick={() => {
+                  setIsAssignModalOpen(false);
+                  setSelectedDepartment(null);
+                }}
+                className="text-slate-400 hover:text-slate-600"
+              >
+                <Icon name="X" size={20} />
+              </button>
+            </div>
+            <div className="p-4 space-y-3 max-h-96 overflow-y-auto">
+              {users?.map(user => (
+                <div
+                  key={user?.id}
+                  className="flex items-center justify-between p-3 border border-slate-200 rounded-lg"
+                >
+                  <div>
+                    <p className="font-medium text-slate-900">{user?.full_name || user?.email}</p>
+                    <p className="text-xs text-slate-500 capitalize">{user?.role}</p>
+                  </div>
+                  {user?.department_id === selectedDepartment?.id ? (
+                    <button
+                      onClick={() => handleRemoveUser(user?.id)}
+                      className="text-xs text-red-600 hover:text-red-800"
+                    >
+                      Remove
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleAssignUsers(selectedDepartment?.id, [user?.id])}
+                      className="text-xs text-blue-600 hover:text-blue-800"
+                    >
+                      Assign
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
