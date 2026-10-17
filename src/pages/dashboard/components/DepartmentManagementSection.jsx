@@ -66,9 +66,8 @@ const DepartmentManagementSection = () => {
           name: departmentData.name,
           type: departmentData.type,
           description: departmentData.description,
-          contact_email: departmentData.contact_email,
-          contact_phone: departmentData.contact_phone,
-          address: departmentData.address,
+          contact_email: departmentData.contact_email || null,
+          contact_phone: departmentData.contact_phone || null,
           is_active: true
         })
         .select()

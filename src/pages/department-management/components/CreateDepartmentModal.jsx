@@ -10,8 +10,7 @@ const CreateDepartmentModal = ({ isOpen, onClose, onCreateDepartment }) => {
     type: 'fire',
     description: '',
     contact_email: '',
-    contact_phone: '',
-    address: ''
+    contact_phone: ''
   });
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -64,8 +63,7 @@ const CreateDepartmentModal = ({ isOpen, onClose, onCreateDepartment }) => {
         type: formData.type,
         description: formData.description,
         contact_email: formData.contact_email || null,
-        contact_phone: formData.contact_phone || null,
-        address: formData.address || null
+        contact_phone: formData.contact_phone || null
       };
 
       await onCreateDepartment(departmentData);
@@ -76,8 +74,7 @@ const CreateDepartmentModal = ({ isOpen, onClose, onCreateDepartment }) => {
         type: 'fire',
         description: '',
         contact_email: '',
-        contact_phone: '',
-        address: ''
+        contact_phone: ''
       });
       
       onClose();
@@ -94,8 +91,7 @@ const CreateDepartmentModal = ({ isOpen, onClose, onCreateDepartment }) => {
       type: 'fire',
       description: '',
       contact_email: '',
-      contact_phone: '',
-      address: ''
+      contact_phone: ''
     });
     setErrors({});
     onClose();
@@ -180,15 +176,6 @@ const CreateDepartmentModal = ({ isOpen, onClose, onCreateDepartment }) => {
             placeholder="09XXXXXXXXX"
             value={formData?.contact_phone}
             onChange={(e) => handleInputChange('contact_phone', e?.target?.value)}
-            disabled={isSubmitting}
-          />
-
-          <Input
-            label="Address"
-            type="text"
-            placeholder="Department address"
-            value={formData?.address}
-            onChange={(e) => handleInputChange('address', e?.target?.value)}
             disabled={isSubmitting}
           />
 
