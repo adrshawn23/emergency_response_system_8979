@@ -71,7 +71,10 @@ export const AuthProvider = ({ children }) => {
 
     // Real Supabase mode
     supabase.from('user_profiles').select('*').eq('id', user.id).single()
-      .then(({ data }) => setProfile(data || null));
+      .then(({ data }) => {
+        console.log('Profile fetched:', data);
+        setProfile(data || null);
+      });
   }, [user, useMock])
 
   const value = {
