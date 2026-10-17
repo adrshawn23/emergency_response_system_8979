@@ -136,24 +136,23 @@ const EmergencyReport = () => {
         mockEmergencyReports.unshift(newReport);
         reportData = newReport;
       } else {
-        // Supabase mode - match actual database schema
+        // Supabase mode - match actual database schema from migration
+        const reportId = `RPT-${String(Date.now()).slice(-6)}`;
         const { data, error: reportError } = await supabase.from('emergency_reports').insert({
-          incident_id: null, // Will be created by trigger or can be null
+          report_id: reportId,
+          incident_type: formData.emergencyType,
+          priority: formData.priority,
+          status: 'pending',
+          location: formData.location,
+          coordinates: formData.locationMetadata?.coordinates ? { lat: formData.locationMetadata.coordinates[0], lng: formData.locationMetadata.coordinates[1] } : null,
+          description: formData.description,
           reporter_id: user.id,
-          report_type: formData.emergencyType,
-          content: formData.description,
-          attachments: {
-            location: formData.location,
-            priority: formData.priority,
-            contact_name: formData.contactName,
-            contact_phone: formData.contactPhone,
-            status: 'pending',
-            location_source: formData.locationMetadata?.source,
-            location_accuracy: formData.locationMetadata?.accuracy,
-            coordinates: formData.locationMetadata?.coordinates,
-            service_area_status: formData.locationMetadata?.serviceArea,
-            images: formData.images
-          }
+          reporter_name: formData.contactName,
+          reporter_phone: formData.contactPhone,
+          assigned_to: null,
+          assigned_department_id: null,
+          images: formData.images || [],
+          decline_reason: null
         }).select().single();
 
         if (reportError) throw reportError;

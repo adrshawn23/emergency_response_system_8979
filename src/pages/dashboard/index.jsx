@@ -137,22 +137,23 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
     event.preventDefault();
     if (!draft.location.trim() || !draft.description.trim()) return;
     
-    // Insert into Supabase - match actual database schema
+    // Insert into Supabase - match actual database schema from migration
+    const reportId = `RPT-${String(Date.now()).slice(-6)}`;
     const { data, error } = await supabase.from('emergency_reports').insert({
-      incident_id: null,
+      report_id: reportId,
+      incident_type: draft.type,
+      priority: draft.priority,
+      status: 'pending',
+      location: draft.location,
+      coordinates: draft.latitude && draft.longitude ? { lat: draft.latitude, lng: draft.longitude } : null,
+      description: draft.description,
       reporter_id: profile?.id,
-      report_type: draft.type,
-      content: draft.description,
-      attachments: {
-        location: draft.location,
-        priority: draft.priority,
-        status: 'pending',
-        latitude: draft.latitude,
-        longitude: draft.longitude,
-        service_area_status: draft.serviceAreaStatus,
-        contact_name: profile?.full_name || 'Command user',
-        contact_phone: draft.callback
-      }
+      reporter_name: profile?.full_name || 'Command user',
+      reporter_phone: draft.callback,
+      assigned_to: null,
+      assigned_department_id: null,
+      images: [],
+      decline_reason: null
     }).select().single();
 
     if (!error && data) {
@@ -171,7 +172,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
         <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div className="grid grid-cols-[minmax(0,1.2fr)_minmax(0,1.3fr)_minmax(110px,.7fr)_minmax(170px,.8fr)] gap-4 border-b border-slate-100 bg-slate-50 px-5 py-3 text-xs font-bold uppercase tracking-wider text-slate-400"><span>Incident</span><span>Location</span><span>Priority</span><span>Status / action</span></div>
           {visibleReports.map(report => <div key={report.report_id} className="grid grid-cols-[minmax(0,1.2fr)_minmax(0,1.3fr)_minmax(110px,.7fr)_minmax(170px,.8fr)] items-center gap-4 border-b border-slate-100 px-5 py-4 last:border-0">
-            <div className="min-w-0"><p className="font-semibold capitalize">{report.emergency_type} <span className="font-mono text-xs text-slate-400">{report.report_id}</span></p><p className="mt-1 truncate text-xs text-slate-500">{report.description}</p></div>
+            <div className="min-w-0"><p className="font-semibold capitalize">{report.incident_type} <span className="font-mono text-xs text-slate-400">{report.report_id}</span></p><p className="mt-1 truncate text-xs text-slate-500">{report.description}</p></div>
             <p className="truncate text-sm text-slate-600">{report.location}</p>
             <span className={`w-fit rounded-full px-2 py-1 text-[10px] font-bold uppercase ${priorityStyles[report.priority]}`}>{report.priority}</span>
             <div className="flex min-w-0 items-center gap-2">
