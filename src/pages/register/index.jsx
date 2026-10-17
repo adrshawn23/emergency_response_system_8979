@@ -324,7 +324,7 @@ const Register = () => {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="bg-card border-b border-border shadow-emergency">
-        <div className="max-w-4xl mx-auto px-4 py-6">
+        <div className="w-full px-4 py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <div className="flex items-center justify-center w-10 h-10 bg-primary rounded-lg">
@@ -346,10 +346,10 @@ const Register = () => {
           </div>
         </div>
       </div>
-      <div className="max-w-6xl mx-auto px-4 py-8">
-        <div className="flex flex-col lg:flex-row gap-8">
-          {/* Progress Sidebar */}
-          <div className="lg:w-64 lg:shrink-0">
+      <div className="w-full px-4 py-8">
+        <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
+          {/* Progress Sidebar - Hidden on mobile, shown on lg screens */}
+          <div className="hidden lg:block lg:w-72 lg:shrink-0">
             <div className="space-y-6">
               {/* Progress Steps */}
               <div className="bg-card rounded-lg border border-border p-4">
@@ -390,7 +390,7 @@ const Register = () => {
           </div>
 
           {/* Main Form */}
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 w-full">
             <form onSubmit={handleSubmit} className="space-y-8">
               {/* Step Header */}
               <div className="bg-card rounded-lg border border-border p-6">
