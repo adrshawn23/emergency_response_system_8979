@@ -3,7 +3,7 @@ import Input from '../../../components/ui/Input';
 import Button from '../../../components/ui/Button';
 import Icon from '../../../components/AppIcon';
 
-const LoginForm = ({ onLogin, isLoading, error }) => {
+const LoginForm = ({ onLogin, isLoading, error, onCreateAccount, onForgotPassword }) => {
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -111,6 +111,22 @@ const LoginForm = ({ onLogin, isLoading, error }) => {
       >
         Sign In
       </Button>
+      <div className="flex items-center justify-between text-sm">
+        <button
+          type="button"
+          onClick={onForgotPassword}
+          className="text-primary hover:underline"
+        >
+          Forgot password?
+        </button>
+        <button
+          type="button"
+          onClick={onCreateAccount}
+          className="text-primary hover:underline font-medium"
+        >
+          Create account
+        </button>
+      </div>
     </form>
   );
 };
