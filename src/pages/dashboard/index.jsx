@@ -182,13 +182,13 @@ export default function Dashboard({ section = 'command' }) {
           </button>)}</nav>
         </div>
         <div className="m-3 rounded-2xl bg-slate-900 p-3 sm:m-4 sm:p-4">
-          <div className="flex items-center justify-center gap-3 sm:justify-start"><div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-sky-600 text-sm font-bold text-white">{profile?.first_name?.[0] || 'D'}</div><div className="hidden min-w-0 flex-1 sm:block"><p className="truncate text-sm font-medium text-white">{profile?.full_name || 'Dispatcher'}</p><p className="text-xs capitalize text-slate-500">{profile?.role || 'Operations'}</p></div><button aria-label="Sign out" onClick={signOut} className="hidden text-slate-500 hover:text-white sm:block"><Icon name="LogOut" size={17}/></button></div>
-          <div className="mt-3 hidden items-center gap-2 text-xs text-emerald-400 sm:flex"><span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400"/> Dispatch online</div>
+          <div className="flex items-center justify-center gap-3 sm:justify-start"><div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-sky-600 text-sm font-bold text-white">{profile?.first_name?.[0] || 'U'}</div><div className="hidden min-w-0 flex-1 sm:block"><p className="truncate text-sm font-medium text-white">{profile?.full_name || 'User'}</p><p className="text-xs capitalize text-slate-500">{profile?.role || 'Operations'}</p></div><button aria-label="Sign out" onClick={signOut} className="hidden text-slate-500 hover:text-white sm:block"><Icon name="LogOut" size={17}/></button></div>
+          <div className="mt-3 hidden items-center gap-2 text-xs text-emerald-400 sm:flex"><span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400"/> Online</div>
         </div>
       </aside>
       <main className="min-w-0 flex-1">
         <header className="flex h-20 items-center justify-between border-b border-slate-200 bg-white px-5 sm:px-8">
-          <div><p className="text-xs font-medium uppercase tracking-wider text-slate-400">Friday, March 20</p><h1 className="text-lg font-bold tracking-tight">Good morning, {profile?.first_name || 'Dispatcher'}</h1></div>
+          <div><p className="text-xs font-medium uppercase tracking-wider text-slate-400">Friday, March 20</p><h1 className="text-lg font-bold tracking-tight">Good morning, {profile?.first_name || 'User'}</h1></div>
           <div className="flex items-center gap-3"><div className="hidden items-center gap-2 rounded-full bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700 sm:flex"><span className="h-2 w-2 rounded-full bg-emerald-500"/>All systems operational</div><button className="relative rounded-xl border border-slate-200 p-2.5 text-slate-500"><Icon name="Bell" size={19}/><span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-red-500"/></button></div>
         </header>
         <div className="mx-auto max-w-[1600px] space-y-6 p-5 sm:p-8">
