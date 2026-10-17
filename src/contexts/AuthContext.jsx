@@ -70,7 +70,7 @@ export const AuthProvider = ({ children }) => {
     }
 
     // Real Supabase mode
-    supabase.from('user_profiles').select('*, department:departments(*)').eq('id', user.id).single()
+    supabase.from('user_profiles').select('*').eq('id', user.id).single()
       .then(({ data }) => setProfile(data || null));
   }, [user, useMock])
 
@@ -137,7 +137,7 @@ export const AuthProvider = ({ children }) => {
         return { data: mockProfile, error: null };
       }
       
-      const { data, error } = await supabase?.from('user_profiles')?.select('*, department:departments(*)')?.eq('id', user?.id)?.single();
+      const { data, error } = await supabase?.from('user_profiles')?.select('*')?.eq('id', user?.id)?.single();
       
       return { data, error };
     }
