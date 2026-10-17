@@ -200,13 +200,21 @@ export default function Dashboard({ section = 'command' }) {
   const [sent, setSent] = useState(false);
   const [activeSection, setActiveSection] = useState(section);
   const [currentDate, setCurrentDate] = useState('');
+  const [showNotifications, setShowNotifications] = useState(false);
 
-  // Set current date
+  // Set current date and greeting
   useEffect(() => {
     const now = new Date();
-    const options = { weekday: 'long', month: 'long', day: 'numeric' };
-    setCurrentDate(now.toLocaleDateString('en-US', options));
+    const dateOptions = { weekday: 'long', month: 'long', day: 'numeric' };
+    setCurrentDate(now.toLocaleDateString('en-US', dateOptions));
   }, []);
+
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 18) return 'Good afternoon';
+    return 'Good evening';
+  };
 
   // React Router can reuse this component while changing its section prop.
   // Keep the command-center state in sync so each protected route shows the
@@ -259,9 +267,27 @@ export default function Dashboard({ section = 'command' }) {
       </aside>
       <main className="min-w-0 flex-1">
         <header className="flex h-20 items-center justify-between border-b border-slate-200 bg-white px-5 sm:px-8">
-          <div><p className="text-xs font-medium uppercase tracking-wider text-slate-400">{currentDate}</p><h1 className="text-lg font-bold tracking-tight">{profile?.full_name || 'User'}</h1></div>
-          <div className="flex items-center gap-3"><div className="hidden items-center gap-2 rounded-full bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700 sm:flex"><span className="h-2 w-2 rounded-full bg-emerald-500"/>All systems operational</div><button onClick={() => alert('Notifications feature coming soon')} className="relative rounded-xl border border-slate-200 p-2.5 text-slate-500 hover:bg-slate-50"><Icon name="Bell" size={19}/><span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-red-500"/></button></div>
+          <div><p className="text-xs font-medium uppercase tracking-wider text-slate-400">{currentDate}</p><h1 className="text-lg font-bold tracking-tight">{getGreeting()}, {profile?.first_name || 'User'}</h1></div>
+          <div className="flex items-center gap-3"><div className="hidden items-center gap-2 rounded-full bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700 sm:flex"><span className="h-2 w-2 rounded-full bg-emerald-500"/>All systems operational</div><button onClick={() => setShowNotifications(!showNotifications)} className="relative rounded-xl border border-slate-200 p-2.5 text-slate-500 hover:bg-slate-50"><Icon name="Bell" size={19}/><span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-red-500"/></button></div>
         </header>
+        {showNotifications && (
+          <div className="absolute right-0 top-20 z-50 w-80 rounded-xl border border-slate-200 bg-white shadow-lg">
+            <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+              <h3 className="font-semibold">Notifications</h3>
+              <button onClick={() => setShowNotifications(false)} className="text-slate-500 hover:text-slate-700">
+                <Icon name="X" size={18}/>
+              </button>
+            </div>
+            <div className="max-h-96 overflow-y-auto">
+              <div className="px-4 py-3 text-sm text-slate-500">
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5 h-2 w-2 rounded-full bg-red-500"/>
+                  <p>No new notifications</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
         <div className="mx-auto max-w-[1600px] space-y-6 p-5 sm:p-8">
           <section className="overflow-hidden rounded-2xl bg-slate-950 px-6 py-6 text-white shadow-xl sm:px-8">
             <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-center"><div><div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-red-300"><span className="h-2 w-2 animate-pulse rounded-full bg-red-400"/>Live response operations</div><h2 className="text-2xl font-bold tracking-tight sm:text-3xl">Barangay Kalubihan Command Center</h2><p className="mt-2 max-w-xl text-sm leading-6 text-slate-400">Coordinate incidents, monitor the official service boundary, and request only the assistance your response needs.</p></div><div className="flex flex-wrap gap-3"><button onClick={() => navigate('/emergency-report')} className="inline-flex items-center gap-2 rounded-xl bg-red-500 px-4 py-3 text-sm font-semibold shadow-lg shadow-red-950/30 hover:bg-red-400"><Icon name="Siren" size={18}/>Report emergency</button><button onClick={() => setShowBroadcast(true)} className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm font-semibold hover:bg-slate-800"><Icon name="Radio" size={18}/>Request assistance</button></div></div>
