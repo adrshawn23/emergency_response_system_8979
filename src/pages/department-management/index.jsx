@@ -90,6 +90,12 @@ const DepartmentManagement = () => {
         }
       } catch (error) {
         console.error('Error fetching data:', error);
+        console.error('Error details:', {
+          message: error?.message,
+          code: error?.code,
+          details: error?.details,
+          hint: error?.hint
+        });
       } finally {
         setLoading(false);
       }
@@ -137,6 +143,12 @@ const DepartmentManagement = () => {
       setDepartments(prev => [...prev, newDept]);
     } catch (error) {
       console.error('Error creating department:', error);
+      console.error('Error details:', {
+        message: error?.message,
+        code: error?.code,
+        details: error?.details,
+        hint: error?.hint
+      });
       throw error;
     }
   };
