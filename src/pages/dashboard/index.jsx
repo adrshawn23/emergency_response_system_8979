@@ -73,9 +73,9 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
         if (payload.eventType === 'INSERT') {
           setReports(prev => [payload.new, ...prev]);
         } else if (payload.eventType === 'UPDATE') {
-          setReports(prev => prev.map(r => r.report_id === payload.new.report_id ? payload.new : r));
+          setReports(prev => prev.map(r => r.id === payload.new.id ? payload.new : r));
         } else if (payload.eventType === 'DELETE') {
-          setReports(prev => prev.filter(r => r.report_id !== payload.old.report_id));
+          setReports(prev => prev.filter(r => r.id !== payload.old.id));
         }
       })
       .subscribe();
@@ -94,7 +94,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
     { key: 'settings', label: 'System settings', icon: 'Settings', path: '/settings', roles: ['admin'] }
   ].filter(link => link.roles.includes(profile?.role));
   const current = sectionCopy[section];
-  const visibleReports = status === 'all' ? reports : reports.filter(report => report.status === status);
+  const visibleReports = status === 'all' ? reports : reports.filter(report => (report.attachments?.status || report.status) === status);
   const handleNavigation = link => onSectionChange(link.key);
   const setReportStatus = (id, nextStatus) => {
     setReports(items => items.map(item => item.report_id === id ? { ...item, status: nextStatus } : item));

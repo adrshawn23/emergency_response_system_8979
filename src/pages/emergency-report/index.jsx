@@ -169,7 +169,7 @@ const EmergencyReport = () => {
         reportData = data;
       }
 
-      setReportNumber(reportData.report_id);
+      setReportNumber(reportData.id);
       setIsSubmitted(true);
       
       localStorage.removeItem('emergency-report-draft');
