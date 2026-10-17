@@ -30,8 +30,8 @@ BEGIN
     SELECT id INTO fire_dept_id FROM public.departments WHERE name = 'Fire Department' LIMIT 1;
     
     IF fire_dept_id IS NULL THEN
-        INSERT INTO public.departments (name, type, description, contact_email, contact_phone, address)
-        VALUES ('Fire Department', 'fire', 'Emergency fire response and prevention services', 'fire@emergency.gov', '09948270027', '456 Fire Station Rd, City')
+        INSERT INTO public.departments (name, description, status)
+        VALUES ('Fire Department', 'Emergency fire response and prevention services', 'active')
         RETURNING id INTO fire_dept_id;
     END IF;
 
@@ -70,3 +70,82 @@ CREATE POLICY "Users can insert own profile" ON public.user_profiles
 
 -- Enable RLS
 ALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;
+
+-- Create test users for each role
+-- Note: These users need to be created in auth.users first via Supabase Dashboard
+-- Then their profiles will be created below
+
+DO $$
+DECLARE
+    dispatcher_uuid UUID;
+    responder_uuid UUID;
+    resident_uuid UUID;
+    fire_dept_id UUID;
+    medical_dept_id UUID;
+BEGIN
+    -- Get department IDs
+    SELECT id INTO fire_dept_id FROM public.departments WHERE name = 'Fire Department' LIMIT 1;
+    SELECT id INTO medical_dept_id FROM public.departments WHERE name = 'Medical Services' LIMIT 1;
+    
+    -- Create Medical department if it doesn't exist
+    IF medical_dept_id IS NULL THEN
+        INSERT INTO public.departments (name, description, status)
+        VALUES ('Medical Services', 'Emergency medical response and healthcare services', 'active')
+        RETURNING id INTO medical_dept_id;
+    END IF;
+
+    -- Get user IDs from auth.users (create these users in Supabase Dashboard first)
+    SELECT id INTO dispatcher_uuid FROM auth.users WHERE email = 'dispatcher@emergency.gov' LIMIT 1;
+    SELECT id INTO responder_uuid FROM auth.users WHERE email = 'responder@emergency.gov' LIMIT 1;
+    SELECT id INTO resident_uuid FROM auth.users WHERE email = 'resident@example.com' LIMIT 1;
+
+    -- Create dispatcher profile
+    IF dispatcher_uuid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM public.user_profiles WHERE id = dispatcher_uuid) THEN
+        INSERT INTO public.user_profiles (id, email, full_name, role, status, department_id)
+        VALUES (dispatcher_uuid, 'dispatcher@emergency.gov', 'Test Dispatcher', 'dispatcher', 'active', fire_dept_id);
+        RAISE NOTICE 'Dispatcher profile created';
+    END IF;
+
+    -- Create responder profile
+    IF responder_uuid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM public.user_profiles WHERE id = responder_uuid) THEN
+        INSERT INTO public.user_profiles (id, email, full_name, role, status, department_id)
+        VALUES (responder_uuid, 'responder@emergency.gov', 'Test Responder', 'responder', 'active', fire_dept_id);
+        RAISE NOTICE 'Responder profile created';
+    END IF;
+
+    -- Create resident profile
+    IF resident_uuid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM public.user_profiles WHERE id = resident_uuid) THEN
+        INSERT INTO public.user_profiles (id, email, full_name, role, status, department_id)
+        VALUES (resident_uuid, 'resident@example.com', 'Test Resident', 'resident', 'active', NULL);
+        RAISE NOTICE 'Resident profile created';
+    END IF;
+
+    RAISE NOTICE 'Test users setup complete. Create users in Supabase Dashboard with these emails:';
+    RAISE NOTICE '- dispatcher@emergency.gov (password: dispatcher123)';
+    RAISE NOTICE '- responder@emergency.gov (password: responder123)';
+    RAISE NOTICE '- resident@example.com (password: resident123)';
+END $$;
+
+-- Create sample emergency reports for testing
+DO $$
+DECLARE
+    reporter_id UUID;
+BEGIN
+    -- Get resident user ID as reporter
+    SELECT id INTO reporter_id FROM public.user_profiles WHERE email = 'resident@example.com' LIMIT 1;
+    
+    IF reporter_id IS NULL THEN
+        RAISE NOTICE 'Resident user not found. Skipping sample reports creation.';
+        RETURN;
+    END IF;
+
+    -- Insert sample emergency reports
+    INSERT INTO public.emergency_reports (report_id, incident_type, priority, status, location, coordinates, description, reporter_id, reporter_name, reporter_phone, created_at)
+    VALUES 
+        ('RPT-001', 'fire', 'high', 'pending', '123 Main Street, Kalubihan', '{"lat": 14.609, "lng": 121.022}', 'Fire reported in residential building. Smoke visible from second floor.', reporter_id, 'Test Resident', '09948270026', NOW() - INTERVAL '2 hours'),
+        ('RPT-002', 'medical', 'critical', 'pending', '456 Market Ave, Kalubihan', '{"lat": 14.608, "lng": 121.023}', 'Person collapsed. Unconscious. Needs immediate medical attention.', reporter_id, 'Test Resident', '09948270026', NOW() - INTERVAL '1 hour'),
+        ('RPT-003', 'accident', 'medium', 'pending', '789 Oak Street, Kalubihan', '{"lat": 14.610, "lng": 121.024}', 'Car accident at intersection. Two vehicles involved. Minor injuries reported.', reporter_id, 'Test Resident', '09948270026', NOW() - INTERVAL '30 minutes'),
+        ('RPT-004', 'fire', 'low', 'assigned', '321 Pine Road, Kalubihan', '{"lat": 14.607, "lng": 121.021}', 'Small fire in trash bin. Contained but needs extinguishing.', reporter_id, 'Test Resident', '09948270026', NOW() - INTERVAL '4 hours');
+    
+    RAISE NOTICE 'Sample emergency reports created successfully';
+END $$;
