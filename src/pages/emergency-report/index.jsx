@@ -169,7 +169,9 @@ const EmergencyReport = () => {
         reportData = data;
       }
 
+      console.log('Setting report number to:', reportData.id);
       setReportNumber(reportData.id);
+      console.log('Setting isSubmitted to true');
       setIsSubmitted(true);
       
       localStorage.removeItem('emergency-report-draft');
