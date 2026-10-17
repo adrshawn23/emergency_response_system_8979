@@ -138,6 +138,9 @@ const EmergencyReport = () => {
       } else {
         // Supabase mode - match actual database schema from migration
         const reportId = `RPT-${String(Date.now()).slice(-6)}`;
+        console.log('Submitting report with ID:', reportId);
+        console.log('Form data:', formData);
+        
         const { data, error: reportError } = await supabase.from('emergency_reports').insert({
           report_id: reportId,
           incident_type: formData.emergencyType,
@@ -155,11 +158,15 @@ const EmergencyReport = () => {
           decline_reason: null
         }).select().single();
 
-        if (reportError) throw reportError;
+        if (reportError) {
+          console.error('Report submission error:', reportError);
+          throw reportError;
+        }
+        console.log('Report submitted successfully:', data);
         reportData = data;
       }
 
-      setReportNumber(reportData.id);
+      setReportNumber(reportData.report_id);
       setIsSubmitted(true);
       
       localStorage.removeItem('emergency-report-draft');

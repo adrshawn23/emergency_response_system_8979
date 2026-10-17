@@ -52,6 +52,9 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
         .select('*')
         .order('created_at', { ascending: false });
       
+      console.log('Fetched reports:', data);
+      console.log('Fetch error:', error);
+      
       if (data && !error) {
         setReports(data);
       }
