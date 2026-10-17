@@ -67,7 +67,7 @@ const Routes = () => {
               } />
               <Route path="/department-management" element={
                 <ProtectedRoute>
-                  <RoleRoute roles={['admin']}><DepartmentManagement /></RoleRoute>
+                  <RoleRoute roles={['admin']}><Dashboard section="departments" /></RoleRoute>
                 </ProtectedRoute>
               } />
               <Route path="/user-management" element={
