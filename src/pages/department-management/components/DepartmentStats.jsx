@@ -31,7 +31,7 @@ const DepartmentStats = ({ departments = [] }) => {
       icon: 'CheckCircle',
       color: 'text-success',
       bgColor: 'bg-success/10',
-      change: `${Math.round((activeDepartments / totalDepartments) * 100)}% active`,
+      change: totalDepartments > 0 ? `${Math.round((activeDepartments / totalDepartments) * 100)}% active` : '0% active',
       changeType: 'neutral'
     },
     {
@@ -49,7 +49,7 @@ const DepartmentStats = ({ departments = [] }) => {
       icon: 'Shield',
       color: 'text-accent',
       bgColor: 'bg-accent/10',
-      change: `${Math.round((totalActiveResponders / totalMembers) * 100)}% active`,
+      change: totalMembers > 0 ? `${Math.round((totalActiveResponders / totalMembers) * 100)}% active` : '0% active',
       changeType: 'neutral'
     },
     {
