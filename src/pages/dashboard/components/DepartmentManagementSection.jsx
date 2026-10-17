@@ -8,13 +8,6 @@ const DepartmentManagementSection = () => {
   const [loading, setLoading] = useState(true);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-
-  const statusFilterOptions = [
-    { value: 'all', label: 'All Status' },
-    { value: 'active', label: 'Active' },
-    { value: 'inactive', label: 'Inactive' }
-  ];
 
   useEffect(() => {
     const fetchDepartments = async () => {
@@ -29,8 +22,7 @@ const DepartmentManagementSection = () => {
         
         const departmentsWithCounts = (deptData || []).map(dept => ({
           ...dept,
-          totalMembers: dept.user_profiles?.[0]?.count || 0,
-          status: dept.is_active ? 'active' : 'inactive'
+          totalMembers: dept.user_profiles?.[0]?.count || 0
         }));
         setDepartments(departmentsWithCounts);
       } catch (error) {
@@ -52,10 +44,7 @@ const DepartmentManagementSection = () => {
   const filteredDepartments = departments?.filter(dept => {
     const matchesSearch = dept?.name?.toLowerCase()?.includes(searchTerm?.toLowerCase()) ||
                          dept?.description?.toLowerCase()?.includes(searchTerm?.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || 
-                         (statusFilter === 'active' && dept?.is_active) ||
-                         (statusFilter === 'inactive' && !dept?.is_active);
-    return matchesSearch && matchesStatus;
+    return matchesSearch;
   });
 
   const handleCreateDepartment = async (departmentData) => {
@@ -65,8 +54,7 @@ const DepartmentManagementSection = () => {
         .insert({
           name: departmentData.name,
           type: departmentData.type,
-          description: departmentData.description,
-          is_active: true
+          description: departmentData.description
         })
         .select()
         .single();
@@ -142,15 +130,6 @@ const DepartmentManagementSection = () => {
           onChange={(e) => setSearchTerm(e.target.value)}
           className="w-64 rounded-xl border border-slate-200 px-3 py-2 text-sm"
         />
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="w-40 rounded-xl border border-slate-200 px-3 py-2 text-sm"
-        >
-          {statusFilterOptions.map(option => (
-            <option key={option.value} value={option.value}>{option.label}</option>
-          ))}
-        </select>
       </div>
 
       {/* Department List */}
@@ -159,11 +138,11 @@ const DepartmentManagementSection = () => {
           <Icon name="Building" size={48} className="text-slate-400 mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-slate-700 mb-2">No departments found</h3>
           <p className="text-sm text-slate-500 mb-4">
-            {searchTerm || statusFilter !== 'all' 
-              ? 'Try adjusting your search or filter criteria' 
+            {searchTerm 
+              ? 'Try adjusting your search criteria' 
               : 'Get started by creating your first department'}
           </p>
-          {!searchTerm && statusFilter === 'all' && (
+          {!searchTerm && (
             <button
               onClick={() => setIsCreateModalOpen(true)}
               className="rounded-xl bg-blue-700 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800"
@@ -183,11 +162,6 @@ const DepartmentManagementSection = () => {
                 <div className="flex-1">
                   <div className="flex items-center gap-3">
                     <h4 className="font-bold text-slate-900">{department?.name}</h4>
-                    <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${
-                      department?.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'
-                    }`}>
-                      {department?.is_active ? 'Active' : 'Inactive'}
-                    </span>
                     <span className="inline-flex rounded-full px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 capitalize">
                       {department?.type}
                     </span>
