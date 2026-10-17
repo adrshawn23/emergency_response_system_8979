@@ -54,6 +54,9 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
       
       console.log('Fetched reports:', data);
       console.log('Fetch error:', error);
+      if (data && data.length > 0) {
+        console.log('First report structure:', JSON.stringify(data[0], null, 2));
+      }
       
       if (data && !error) {
         setReports(data);

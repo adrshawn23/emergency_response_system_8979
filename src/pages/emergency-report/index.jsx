@@ -100,11 +100,15 @@ const EmergencyReport = () => {
   };
 
   const handleSubmit = async (e) => {
+    console.log('handleSubmit called');
     e?.preventDefault();
     
+    console.log('Validating form...');
     if (!validateForm()) {
+      console.log('Form validation failed:', errors);
       return;
     }
+    console.log('Form validation passed');
 
     setIsSubmitting(true);
     setSubmissionError(null);
