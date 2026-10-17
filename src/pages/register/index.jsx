@@ -346,11 +346,11 @@ const Register = () => {
           </div>
         </div>
       </div>
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        <div className="flex flex-col lg:flex-row gap-8">
           {/* Progress Sidebar */}
-          <div className="lg:col-span-1">
-            <div className="sticky top-8 space-y-6">
+          <div className="lg:w-64 lg:shrink-0">
+            <div className="space-y-6">
               {/* Progress Steps */}
               <div className="bg-card rounded-lg border border-border p-4">
                 <h3 className="text-sm font-semibold text-foreground mb-4">Registration Progress</h3>
@@ -390,7 +390,7 @@ const Register = () => {
           </div>
 
           {/* Main Form */}
-          <div className="lg:col-span-3">
+          <div className="flex-1 min-w-0">
             <form onSubmit={handleSubmit} className="space-y-8">
               {/* Step Header */}
               <div className="bg-card rounded-lg border border-border p-6">
