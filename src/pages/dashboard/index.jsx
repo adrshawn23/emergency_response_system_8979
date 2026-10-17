@@ -143,23 +143,22 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
     event.preventDefault();
     if (!draft.location.trim() || !draft.description.trim()) return;
     
-    // Insert into Supabase - match actual database schema from migration
-    const reportId = `RPT-${String(Date.now()).slice(-6)}`;
+    // Insert into Supabase - match actual database schema (old schema with attachments)
     const { data, error } = await supabase.from('emergency_reports').insert({
-      report_id: reportId,
-      incident_type: draft.type,
-      priority: draft.priority,
-      status: 'pending',
-      location: draft.location,
-      coordinates: draft.latitude && draft.longitude ? { lat: draft.latitude, lng: draft.longitude } : null,
-      description: draft.description,
+      incident_id: null,
       reporter_id: profile?.id,
-      reporter_name: profile?.full_name || 'Command user',
-      reporter_phone: draft.callback,
-      assigned_to: null,
-      assigned_department_id: null,
-      images: [],
-      decline_reason: null
+      report_type: draft.type,
+      content: draft.description,
+      attachments: {
+        status: 'pending',
+        latitude: draft.latitude,
+        longitude: draft.longitude,
+        location: draft.location,
+        priority: draft.priority,
+        contact_name: profile?.full_name || 'Command user',
+        contact_phone: draft.callback,
+        service_area_status: draft.serviceAreaStatus
+      }
     }).select().single();
 
     if (!error && data) {
@@ -177,13 +176,13 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
         </div>
         <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div className="grid grid-cols-[minmax(0,1.2fr)_minmax(0,1.3fr)_minmax(110px,.7fr)_minmax(170px,.8fr)] gap-4 border-b border-slate-100 bg-slate-50 px-5 py-3 text-xs font-bold uppercase tracking-wider text-slate-400"><span>Incident</span><span>Location</span><span>Priority</span><span>Status / action</span></div>
-          {visibleReports.map(report => <div key={report.report_id} className="grid grid-cols-[minmax(0,1.2fr)_minmax(0,1.3fr)_minmax(110px,.7fr)_minmax(170px,.8fr)] items-center gap-4 border-b border-slate-100 px-5 py-4 last:border-0">
-            <div className="min-w-0"><p className="font-semibold capitalize">{report.incident_type} <span className="font-mono text-xs text-slate-400">{report.report_id}</span></p><p className="mt-1 truncate text-xs text-slate-500">{report.description}</p></div>
-            <p className="truncate text-sm text-slate-600">{report.location}</p>
-            <span className={`w-fit rounded-full px-2 py-1 text-[10px] font-bold uppercase ${priorityStyles[report.priority]}`}>{report.priority}</span>
+          {visibleReports.map(report => <div key={report.id} className="grid grid-cols-[minmax(0,1.2fr)_minmax(0,1.3fr)_minmax(110px,.7fr)_minmax(170px,.8fr)] items-center gap-4 border-b border-slate-100 px-5 py-4 last:border-0">
+            <div className="min-w-0"><p className="font-semibold capitalize">{report.report_type || report.incident_type} <span className="font-mono text-xs text-slate-400">{report.report_id || report.id?.slice(0, 8)}</span></p><p className="mt-1 truncate text-xs text-slate-500">{report.content || report.description}</p></div>
+            <p className="truncate text-sm text-slate-600">{report.attachments?.location || report.location}</p>
+            <span className={`w-fit rounded-full px-2 py-1 text-[10px] font-bold uppercase ${priorityStyles[report.attachments?.priority || report.priority]}`}>{report.attachments?.priority || report.priority}</span>
             <div className="flex min-w-0 items-center gap-2">
-              <span className={`inline-flex h-8 min-w-[84px] items-center justify-center rounded-full px-2 text-xs font-medium capitalize ${statusStyles[report.status] || 'bg-slate-100 text-slate-700'}`}>{formatStatus(report.status)}</span>
-              {profile?.role === 'dispatcher' && report.status !== 'resolved' && <button onClick={() => setReportStatus(report.report_id, report.status === 'pending' ? 'assigned' : 'resolved')} className="inline-flex h-8 min-w-[72px] items-center justify-center rounded-lg border border-blue-200 bg-blue-50 px-3 text-xs font-bold text-blue-700 transition hover:border-blue-300 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">{report.status === 'pending' ? 'Assign' : 'Resolve'}</button>}
+              <span className={`inline-flex h-8 min-w-[84px] items-center justify-center rounded-full px-2 text-xs font-medium capitalize ${statusStyles[report.attachments?.status || report.status] || 'bg-slate-100 text-slate-700'}`}>{formatStatus(report.attachments?.status || report.status)}</span>
+              {profile?.role === 'dispatcher' && (report.attachments?.status || report.status) !== 'resolved' && <button onClick={() => setReportStatus(report.report_id || report.id, (report.attachments?.status || report.status) === 'pending' ? 'assigned' : 'resolved')} className="inline-flex h-8 min-w-[72px] items-center justify-center rounded-lg border border-blue-200 bg-blue-50 px-3 text-xs font-bold text-blue-700 transition hover:border-blue-300 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">{(report.attachments?.status || report.status) === 'pending' ? 'Assign' : 'Resolve'}</button>}
             </div>
           </div>)}
         </div>

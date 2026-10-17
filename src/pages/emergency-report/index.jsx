@@ -140,26 +140,25 @@ const EmergencyReport = () => {
         mockEmergencyReports.unshift(newReport);
         reportData = newReport;
       } else {
-        // Supabase mode - match actual database schema from migration
-        const reportId = `RPT-${String(Date.now()).slice(-6)}`;
-        console.log('Submitting report with ID:', reportId);
+        // Supabase mode - match actual database schema (old schema with attachments)
+        console.log('Submitting report with actual database schema');
         console.log('Form data:', formData);
         
         const { data, error: reportError } = await supabase.from('emergency_reports').insert({
-          report_id: reportId,
-          incident_type: formData.emergencyType,
-          priority: formData.priority,
-          status: 'pending',
-          location: formData.location,
-          coordinates: formData.locationMetadata?.coordinates ? { lat: formData.locationMetadata.coordinates[0], lng: formData.locationMetadata.coordinates[1] } : null,
-          description: formData.description,
+          incident_id: null,
           reporter_id: user.id,
-          reporter_name: formData.contactName,
-          reporter_phone: formData.contactPhone,
-          assigned_to: null,
-          assigned_department_id: null,
-          images: formData.images || [],
-          decline_reason: null
+          report_type: formData.emergencyType,
+          content: formData.description,
+          attachments: {
+            status: 'pending',
+            latitude: formData.locationMetadata?.coordinates?.[0] || null,
+            longitude: formData.locationMetadata?.coordinates?.[1] || null,
+            location: formData.location,
+            priority: formData.priority,
+            contact_name: formData.contactName,
+            contact_phone: formData.contactPhone,
+            service_area_status: formData.locationMetadata?.serviceArea || 'manual'
+          }
         }).select().single();
 
         if (reportError) {
