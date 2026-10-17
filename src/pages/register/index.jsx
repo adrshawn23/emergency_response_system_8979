@@ -347,51 +347,52 @@ const Register = () => {
         </div>
       </div>
       <div className="w-full px-4 py-8">
-        <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
-          {/* Progress Sidebar - Hidden on mobile, shown on lg screens */}
-          <div className="hidden lg:block lg:w-72 lg:shrink-0">
-            <div className="space-y-6">
-              {/* Progress Steps */}
-              <div className="bg-card rounded-lg border border-border p-4">
-                <h3 className="text-sm font-semibold text-foreground mb-4">Registration Progress</h3>
-                <div className="space-y-3">
-                  {Array.from({ length: totalSteps }, (_, index) => {
-                    const step = index + 1;
-                    const isActive = step === currentStep;
-                    const isCompleted = step < currentStep;
-                    
-                    return (
-                      <div key={step} className="flex items-center space-x-3">
-                        <div className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium ${
-                          isCompleted 
-                            ? 'bg-success text-success-foreground' 
-                            : isActive 
-                              ? 'bg-primary text-primary-foreground' 
-                              : 'bg-muted text-muted-foreground'
-                        }`}>
-                          {isCompleted ? <Icon name="Check" size={16} /> : step}
-                        </div>
-                        <div className="flex-1">
-                          <p className={`text-sm font-medium ${
-                            isActive ? 'text-foreground' : 'text-muted-foreground'
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
+            {/* Progress Sidebar - Hidden on mobile, shown on lg screens */}
+            <aside className="hidden lg:block lg:w-72 lg:shrink-0">
+              <div className="sticky top-8 space-y-6">
+                {/* Progress Steps */}
+                <div className="bg-card rounded-lg border border-border p-4">
+                  <h3 className="text-sm font-semibold text-foreground mb-4">Registration Progress</h3>
+                  <div className="space-y-3">
+                    {Array.from({ length: totalSteps }, (_, index) => {
+                      const step = index + 1;
+                      const isActive = step === currentStep;
+                      const isCompleted = step < currentStep;
+                      
+                      return (
+                        <div key={step} className="flex items-center space-x-3">
+                          <div className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium ${
+                            isCompleted 
+                              ? 'bg-success text-success-foreground' 
+                              : isActive 
+                                ? 'bg-primary text-primary-foreground' 
+                                : 'bg-muted text-muted-foreground'
                           }`}>
-                            {getStepTitle(step)}
-                          </p>
+                            {isCompleted ? <Icon name="Check" size={16} /> : step}
+                          </div>
+                          <div className="flex-1">
+                            <p className={`text-sm font-medium ${
+                              isActive ? 'text-foreground' : 'text-muted-foreground'
+                            }`}>
+                              {getStepTitle(step)}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
+
+                {/* Trust Indicators */}
+                <TrustIndicators />
               </div>
+            </aside>
 
-              {/* Trust Indicators */}
-              <TrustIndicators />
-            </div>
-          </div>
-
-          {/* Main Form */}
-          <div className="flex-1 min-w-0 w-full">
-            <form onSubmit={handleSubmit} className="space-y-8">
+            {/* Main Form */}
+            <main className="flex-1 min-w-0 w-full">
+              <form onSubmit={handleSubmit} className="space-y-8">
               {/* Step Header */}
               <div className="bg-card rounded-lg border border-border p-6">
                 <div className="flex items-center justify-between mb-4">
@@ -478,7 +479,8 @@ const Register = () => {
                   </div>
                 </div>
               )}
-            </form>
+              </form>
+            </main>
           </div>
         </div>
       </div>
