@@ -53,7 +53,6 @@ const DepartmentManagementSection = () => {
         .from('departments')
         .insert({
           name: departmentData.name,
-          type: departmentData.type,
           description: departmentData.description
         })
         .select()
@@ -162,9 +161,6 @@ const DepartmentManagementSection = () => {
                 <div className="flex-1">
                   <div className="flex items-center gap-3">
                     <h4 className="font-bold text-slate-900">{department?.name}</h4>
-                    <span className="inline-flex rounded-full px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 capitalize">
-                      {department?.type}
-                    </span>
                   </div>
                   <p className="mt-2 text-sm text-slate-600">{department?.description}</p>
                   <div className="mt-3 flex items-center gap-4 text-xs text-slate-500">

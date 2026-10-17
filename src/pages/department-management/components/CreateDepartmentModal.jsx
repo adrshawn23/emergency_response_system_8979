@@ -7,7 +7,6 @@ import Select from '../../../components/ui/Select';
 const CreateDepartmentModal = ({ isOpen, onClose, onCreateDepartment }) => {
   const [formData, setFormData] = useState({
     name: '',
-    type: 'fire',
     description: ''
   });
   const [errors, setErrors] = useState({});
@@ -54,7 +53,6 @@ const CreateDepartmentModal = ({ isOpen, onClose, onCreateDepartment }) => {
     try {
       const departmentData = {
         name: formData.name,
-        type: formData.type,
         description: formData.description
       };
 
@@ -63,7 +61,6 @@ const CreateDepartmentModal = ({ isOpen, onClose, onCreateDepartment }) => {
       // Reset form
       setFormData({
         name: '',
-        type: 'fire',
         description: ''
       });
       
@@ -78,7 +75,6 @@ const CreateDepartmentModal = ({ isOpen, onClose, onCreateDepartment }) => {
   const handleClose = () => {
     setFormData({
       name: '',
-      type: 'fire',
       description: ''
     });
     setErrors({});
@@ -126,14 +122,6 @@ const CreateDepartmentModal = ({ isOpen, onClose, onCreateDepartment }) => {
             onChange={(e) => handleInputChange('name', e?.target?.value)}
             error={errors?.name}
             required
-            disabled={isSubmitting}
-          />
-
-          <Select
-            label="Department Type"
-            options={typeOptions}
-            value={formData?.type}
-            onChange={(value) => handleInputChange('type', value)}
             disabled={isSubmitting}
           />
 
