@@ -41,6 +41,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
   const [draft, setDraft] = useState({ type: 'fire', priority: 'high', location: '', description: '', callback: '', latitude: null, longitude: null, serviceAreaStatus: 'manual' });
   const [gpsStatus, setGpsStatus] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [submittedReportId, setSubmittedReportId] = useState(null);
   const [loading, setLoading] = useState(false);
 
   // Fetch reports from Supabase
@@ -208,7 +209,6 @@ export default function Dashboard({ section = 'command' }) {
   const [activeSection, setActiveSection] = useState(section);
   const [currentDate, setCurrentDate] = useState('');
   const [showNotifications, setShowNotifications] = useState(false);
-  const [submittedReportId, setSubmittedReportId] = useState(null);
 
   // Set current date and greeting
   useEffect(() => {
