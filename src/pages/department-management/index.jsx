@@ -64,18 +64,25 @@ const DepartmentManagement = () => {
           const activeUsers = mockUsers.filter(u => u.is_active);
           setAvailableUsers(activeUsers);
         } else {
-          // Use Supabase
+          // Use Supabase - fetch departments with member counts
           const { data: deptData, error: deptError } = await supabase
             .from('departments')
-            .select('*')
+            .select('*, user_profiles(count)')
             .order('created_at', { ascending: false });
           
           if (deptError) throw deptError;
-          setDepartments(deptData || []);
+          
+          // Transform data to include member counts
+          const departmentsWithCounts = (deptData || []).map(dept => ({
+            ...dept,
+            totalMembers: dept.user_profiles?.[0]?.count || 0,
+            status: dept.is_active ? 'active' : 'inactive'
+          }));
+          setDepartments(departmentsWithCounts);
 
           const { data: userData, error: userError } = await supabase
             .from('user_profiles')
-            .select('*, departments(*)')
+            .select('*')
             .eq('is_active', true);
           
           if (userError) throw userError;
@@ -94,7 +101,9 @@ const DepartmentManagement = () => {
   const filteredDepartments = departments?.filter(dept => {
     const matchesSearch = dept?.name?.toLowerCase()?.includes(searchTerm?.toLowerCase()) ||
                          dept?.description?.toLowerCase()?.includes(searchTerm?.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || dept?.status === statusFilter;
+    const matchesStatus = statusFilter === 'all' || 
+                         (statusFilter === 'active' && dept?.is_active) ||
+                         (statusFilter === 'inactive' && !dept?.is_active);
     return matchesSearch && matchesStatus;
   });
 
@@ -107,32 +116,60 @@ const DepartmentManagement = () => {
     try {
       const { data, error } = await supabase
         .from('departments')
-        .insert(departmentData)
+        .insert({
+          name: departmentData.name,
+          type: departmentData.type,
+          description: departmentData.description,
+          contact_email: departmentData.contact_email,
+          contact_phone: departmentData.contact_phone,
+          address: departmentData.address,
+          is_active: true
+        })
         .select()
         .single();
       
       if (error) throw error;
-      setDepartments(prev => [...prev, data]);
+      const newDept = {
+        ...data,
+        totalMembers: 0,
+        status: 'active'
+      };
+      setDepartments(prev => [...prev, newDept]);
     } catch (error) {
       console.error('Error creating department:', error);
+      throw error;
     }
   };
 
   const handleEditDepartment = async (departmentId, updates) => {
     try {
+      const updateData = {};
+      if (updates.name !== undefined) updateData.name = updates.name;
+      if (updates.type !== undefined) updateData.type = updates.type;
+      if (updates.description !== undefined) updateData.description = updates.description;
+      if (updates.contact_email !== undefined) updateData.contact_email = updates.contact_email;
+      if (updates.contact_phone !== undefined) updateData.contact_phone = updates.contact_phone;
+      if (updates.address !== undefined) updateData.address = updates.address;
+      if (updates.is_active !== undefined) updateData.is_active = updates.is_active;
+
       const { error } = await supabase
         .from('departments')
-        .update(updates)
+        .update(updateData)
         .eq('id', departmentId);
       
       if (error) throw error;
       setDepartments(prev => prev?.map(dept => 
         dept?.id === departmentId 
-          ? { ...dept, ...updates }
+          ? { 
+              ...dept, 
+              ...updateData,
+              status: updateData.is_active !== undefined ? (updateData.is_active ? 'active' : 'inactive') : dept.status
+            }
           : dept
       ));
     } catch (error) {
       console.error('Error updating department:', error);
+      throw error;
     }
   };
 
@@ -149,6 +186,7 @@ const DepartmentManagement = () => {
         setSelectedDepartments(prev => prev?.filter(dept => dept?.id !== departmentId));
       } catch (error) {
         console.error('Error deleting department:', error);
+        throw error;
       }
     }
   };
@@ -159,38 +197,64 @@ const DepartmentManagement = () => {
     setIsAssignmentPanelOpen(true);
   };
 
-  const handleAssignUsers = (departmentId, users) => {
-    setDepartments(prev => prev?.map(dept => {
-      if (dept?.id === departmentId) {
-        const newMembers = users?.filter(user => 
-          !dept?.members?.some(member => member?.id === user?.id)
-        );
-        return {
-          ...dept,
-          members: [...dept?.members, ...newMembers?.map(user => ({ ...user, isActive: true }))],
-          totalMembers: dept?.totalMembers + newMembers?.length,
-          activeResponders: dept?.activeResponders + newMembers?.filter(u => u?.role === 'responder')?.length,
-          lastUpdated: 'Just now'
-        };
+  const handleAssignUsers = async (departmentId, users) => {
+    try {
+      for (const user of users) {
+        const { error } = await supabase
+          .from('user_profiles')
+          .update({ department_id: departmentId })
+          .eq('id', user.id);
+        
+        if (error) throw error;
       }
-      return dept;
-    }));
+      
+      // Refresh departments to get updated member counts
+      const { data: deptData, error: deptError } = await supabase
+        .from('departments')
+        .select('*, user_profiles(count)')
+        .order('created_at', { ascending: false });
+      
+      if (deptError) throw deptError;
+      
+      const departmentsWithCounts = (deptData || []).map(dept => ({
+        ...dept,
+        totalMembers: dept.user_profiles?.[0]?.count || 0,
+        status: dept.is_active ? 'active' : 'inactive'
+      }));
+      setDepartments(departmentsWithCounts);
+    } catch (error) {
+      console.error('Error assigning users:', error);
+      throw error;
+    }
   };
 
-  const handleRemoveUser = (departmentId, userId) => {
-    setDepartments(prev => prev?.map(dept => {
-      if (dept?.id === departmentId) {
-        const removedUser = dept?.members?.find(m => m?.id === userId);
-        return {
-          ...dept,
-          members: dept?.members?.filter(m => m?.id !== userId),
-          totalMembers: dept?.totalMembers - 1,
-          activeResponders: removedUser?.role === 'responder' ? dept?.activeResponders - 1 : dept?.activeResponders,
-          lastUpdated: 'Just now'
-        };
-      }
-      return dept;
-    }));
+  const handleRemoveUser = async (departmentId, userId) => {
+    try {
+      const { error } = await supabase
+        .from('user_profiles')
+        .update({ department_id: null })
+        .eq('id', userId);
+      
+      if (error) throw error;
+      
+      // Refresh departments to get updated member counts
+      const { data: deptData, error: deptError } = await supabase
+        .from('departments')
+        .select('*, user_profiles(count)')
+        .order('created_at', { ascending: false });
+      
+      if (deptError) throw deptError;
+      
+      const departmentsWithCounts = (deptData || []).map(dept => ({
+        ...dept,
+        totalMembers: dept.user_profiles?.[0]?.count || 0,
+        status: dept.is_active ? 'active' : 'inactive'
+      }));
+      setDepartments(departmentsWithCounts);
+    } catch (error) {
+      console.error('Error removing user:', error);
+      throw error;
+    }
   };
 
   const handleDepartmentSelect = (department) => {

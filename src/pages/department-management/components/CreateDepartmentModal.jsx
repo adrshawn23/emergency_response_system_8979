@@ -7,37 +7,20 @@ import Select from '../../../components/ui/Select';
 const CreateDepartmentModal = ({ isOpen, onClose, onCreateDepartment }) => {
   const [formData, setFormData] = useState({
     name: '',
+    type: 'fire',
     description: '',
-    icon: 'Building',
-    status: 'active',
-    parentDepartment: '',
-    capacity: ''
+    contact_email: '',
+    contact_phone: '',
+    address: ''
   });
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const iconOptions = [
-    { value: 'Building', label: 'Building' },
-    { value: 'Shield', label: 'Shield' },
-    { value: 'Truck', label: 'Truck' },
-    { value: 'Heart', label: 'Heart' },
-    { value: 'Zap', label: 'Zap' },
-    { value: 'Users', label: 'Users' },
-    { value: 'Settings', label: 'Settings' },
-    { value: 'AlertTriangle', label: 'Alert Triangle' }
-  ];
-
-  const statusOptions = [
-    { value: 'active', label: 'Active' },
-    { value: 'inactive', label: 'Inactive' },
-    { value: 'maintenance', label: 'Maintenance' }
-  ];
-
-  const parentDepartmentOptions = [
-    { value: '', label: 'None (Root Department)' },
-    { value: 'emergency-services', label: 'Emergency Services' },
-    { value: 'public-safety', label: 'Public Safety' },
-    { value: 'administration', label: 'Administration' }
+  const typeOptions = [
+    { value: 'fire', label: 'Fire Department' },
+    { value: 'medical', label: 'Medical/EMS' },
+    { value: 'police', label: 'Police' },
+    { value: 'emergency_management', label: 'Emergency Management' }
   ];
 
   const handleInputChange = (field, value) => {
@@ -60,8 +43,8 @@ const CreateDepartmentModal = ({ isOpen, onClose, onCreateDepartment }) => {
       newErrors.description = 'Description is required';
     }
 
-    if (formData?.capacity && (isNaN(formData?.capacity) || parseInt(formData?.capacity) < 1)) {
-      newErrors.capacity = 'Capacity must be a positive number';
+    if (formData?.contact_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData?.contact_email)) {
+      newErrors.contact_email = 'Please enter a valid email address';
     }
 
     setErrors(newErrors);
@@ -77,14 +60,12 @@ const CreateDepartmentModal = ({ isOpen, onClose, onCreateDepartment }) => {
     
     try {
       const departmentData = {
-        ...formData,
-        capacity: formData?.capacity ? parseInt(formData?.capacity) : null,
-        createdAt: new Date()?.toISOString(),
-        totalMembers: 0,
-        activeResponders: 0,
-        avgResponseTime: '0m',
-        incidentsHandled: 0,
-        recentActivity: []
+        name: formData.name,
+        type: formData.type,
+        description: formData.description,
+        contact_email: formData.contact_email || null,
+        contact_phone: formData.contact_phone || null,
+        address: formData.address || null
       };
 
       await onCreateDepartment(departmentData);
@@ -92,11 +73,11 @@ const CreateDepartmentModal = ({ isOpen, onClose, onCreateDepartment }) => {
       // Reset form
       setFormData({
         name: '',
+        type: 'fire',
         description: '',
-        icon: 'Building',
-        status: 'active',
-        parentDepartment: '',
-        capacity: ''
+        contact_email: '',
+        contact_phone: '',
+        address: ''
       });
       
       onClose();
@@ -110,11 +91,11 @@ const CreateDepartmentModal = ({ isOpen, onClose, onCreateDepartment }) => {
   const handleClose = () => {
     setFormData({
       name: '',
+      type: 'fire',
       description: '',
-      icon: 'Building',
-      status: 'active',
-      parentDepartment: '',
-      capacity: ''
+      contact_email: '',
+      contact_phone: '',
+      address: ''
     });
     setErrors({});
     onClose();
@@ -164,6 +145,14 @@ const CreateDepartmentModal = ({ isOpen, onClose, onCreateDepartment }) => {
             disabled={isSubmitting}
           />
 
+          <Select
+            label="Department Type"
+            options={typeOptions}
+            value={formData?.type}
+            onChange={(value) => handleInputChange('type', value)}
+            disabled={isSubmitting}
+          />
+
           <Input
             label="Description"
             type="text"
@@ -175,59 +164,33 @@ const CreateDepartmentModal = ({ isOpen, onClose, onCreateDepartment }) => {
             disabled={isSubmitting}
           />
 
-          <Select
-            label="Department Icon"
-            options={iconOptions}
-            value={formData?.icon}
-            onChange={(value) => handleInputChange('icon', value)}
-            disabled={isSubmitting}
-          />
-
-          <Select
-            label="Status"
-            options={statusOptions}
-            value={formData?.status}
-            onChange={(value) => handleInputChange('status', value)}
-            disabled={isSubmitting}
-          />
-
-          <Select
-            label="Parent Department"
-            description="Optional: Select a parent department for hierarchy"
-            options={parentDepartmentOptions}
-            value={formData?.parentDepartment}
-            onChange={(value) => handleInputChange('parentDepartment', value)}
+          <Input
+            label="Contact Email"
+            type="email"
+            placeholder="department@example.com"
+            value={formData?.contact_email}
+            onChange={(e) => handleInputChange('contact_email', e?.target?.value)}
+            error={errors?.contact_email}
             disabled={isSubmitting}
           />
 
           <Input
-            label="Capacity"
-            type="number"
-            placeholder="Maximum number of members (optional)"
-            value={formData?.capacity}
-            onChange={(e) => handleInputChange('capacity', e?.target?.value)}
-            error={errors?.capacity}
+            label="Contact Phone"
+            type="tel"
+            placeholder="09XXXXXXXXX"
+            value={formData?.contact_phone}
+            onChange={(e) => handleInputChange('contact_phone', e?.target?.value)}
             disabled={isSubmitting}
-            min="1"
           />
 
-          {/* Preview */}
-          <div className="p-4 bg-muted/50 rounded-lg border border-border">
-            <h4 className="text-sm font-medium text-foreground mb-2">Preview</h4>
-            <div className="flex items-center space-x-3">
-              <div className="flex items-center justify-center w-10 h-10 bg-primary/10 rounded-lg">
-                <Icon name={formData?.icon} size={20} className="text-primary" />
-              </div>
-              <div>
-                <p className="font-medium text-foreground">
-                  {formData?.name || 'Department Name'}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {formData?.description || 'Department description'}
-                </p>
-              </div>
-            </div>
-          </div>
+          <Input
+            label="Address"
+            type="text"
+            placeholder="Department address"
+            value={formData?.address}
+            onChange={(e) => handleInputChange('address', e?.target?.value)}
+            disabled={isSubmitting}
+          />
 
           {/* Actions */}
           <div className="flex items-center justify-end space-x-3 pt-4">
