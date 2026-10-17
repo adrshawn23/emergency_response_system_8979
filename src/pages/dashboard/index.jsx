@@ -137,6 +137,13 @@ export default function Dashboard({ section = 'command' }) {
   const [sent, setSent] = useState(false);
   const [activeSection, setActiveSection] = useState(section);
 
+  // React Router can reuse this component while changing its section prop.
+  // Keep the command-center state in sync so each protected route shows the
+  // correct role-specific workspace after navigation.
+  useEffect(() => {
+    setActiveSection(section);
+  }, [section]);
+
   // Hooks must run in the same order when switching between command-center
   // sections. Keep this before the section-specific early returns below.
   const openCount = useMemo(() => reports.filter(r => r.status !== 'resolved').length, [reports]);
