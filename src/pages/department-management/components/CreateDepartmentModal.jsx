@@ -8,9 +8,7 @@ const CreateDepartmentModal = ({ isOpen, onClose, onCreateDepartment }) => {
   const [formData, setFormData] = useState({
     name: '',
     type: 'fire',
-    description: '',
-    contact_email: '',
-    contact_phone: ''
+    description: ''
   });
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -42,10 +40,6 @@ const CreateDepartmentModal = ({ isOpen, onClose, onCreateDepartment }) => {
       newErrors.description = 'Description is required';
     }
 
-    if (formData?.contact_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData?.contact_email)) {
-      newErrors.contact_email = 'Please enter a valid email address';
-    }
-
     setErrors(newErrors);
     return Object.keys(newErrors)?.length === 0;
   };
@@ -61,9 +55,7 @@ const CreateDepartmentModal = ({ isOpen, onClose, onCreateDepartment }) => {
       const departmentData = {
         name: formData.name,
         type: formData.type,
-        description: formData.description,
-        contact_email: formData.contact_email || null,
-        contact_phone: formData.contact_phone || null
+        description: formData.description
       };
 
       await onCreateDepartment(departmentData);
@@ -72,9 +64,7 @@ const CreateDepartmentModal = ({ isOpen, onClose, onCreateDepartment }) => {
       setFormData({
         name: '',
         type: 'fire',
-        description: '',
-        contact_email: '',
-        contact_phone: ''
+        description: ''
       });
       
       onClose();
@@ -89,9 +79,7 @@ const CreateDepartmentModal = ({ isOpen, onClose, onCreateDepartment }) => {
     setFormData({
       name: '',
       type: 'fire',
-      description: '',
-      contact_email: '',
-      contact_phone: ''
+      description: ''
     });
     setErrors({});
     onClose();
@@ -157,25 +145,6 @@ const CreateDepartmentModal = ({ isOpen, onClose, onCreateDepartment }) => {
             onChange={(e) => handleInputChange('description', e?.target?.value)}
             error={errors?.description}
             required
-            disabled={isSubmitting}
-          />
-
-          <Input
-            label="Contact Email"
-            type="email"
-            placeholder="department@example.com"
-            value={formData?.contact_email}
-            onChange={(e) => handleInputChange('contact_email', e?.target?.value)}
-            error={errors?.contact_email}
-            disabled={isSubmitting}
-          />
-
-          <Input
-            label="Contact Phone"
-            type="tel"
-            placeholder="09XXXXXXXXX"
-            value={formData?.contact_phone}
-            onChange={(e) => handleInputChange('contact_phone', e?.target?.value)}
             disabled={isSubmitting}
           />
 

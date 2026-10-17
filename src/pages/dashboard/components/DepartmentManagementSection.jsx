@@ -66,8 +66,6 @@ const DepartmentManagementSection = () => {
           name: departmentData.name,
           type: departmentData.type,
           description: departmentData.description,
-          contact_email: departmentData.contact_email || null,
-          contact_phone: departmentData.contact_phone || null,
           is_active: true
         })
         .select()
@@ -197,8 +195,6 @@ const DepartmentManagementSection = () => {
                   <p className="mt-2 text-sm text-slate-600">{department?.description}</p>
                   <div className="mt-3 flex items-center gap-4 text-xs text-slate-500">
                     <span><strong>{department?.totalMembers || 0}</strong> members</span>
-                    {department?.contact_email && <span>{department?.contact_email}</span>}
-                    {department?.contact_phone && <span>{department?.contact_phone}</span>}
                   </div>
                 </div>
                 <button
