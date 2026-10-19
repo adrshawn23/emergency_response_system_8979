@@ -100,6 +100,11 @@
 - Approve (activates account), Reject, Request Clarity actions
 - RLS policies for user and admin access
 
+### 17. Duplicate Name Prevention ✅
+- Registration checks for existing users with same full name
+- Rejects registration if duplicate name found
+- Clear error message for users
+
 ## Database Migrations Applied
 
 1. **20261017040000_fix_departments_rls.sql**
