@@ -277,9 +277,22 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
   };
 
   const handleAssistanceClick = (report) => {
-    setSelectedAssistanceReport(report);
-    setSelectedAssistanceDepts([]);
-    setIsAssistanceModalOpen(true);
+    try {
+      if (!departments || departments.length === 0) {
+        alert('No departments available. Please create departments first.');
+        return;
+      }
+      if (!report) {
+        alert('No incident selected.');
+        return;
+      }
+      setSelectedAssistanceReport(report);
+      setSelectedAssistanceDepts([]);
+      setIsAssistanceModalOpen(true);
+    } catch (error) {
+      console.error('Error opening assistance modal:', error);
+      alert('Failed to open assistance modal. Please try again.');
+    }
   };
 
   const handleReviewClick = (verification) => {
