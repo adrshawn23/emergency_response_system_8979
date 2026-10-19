@@ -1047,6 +1047,39 @@ export default function Dashboard({ section = 'command' }) {
     fetchDepartments();
   }, []);
 
+  // Fetch reports initially and set up real-time subscription
+  useEffect(() => {
+    const fetchReports = async () => {
+      const { data, error } = await supabase
+        .from('emergency_reports')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (data && !error) {
+        setReports(data);
+      }
+    };
+
+    fetchReports();
+
+    const subscription = supabase
+      .channel('emergency_reports_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'emergency_reports' }, (payload) => {
+        if (payload.eventType === 'INSERT') {
+          setReports(prev => [payload.new, ...prev]);
+        } else if (payload.eventType === 'UPDATE') {
+          setReports(prev => prev.map(r => r.id === payload.new.id ? payload.new : r));
+        } else if (payload.eventType === 'DELETE') {
+          setReports(prev => prev.filter(r => r.id !== payload.old.id));
+        }
+      })
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return 'Good morning';
