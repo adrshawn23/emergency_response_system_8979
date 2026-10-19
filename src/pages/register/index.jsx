@@ -200,6 +200,23 @@ const Register = () => {
 
       if (profileError) throw profileError;
 
+      // Create ID verification record
+      if (formData.idDocument) {
+        const { error: verificationError } = await supabase.from('id_verifications').insert({
+          user_id: userId,
+          id_document_url: 'mock_upload_url', // In production, this would be the actual storage URL
+          ocr_data: {
+            extracted_name: `${formData.firstName} ${formData.lastName}`,
+            extracted_dob: formData.dateOfBirth,
+            confidence: 85 // Mock confidence score
+          },
+          ocr_confidence: 85,
+          verification_status: 'pending'
+        });
+
+        if (verificationError) console.error('Failed to create ID verification:', verificationError);
+      }
+
       if (formData.emergencyContacts && formData.emergencyContacts.length > 0) {
         const { error: contactsError } = await supabase.from('emergency_contacts').insert(
           formData.emergencyContacts.map(contact => ({

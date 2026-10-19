@@ -61,6 +61,9 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
   const [imageFiles, setImageFiles] = useState([]);
   const [isNotificationPanelOpen, setIsNotificationPanelOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
+  const [idVerifications, setIdVerifications] = useState([]);
+  const [selectedVerification, setSelectedVerification] = useState(null);
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
 
   const handleImageUpload = (e) => {
     const files = Array.from(e.target.files);
@@ -148,6 +151,22 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
 
     fetchContacts();
   }, [profile?.id]);
+
+  // Fetch ID verifications (admin only)
+  useEffect(() => {
+    const fetchVerifications = async () => {
+      if (profile?.role !== 'admin' || section !== 'residents') return;
+
+      const { data } = await supabase
+        .from('id_verifications')
+        .select('*, user_profiles(full_name, email)')
+        .order('created_at', { ascending: false });
+      
+      if (data) setIdVerifications(data);
+    };
+
+    fetchVerifications();
+  }, [profile?.role, section]);
 
   const links = [
     { key: 'command', label: 'Command center', icon: 'LayoutDashboard', path: '/', roles: ['admin', 'dispatcher'] },
@@ -261,6 +280,86 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
     setSelectedAssistanceReport(report);
     setSelectedAssistanceDepts([]);
     setIsAssistanceModalOpen(true);
+  };
+
+  const handleReviewClick = (verification) => {
+    setSelectedVerification(verification);
+    setIsReviewModalOpen(true);
+  };
+
+  const handleApproveVerification = async () => {
+    if (!selectedVerification) return;
+
+    const { error } = await supabase
+      .from('id_verifications')
+      .update({
+        verification_status: 'approved',
+        reviewed_by: profile?.id,
+        review_notes: 'Approved by administrator'
+      })
+      .eq('id', selectedVerification.id);
+
+    if (!error) {
+      // Activate user account
+      await supabase
+        .from('user_profiles')
+        .update({ is_active: true, account_status: 'active' })
+        .eq('id', selectedVerification.user_id);
+
+      setIdVerifications(prev => prev.map(v => 
+        v.id === selectedVerification.id 
+          ? { ...v, verification_status: 'approved', reviewed_by: profile?.id }
+          : v
+      ));
+      setIsReviewModalOpen(false);
+      setSelectedVerification(null);
+    }
+  };
+
+  const handleRejectVerification = async (reason) => {
+    if (!selectedVerification) return;
+
+    const { error } = await supabase
+      .from('id_verifications')
+      .update({
+        verification_status: 'rejected',
+        reviewed_by: profile?.id,
+        review_notes: reason
+      })
+      .eq('id', selectedVerification.id);
+
+    if (!error) {
+      setIdVerifications(prev => prev.map(v => 
+        v.id === selectedVerification.id 
+          ? { ...v, verification_status: 'rejected', reviewed_by: profile?.id, review_notes: reason }
+          : v
+      ));
+      setIsReviewModalOpen(false);
+      setSelectedVerification(null);
+    }
+  };
+
+  const handleRequestClarity = async () => {
+    if (!selectedVerification) return;
+
+    const { error } = await supabase
+      .from('id_verifications')
+      .update({
+        verification_status: 'needs_clarity',
+        reviewed_by: profile?.id,
+        review_notes: 'Please upload a clearer image of your ID document'
+      })
+      .eq('id', selectedVerification.id);
+
+    if (!error) {
+      setIdVerifications(prev => prev.map(v => 
+        v.id === selectedVerification.id 
+          ? { ...v, verification_status: 'needs_clarity', reviewed_by: profile?.id }
+          : v
+      ));
+      setIsReviewModalOpen(false);
+      setSelectedVerification(null);
+    }
   };
 
   useEffect(() => {
@@ -378,7 +477,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
           )}
         </div>
       </div><div className="space-y-5"><div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><h3 className="font-bold">Report summary</h3><p className="mt-3 text-sm text-slate-600">Your report will be immediately visible to dispatch. Verification happens in parallel, so even unverified reports are triaged for response.</p></div><button type="submit" disabled={loading || submitted} className="w-full rounded-xl bg-red-500 px-4 py-3.5 text-sm font-semibold text-white hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed">{loading ? 'Submitting...' : submitted ? 'Report submitted' : 'Submit report'}</button>{submitted && <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-center"><Icon name="CheckCircle" size={32} className="text-emerald-600 mx-auto mb-2"/><h3 className="font-semibold text-emerald-900">Report submitted</h3><p className="mt-1 text-sm text-emerald-700">Report ID: {submittedReportId?.slice(0, 8)}<br/>Dispatch is reviewing your report now.</p></div>}</div></form>}
-      {section === 'residents' && <div className="mt-7 grid gap-5 lg:grid-cols-2"><div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><div className="flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-xl bg-amber-50 text-amber-700"><Icon name="FileSearch" size={20}/></div><div><h3 className="font-bold">ID verification queue</h3><p className="text-sm text-slate-500">No records awaiting review</p></div></div><p className="mt-5 text-xs leading-5 text-slate-500">OCR is assistive only. Approval, clearer-upload requests, and rejection decisions are made by an authorized administrator.</p></div><div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><h3 className="font-bold">Account access</h3><p className="mt-1 text-sm text-slate-500">Department access cannot be self-granted.</p><div className="mt-5 text-sm text-slate-500">Manage departments via the Department Management page.</div></div><div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><div className="flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-xl bg-blue-50 text-blue-700"><Icon name="ShieldCheck" size={20}/></div><div><h3 className="font-bold">Community verification</h3><p className="text-sm text-slate-500">Duplicate prevention enabled</p></div></div><p className="mt-5 text-sm leading-6 text-slate-500">System automatically detects duplicate reports from the same location within a 5-minute window. Admins can merge or dismiss duplicates manually.</p><button className="mt-5 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold hover:bg-slate-50">View duplicates</button></div></div>}
+      {section === 'residents' && <div className="mt-7 grid gap-5 lg:grid-cols-2"><div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><div className="flex items-center justify-between mb-4"><div className="flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-xl bg-amber-50 text-amber-700"><Icon name="FileSearch" size={20}/></div><div><h3 className="font-bold">ID verification queue</h3><p className="text-sm text-slate-500">{idVerifications.filter(v => v.verification_status === 'pending').length} awaiting review</p></div></div></div><p className="mt-5 text-xs leading-5 text-slate-500">OCR is assistive only. Approval, clearer-upload requests, and rejection decisions are made by an authorized administrator.</p>{idVerifications.length === 0 ? <p className="mt-4 text-sm text-slate-500">No ID verifications to review.</p> : <div className="mt-4 space-y-3 max-h-64 overflow-y-auto">{idVerifications.map(verification => (<div key={verification.id} className="flex items-center justify-between rounded-lg border border-slate-200 p-3 hover:bg-slate-50 cursor-pointer" onClick={() => handleReviewClick(verification)}><div><p className="text-sm font-medium">{verification.user_profiles?.full_name || 'Unknown'}</p><p className="text-xs text-slate-500">{verification.user_profiles?.email}</p><p className="text-[10px] text-slate-400 mt-1">OCR Confidence: {verification.ocr_confidence}%</p></div><span className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase ${verification.verification_status === 'pending' ? 'bg-amber-100 text-amber-700' : verification.verification_status === 'approved' ? 'bg-emerald-100 text-emerald-700' : verification.verification_status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-700'}`}>{verification.verification_status}</span></div>))}</div>}</div><div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><h3 className="font-bold">Account access</h3><p className="mt-1 text-sm text-slate-500">Department access cannot be self-granted.</p><div className="mt-5 text-sm text-slate-500">Manage departments via the Department Management page.</div></div><div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><div className="flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-xl bg-blue-50 text-blue-700"><Icon name="ShieldCheck" size={20}/></div><div><h3 className="font-bold">Community verification</h3><p className="text-sm text-slate-500">Duplicate prevention enabled</p></div></div><p className="mt-5 text-sm leading-6 text-slate-500">System automatically detects duplicate reports from the same location within a 5-minute window. Admins can merge or dismiss duplicates manually.</p><button className="mt-5 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold hover:bg-slate-50">View duplicates</button></div></div>}
       {section === 'departments' && <DepartmentManagementSection />}
       {section === 'settings' && <div className="mt-7 grid gap-5 lg:grid-cols-2"><div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><div className="flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-xl bg-blue-50 text-blue-700"><Icon name="Map" size={20}/></div><div><h3 className="font-bold">Service boundary</h3><p className="text-sm text-slate-500">Kalubihan demo boundary · version 1</p></div></div><p className="mt-5 text-sm leading-6 text-slate-500">Changes are versioned and never rewrite historical incident locations or statuses.</p><button onClick={() => setIsBoundaryModalOpen(true)} className="mt-5 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold hover:bg-slate-50">Configure boundary</button></div><div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><h3 className="font-bold">Delivery providers</h3><p className="mt-2 text-sm text-slate-500">In-app notifications are available in mock mode. SMS, email, push, map GIS, and OCR require provider credentials.</p><button className="mt-5 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold">Provider settings</button></div></div>}
       {section === 'profile' && <div className="mt-7 max-w-2xl rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><div className="flex items-center gap-4"><div className="grid h-14 w-14 place-items-center rounded-full bg-blue-700 text-lg font-bold text-white">{profile?.first_name?.[0] || 'A'}</div><div><h3 className="text-lg font-bold">{profile?.full_name || 'Administrator'}</h3><p className="text-sm capitalize text-slate-500">{profile?.role || 'Administrator'} account</p></div></div><div className="mt-7 grid gap-4 border-t border-slate-100 pt-5 sm:grid-cols-2"><div><p className="text-xs font-bold uppercase tracking-wider text-slate-400">Email</p><p className="mt-1 text-sm">{profile?.email}</p></div><div><p className="text-xs font-bold uppercase tracking-wider text-slate-400">Status</p><p className="mt-1 text-sm text-emerald-700">Active / on duty</p></div></div>
@@ -561,6 +660,76 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
                   className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Request
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* ID Verification Review Modal */}
+      {isReviewModalOpen && selectedVerification && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4">
+          <div className="bg-white border border-slate-200 rounded-lg shadow-lg w-full max-w-2xl">
+            <div className="flex items-center justify-between p-4 border-b border-slate-200">
+              <h3 className="font-bold text-lg">Review ID Verification</h3>
+              <button onClick={() => setIsReviewModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+                <Icon name="X" size={20} />
+              </button>
+            </div>
+            <div className="p-4 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Name</p>
+                  <p className="mt-1 text-sm">{selectedVerification.user_profiles?.full_name}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Email</p>
+                  <p className="mt-1 text-sm">{selectedVerification.user_profiles?.email}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wider text-slate-400">OCR Confidence</p>
+                  <p className="mt-1 text-sm">{selectedVerification.ocr_confidence}%</p>
+                </div>
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Current Status</p>
+                  <p className="mt-1 text-sm capitalize">{selectedVerification.verification_status}</p>
+                </div>
+              </div>
+              
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Extracted Data</p>
+                <div className="mt-2 rounded-lg bg-slate-50 p-3 text-sm">
+                  <p><strong>Name:</strong> {selectedVerification.ocr_data?.extracted_name}</p>
+                  <p><strong>DOB:</strong> {selectedVerification.ocr_data?.extracted_dob}</p>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-400">ID Document</p>
+                <div className="mt-2 rounded-lg bg-slate-100 p-8 text-center text-sm text-slate-500">
+                  ID document preview would appear here
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-4 border-t border-slate-200">
+                <button 
+                  onClick={handleRequestClarity}
+                  className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700 hover:bg-amber-100"
+                >
+                  Request Clarity
+                </button>
+                <button 
+                  onClick={() => handleRejectVerification('ID verification rejected by administrator')}
+                  className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-100"
+                >
+                  Reject
+                </button>
+                <button 
+                  onClick={handleApproveVerification}
+                  className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+                >
+                  Approve & Activate
                 </button>
               </div>
             </div>
