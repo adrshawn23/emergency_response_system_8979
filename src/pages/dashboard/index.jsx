@@ -432,6 +432,18 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
     event.preventDefault();
     if (!draft.location.trim() || !draft.description.trim()) return;
     
+    // Convert image files to base64 for storage
+    const imagePromises = imageFiles.map(file => {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    });
+    
+    const imageDataUrls = await Promise.all(imagePromises);
+    
     // Insert into Supabase - match actual database schema (old schema with attachments)
     const { data, error } = await supabase.from('emergency_reports').insert({
       incident_id: null,
@@ -446,7 +458,8 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
         priority: draft.priority,
         contact_name: profile?.full_name || 'Command user',
         contact_phone: draft.callback,
-        service_area_status: draft.serviceAreaStatus
+        service_area_status: draft.serviceAreaStatus,
+        images: imageDataUrls
       }
     }).select().single();
 
@@ -454,6 +467,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
       setSubmittedReportId(data.id);
       setSubmitted(true);
       setDraft({ type: 'fire', priority: 'high', location: '', description: '', callback: '', latitude: null, longitude: null, serviceAreaStatus: 'manual' });
+      setImageFiles([]);
     }
   };
   return <div className="min-h-screen bg-slate-50 text-slate-900"><div className="flex min-h-screen">
