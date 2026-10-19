@@ -852,12 +852,27 @@ export default function Dashboard({ section = 'command' }) {
   const [activeSection, setActiveSection] = useState(section);
   const [currentDate, setCurrentDate] = useState('');
   const [showNotifications, setShowNotifications] = useState(false);
+  const [departments, setDepartments] = useState([]);
 
   // Set current date and greeting
   useEffect(() => {
     const now = new Date();
     const dateOptions = { weekday: 'long', month: 'long', day: 'numeric' };
     setCurrentDate(now.toLocaleDateString('en-US', dateOptions));
+  }, []);
+
+  // Fetch departments for broadcast modal
+  useEffect(() => {
+    const fetchDepartments = async () => {
+      const { data } = await supabase
+        .from('departments')
+        .select('*')
+        .eq('is_active', true);
+      
+      if (data) setDepartments(data);
+    };
+
+    fetchDepartments();
   }, []);
 
   const getGreeting = () => {
