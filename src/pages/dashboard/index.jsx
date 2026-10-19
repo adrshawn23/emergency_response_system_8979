@@ -65,6 +65,8 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
   const [selectedVerification, setSelectedVerification] = useState(null);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [isReportDetailModalOpen, setIsReportDetailModalOpen] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false);
 
   const handleImageUpload = (e) => {
     const files = Array.from(e.target.files);
@@ -952,7 +954,10 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
                         src={image.url || image}
                         alt={`Evidence ${index + 1}`}
                         className="w-full h-24 object-cover rounded-lg border border-slate-200 cursor-pointer hover:opacity-80 shrink-0"
-                        onClick={() => window.open(image.url || image, '_blank')}
+                        onClick={() => {
+                          setSelectedImage(image.url || image);
+                          setIsImageModalOpen(true);
+                        }}
                       />
                     ))}
                   </div>
@@ -978,6 +983,26 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
                 )}
               </div>
             </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Image Modal */}
+      {isImageModalOpen && selectedImage && (
+        <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[10000] p-4" onClick={() => setIsImageModalOpen(false)}>
+          <div className="relative max-w-5xl max-h-[90vh]">
+            <img
+              src={selectedImage}
+              alt="Full size evidence"
+              className="max-w-full max-h-[90vh] object-contain"
+              onClick={(e) => e.stopPropagation()}
+            />
+            <button
+              onClick={() => setIsImageModalOpen(false)}
+              className="absolute top-4 right-4 rounded-full bg-white/20 hover:bg-white/30 p-2 text-white backdrop-blur-sm"
+            >
+              <Icon name="X" size={24} />
+            </button>
           </div>
         </div>
       )}
