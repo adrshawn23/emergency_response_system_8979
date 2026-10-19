@@ -872,14 +872,14 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
       {/* Report Detail Modal */}
       {isReportDetailModalOpen && selectedReport && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4">
-          <div className="bg-white border border-slate-200 rounded-lg shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-4 border-b border-slate-200 sticky top-0 bg-white">
+          <div className="bg-white border border-slate-200 rounded-lg shadow-lg w-full max-w-2xl max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b border-slate-200 shrink-0">
               <h3 className="font-bold text-lg">Incident Details</h3>
               <button onClick={() => setIsReportDetailModalOpen(false)} className="text-slate-400 hover:text-slate-600">
                 <Icon name="X" size={20} />
               </button>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="p-6 space-y-4 overflow-y-auto flex-1">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-xs font-semibold text-slate-500 uppercase">Incident ID</p>
@@ -895,9 +895,22 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
                 <p className="text-sm mt-1">{selectedReport.content || selectedReport.description}</p>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div>
+                <div className="col-span-2">
                   <p className="text-xs font-semibold text-slate-500 uppercase">Location</p>
-                  <p className="text-sm">{selectedReport.attachments?.location || selectedReport.location}</p>
+                  <p className="text-sm mb-2">{selectedReport.attachments?.location || selectedReport.location}</p>
+                  {selectedReport.attachments?.latitude && selectedReport.attachments?.longitude && (
+                    <div className="rounded-lg overflow-hidden border border-slate-200 h-48">
+                      <iframe
+                        width="100%"
+                        height="100%"
+                        frameBorder="0"
+                        scrolling="no"
+                        marginHeight="0"
+                        marginWidth="0"
+                        src={`https://www.openstreetmap.org/export/embed.html?bbox=${selectedReport.attachments.longitude - 0.01}%2C${selectedReport.attachments.latitude - 0.01}%2C${selectedReport.attachments.longitude + 0.01}%2C${selectedReport.attachments.latitude + 0.01}&layer=mapnik&marker=${selectedReport.attachments.latitude}%2C${selectedReport.attachments.longitude}`}
+                      />
+                    </div>
+                  )}
                 </div>
                 <div>
                   <p className="text-xs font-semibold text-slate-500 uppercase">Priority</p>
@@ -932,13 +945,13 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
               {selectedReport.attachments?.images && selectedReport.attachments.images.length > 0 && (
                 <div>
                   <p className="text-xs font-semibold text-slate-500 uppercase mb-2">Evidence Images</p>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto">
                     {selectedReport.attachments.images.map((image, index) => (
                       <img
                         key={index}
                         src={image.url || image}
                         alt={`Evidence ${index + 1}`}
-                        className="w-full h-24 object-cover rounded-lg border border-slate-200 cursor-pointer hover:opacity-80"
+                        className="w-full h-24 object-cover rounded-lg border border-slate-200 cursor-pointer hover:opacity-80 shrink-0"
                         onClick={() => window.open(image.url || image, '_blank')}
                       />
                     ))}
