@@ -1062,8 +1062,9 @@ export default function Dashboard({ section = 'command' }) {
 
     fetchReports();
 
-    const subscription = supabase
-      .channel('emergency_reports_changes')
+    const channel = supabase.channel('emergency_reports_changes');
+    
+    channel
       .on('postgres_changes', { event: '*', schema: 'public', table: 'emergency_reports' }, (payload) => {
         if (payload.eventType === 'INSERT') {
           setReports(prev => [payload.new, ...prev]);
@@ -1076,7 +1077,7 @@ export default function Dashboard({ section = 'command' }) {
       .subscribe();
 
     return () => {
-      subscription.unsubscribe();
+      supabase.removeChannel(channel);
     };
   }, []);
 
