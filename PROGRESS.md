@@ -27,11 +27,26 @@
 - Member counts update dynamically
 - Assignments persist after page refresh
 
-### 5. Incident Assignment (UI) ✅
+### 5. Incident Assignment ✅
 - Dispatcher can click "Assign" on pending incidents
 - Modal opens with department selection
 - Responder dropdown filtered by selected department
 - Assignment updates incident status to "assigned"
+- Updates `assigned_to` and `assigned_department_id` in database
+
+### 6. Responder Workspace ✅
+- Shows assigned incidents to the logged-in responder
+- Real-time updates when incidents are assigned
+- Acknowledge button changes status to "in-progress"
+- Resolve button changes status to "resolved"
+- Empty state when no assignments
+
+### 7. Emergency Contacts Management ✅
+- Users can add emergency contacts
+- Contact fields: name, relationship, phone number
+- Primary contact flag
+- Delete contacts
+- Contacts displayed in profile section
 
 ## Database Migrations Applied
 
@@ -51,20 +66,15 @@
    - Admin can update all user_profiles
    - Enables user assignment to departments
 
-## In Progress
-
-### Incident Assignment (Backend) 🔄
-- UI is complete
-- Need to test assignment saves to database
-- Need to verify `assigned_to` and `assigned_department_id` columns exist in emergency_reports table
+5. **20261019050000_add_assignment_columns_to_reports.sql**
+   - Added `assigned_to` column to emergency_reports
+   - Added `assigned_department_id` column to emergency_reports
+   - Enables incident assignment to responders
 
 ## Pending Features
 
 ### High Priority
-- Show assigned incidents in responder's workspace
-- Implement responder acknowledgement and progress updates
-- Complete operational workflow (review → assign → acknowledge → progress → resolve)
-- Implement emergency contacts management
+- Test incident assignment saves to database (requires running migration 20261019050000)
 - Implement configurable boundary polygon editing
 - Implement cross-department assistance workflow
 
@@ -80,14 +90,10 @@
 - Fix React key warnings in Dashboard
 - Improve mobile accessibility and account controls
 
-## Known Issues
-
-- The `emergency_reports` table schema in the migration has `assigned_to` and `assigned_department_id` columns, but the actual database may not have these columns yet
-- Need to verify the assignment actually saves to the database
-
 ## Next Steps
 
-1. Test incident assignment as dispatcher
-2. Verify assignment saves to database (may need migration for assigned_to/assigned_department_id)
-3. Show assigned incidents in responder's workspace
-4. Implement responder acknowledgement workflow
+1. Run migration 20261019050000_add_assignment_columns_to_reports.sql
+2. Test incident assignment as dispatcher
+3. Verify assigned incidents appear in responder workspace
+4. Implement configurable boundary polygon editing
+5. Implement cross-department assistance workflow
