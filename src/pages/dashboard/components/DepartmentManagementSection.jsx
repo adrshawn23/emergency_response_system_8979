@@ -118,11 +118,14 @@ const DepartmentManagementSection = () => {
   const handleAssignUsers = async (departmentId, selectedUserIds) => {
     try {
       for (const userId of selectedUserIds) {
-        const { error } = await supabase
+        console.log('Assigning user:', userId, 'to department:', departmentId);
+        const { data, error } = await supabase
           .from('user_profiles')
           .update({ department_id: departmentId })
-          .eq('id', userId);
+          .eq('id', userId)
+          .select();
         
+        console.log('Update result:', data);
         if (error) throw error;
       }
       
