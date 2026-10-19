@@ -143,13 +143,12 @@ const DepartmentManagementSection = () => {
       if (userError) throw userError;
       setUsers(userData || []);
     } catch (error) {
-      console.error('Error assigning users:', error);
-      console.error('Error details:', {
+      console.error('Error assigning users:', JSON.stringify({
         message: error?.message,
         code: error?.code,
         details: error?.details,
         hint: error?.hint
-      });
+      }, null, 2));
       throw error;
     }
   };
@@ -180,13 +179,12 @@ const DepartmentManagementSection = () => {
       if (userError) throw userError;
       setUsers(userData || []);
     } catch (error) {
-      console.error('Error removing user:', error);
-      console.error('Error details:', {
+      console.error('Error removing user:', JSON.stringify({
         message: error?.message,
         code: error?.code,
         details: error?.details,
         hint: error?.hint
-      });
+      }, null, 2));
       throw error;
     }
   };
