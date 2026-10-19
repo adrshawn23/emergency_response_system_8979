@@ -28,8 +28,6 @@ const EmergencyReport = () => {
     location: '',
     priority: '',
     description: '',
-    contactName: '',
-    contactPhone: '',
     images: [],
     locationMetadata: { source: 'manual', serviceArea: 'unverified' }
   });
@@ -85,14 +83,8 @@ const EmergencyReport = () => {
       newErrors.description = 'Description must be at least 10 characters';
     }
 
-    if (!formData?.contactName?.trim()) {
-      newErrors.contactName = 'Contact name is required';
-    }
-
-    if (!formData?.contactPhone?.trim()) {
-      newErrors.contactPhone = 'Contact phone is required';
-    } else if (!/^0\d{10}$/.test(formData?.contactPhone?.trim())) {
-      newErrors.contactPhone = 'Please enter a valid 11-digit phone number starting with 0 (e.g., 09948270026)';
+    if (!formData?.images || formData?.images?.length === 0) {
+      newErrors.images = 'At least one evidence image is required';
     }
 
     setErrors(newErrors);
@@ -125,8 +117,8 @@ const EmergencyReport = () => {
           location: formData.location,
           priority: formData.priority,
           description: formData.description,
-          contact_name: formData.contactName,
-          contact_phone: formData.contactPhone,
+          contact_name: profile?.full_name || 'Command user',
+          contact_phone: profile?.phone_number,
           status: 'pending',
           location_source: formData.locationMetadata?.source,
           location_accuracy: formData.locationMetadata?.accuracy,
@@ -155,8 +147,8 @@ const EmergencyReport = () => {
             longitude: formData.locationMetadata?.coordinates?.[1] || null,
             location: formData.location,
             priority: formData.priority,
-            contact_name: formData.contactName,
-            contact_phone: formData.contactPhone,
+            contact_name: profile?.full_name || 'Command user',
+            contact_phone: profile?.phone_number,
             service_area_status: formData.locationMetadata?.serviceArea || 'manual'
           }
         }).select().single();
@@ -183,8 +175,6 @@ const EmergencyReport = () => {
           location: '',
           priority: '',
           description: '',
-          contactName: '',
-          contactPhone: '',
           images: [],
           locationMetadata: { source: 'manual', serviceArea: 'unverified' }
         });
@@ -306,39 +296,6 @@ const EmergencyReport = () => {
                         </p>
                       </div>
                     </div>
-                  </div>
-                </div>
-
-                <div className="bg-card border border-border rounded-lg p-6">
-                  <div className="flex items-center space-x-2 mb-6">
-                    <Icon name="User" size={20} className="text-primary" />
-                    <h2 className="text-lg font-semibold text-foreground">
-                      Contact Information
-                    </h2>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Input
-                      label="Contact Name"
-                      type="text"
-                      placeholder="Your full name"
-                      value={formData?.contactName}
-                      onChange={(e) => handleInputChange('contactName', e?.target?.value)}
-                      error={errors?.contactName}
-                      required
-                    />
-
-                    <Input
-                      label="Contact Phone"
-                      type="tel"
-                      placeholder="09948270026"
-                      value={formData?.contactPhone}
-                      onChange={(e) => handleInputChange('contactPhone', e?.target?.value)}
-                      error={errors?.contactPhone}
-                      pattern="[0-9]{11}"
-                      maxLength={11}
-                      required
-                    />
                   </div>
                 </div>
 

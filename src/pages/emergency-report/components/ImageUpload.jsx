@@ -71,7 +71,7 @@ const ImageUpload = ({
     <div className="space-y-4">
       <div>
         <label className="block text-sm font-medium text-foreground mb-3">
-          Evidence Photos (Optional)
+          Evidence Photos (Required)
         </label>
         
         {/* Upload Area */}
@@ -90,6 +90,7 @@ const ImageUpload = ({
             type="file"
             multiple
             accept="image/*"
+            required
             onChange={handleFileSelect}
             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
           />
