@@ -49,6 +49,9 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
   const [responders, setResponders] = useState([]);
   const [selectedDepartment, setSelectedDepartment] = useState(null);
   const [selectedResponder, setSelectedResponder] = useState(null);
+  const [emergencyContacts, setEmergencyContacts] = useState([]);
+  const [isContactModalOpen, setIsContactModalOpen] = useState(false);
+  const [newContact, setNewContact] = useState({ name: '', relationship: '', phone_number: '', is_primary: false });
 
   // Fetch reports from Supabase
   useEffect(() => {
@@ -114,6 +117,20 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
     fetchAssignmentData();
   }, [isAssignModalOpen]);
 
+  // Fetch emergency contacts
+  useEffect(() => {
+    const fetchContacts = async () => {
+      const { data } = await supabase
+        .from('emergency_contacts')
+        .select('*')
+        .eq('user_id', profile?.id);
+      
+      if (data) setEmergencyContacts(data);
+    };
+
+    fetchContacts();
+  }, [profile?.id]);
+
   const links = [
     { key: 'command', label: 'Command center', icon: 'LayoutDashboard', path: '/', roles: ['admin', 'dispatcher'] },
     { key: 'queue', label: 'Incident queue', icon: 'Siren', path: '/report-management', roles: ['admin', 'dispatcher'] },
@@ -166,6 +183,42 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
     setSelectedReport(null);
     setSelectedDepartment(null);
     setSelectedResponder(null);
+  };
+
+  const handleAddContact = async () => {
+    if (!newContact.name || !newContact.relationship || !newContact.phone_number) return;
+
+    const { error } = await supabase
+      .from('emergency_contacts')
+      .insert({
+        user_id: profile?.id,
+        name: newContact.name,
+        relationship: newContact.relationship,
+        phone_number: newContact.phone_number,
+        is_primary: newContact.is_primary
+      });
+
+    if (!error) {
+      const { data } = await supabase
+        .from('emergency_contacts')
+        .select('*')
+        .eq('user_id', profile?.id);
+      
+      if (data) setEmergencyContacts(data);
+      setNewContact({ name: '', relationship: '', phone_number: '', is_primary: false });
+      setIsContactModalOpen(false);
+    }
+  };
+
+  const handleDeleteContact = async (contactId) => {
+    const { error } = await supabase
+      .from('emergency_contacts')
+      .delete()
+      .eq('id', contactId);
+
+    if (!error) {
+      setEmergencyContacts(prev => prev.filter(c => c.id !== contactId));
+    }
   };
 
   useEffect(() => {
@@ -259,7 +312,102 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
       {section === 'residents' && <div className="mt-7 grid gap-5 lg:grid-cols-2"><div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><div className="flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-xl bg-amber-50 text-amber-700"><Icon name="FileSearch" size={20}/></div><div><h3 className="font-bold">ID verification queue</h3><p className="text-sm text-slate-500">No records awaiting review</p></div></div><p className="mt-5 text-xs leading-5 text-slate-500">OCR is assistive only. Approval, clearer-upload requests, and rejection decisions are made by an authorized administrator.</p></div><div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><h3 className="font-bold">Account access</h3><p className="mt-1 text-sm text-slate-500">Department access cannot be self-granted.</p><div className="mt-5 text-sm text-slate-500">Manage departments via the Department Management page.</div></div></div>}
       {section === 'departments' && <DepartmentManagementSection />}
       {section === 'settings' && <div className="mt-7 grid gap-5 lg:grid-cols-2"><div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><div className="flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-xl bg-blue-50 text-blue-700"><Icon name="Map" size={20}/></div><div><h3 className="font-bold">Service boundary</h3><p className="text-sm text-slate-500">Kalubihan demo boundary · version 1</p></div></div><p className="mt-5 text-sm leading-6 text-slate-500">Changes are versioned and never rewrite historical incident locations or statuses.</p><button className="mt-5 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold">Configure boundary</button></div><div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><h3 className="font-bold">Delivery providers</h3><p className="mt-2 text-sm text-slate-500">In-app notifications are available in mock mode. SMS, email, push, map GIS, and OCR require provider credentials.</p><button className="mt-5 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold">Provider settings</button></div></div>}
-      {section === 'profile' && <div className="mt-7 max-w-2xl rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><div className="flex items-center gap-4"><div className="grid h-14 w-14 place-items-center rounded-full bg-blue-700 text-lg font-bold text-white">{profile?.first_name?.[0] || 'A'}</div><div><h3 className="text-lg font-bold">{profile?.full_name || 'Administrator'}</h3><p className="text-sm capitalize text-slate-500">{profile?.role || 'Administrator'} account</p></div></div><div className="mt-7 grid gap-4 border-t border-slate-100 pt-5 sm:grid-cols-2"><div><p className="text-xs font-bold uppercase tracking-wider text-slate-400">Email</p><p className="mt-1 text-sm">{profile?.email}</p></div><div><p className="text-xs font-bold uppercase tracking-wider text-slate-400">Status</p><p className="mt-1 text-sm text-emerald-700">Active / on duty</p></div></div></div>}
+      {section === 'profile' && <div className="mt-7 max-w-2xl rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><div className="flex items-center gap-4"><div className="grid h-14 w-14 place-items-center rounded-full bg-blue-700 text-lg font-bold text-white">{profile?.first_name?.[0] || 'A'}</div><div><h3 className="text-lg font-bold">{profile?.full_name || 'Administrator'}</h3><p className="text-sm capitalize text-slate-500">{profile?.role || 'Administrator'} account</p></div></div><div className="mt-7 grid gap-4 border-t border-slate-100 pt-5 sm:grid-cols-2"><div><p className="text-xs font-bold uppercase tracking-wider text-slate-400">Email</p><p className="mt-1 text-sm">{profile?.email}</p></div><div><p className="text-xs font-bold uppercase tracking-wider text-slate-400">Status</p><p className="mt-1 text-sm text-emerald-700">Active / on duty</p></div></div>
+        
+        <div className="mt-7 border-t border-slate-100 pt-5">
+          <div className="flex items-center justify-between mb-4">
+            <h4 className="font-bold">Emergency Contacts</h4>
+            <button onClick={() => setIsContactModalOpen(true)} className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold hover:bg-slate-50">Add Contact</button>
+          </div>
+          {emergencyContacts.length === 0 ? (
+            <p className="text-sm text-slate-500">No emergency contacts added.</p>
+          ) : (
+            <div className="space-y-3">
+              {emergencyContacts.map(contact => (
+                <div key={contact.id} className="flex items-center justify-between rounded-lg border border-slate-200 p-3">
+                  <div>
+                    <p className="font-medium text-sm">{contact.name} {contact.is_primary && <span className="ml-2 rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-700">Primary</span>}</p>
+                    <p className="text-xs text-slate-500">{contact.relationship} · {contact.phone_number}</p>
+                  </div>
+                  <button onClick={() => handleDeleteContact(contact.id)} className="text-slate-400 hover:text-red-600">
+                    <Icon name="Trash2" size={16} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>}
+      
+      {/* Emergency Contact Modal */}
+      {isContactModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4">
+          <div className="bg-white border border-slate-200 rounded-lg shadow-lg w-full max-w-md">
+            <div className="flex items-center justify-between p-4 border-b border-slate-200">
+              <h3 className="font-bold text-lg">Add Emergency Contact</h3>
+              <button onClick={() => setIsContactModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+                <Icon name="X" size={20} />
+              </button>
+            </div>
+            <div className="p-4 space-y-4">
+              <div>
+                <label className="block text-sm font-semibold mb-2">Name</label>
+                <input 
+                  type="text"
+                  value={newContact.name}
+                  onChange={(e) => setNewContact({...newContact, name: e.target.value})}
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                  placeholder="Contact name"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold mb-2">Relationship</label>
+                <input 
+                  type="text"
+                  value={newContact.relationship}
+                  onChange={(e) => setNewContact({...newContact, relationship: e.target.value})}
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                  placeholder="e.g., Spouse, Parent, Friend"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold mb-2">Phone Number</label>
+                <input 
+                  type="text"
+                  value={newContact.phone_number}
+                  onChange={(e) => setNewContact({...newContact, phone_number: e.target.value})}
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                  placeholder="Phone number"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <input 
+                  type="checkbox"
+                  id="isPrimary"
+                  checked={newContact.is_primary}
+                  onChange={(e) => setNewContact({...newContact, is_primary: e.target.checked})}
+                  className="rounded border-slate-200"
+                />
+                <label htmlFor="isPrimary" className="text-sm">Set as primary contact</label>
+              </div>
+              <div className="flex justify-end gap-2 pt-4">
+                <button 
+                  onClick={() => setIsContactModalOpen(false)}
+                  className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleAddContact}
+                  className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800"
+                >
+                  Add Contact
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       
       {/* Assignment Modal */}
       {isAssignModalOpen && (
