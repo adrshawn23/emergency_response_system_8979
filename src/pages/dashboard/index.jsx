@@ -102,7 +102,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
 
     // Set up real-time subscription for reports
     const subscription = supabase
-      .channel('emergency_reports_changes')
+      .channel('workspace_emergency_reports_changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'emergency_reports' }, (payload) => {
         if (payload.eventType === 'INSERT') {
           setReports(prev => [payload.new, ...prev]);
@@ -1062,7 +1062,7 @@ export default function Dashboard({ section = 'command' }) {
 
     fetchReports();
 
-    const channel = supabase.channel('emergency_reports_changes');
+    const channel = supabase.channel('dashboard_emergency_reports_changes');
     
     channel
       .on('postgres_changes', { event: '*', schema: 'public', table: 'emergency_reports' }, (payload) => {
