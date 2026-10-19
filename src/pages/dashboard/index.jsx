@@ -390,7 +390,17 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
         if (!isCurrent) return;
         const latitude = Number(coords.latitude.toFixed(6));
         const longitude = Number(coords.longitude.toFixed(6));
-        const inServiceArea = isPointInBoundary({ latitude, longitude }, mockServiceBoundary.points);
+        
+        // Get service boundary from localStorage or use default
+        const savedBoundary = localStorage.getItem('service_boundary');
+        const serviceBoundary = savedBoundary ? JSON.parse(savedBoundary) : { points: [
+          { latitude: 10.3172, longitude: 123.8951 },
+          { latitude: 10.3172, longitude: 123.8981 },
+          { latitude: 10.3192, longitude: 123.8981 },
+          { latitude: 10.3192, longitude: 123.8951 }
+        ]};
+        
+        const inServiceArea = isPointInBoundary({ latitude, longitude }, serviceBoundary.points);
         const serviceAreaStatus = inServiceArea ? 'inside' : 'outside';
         setDraft(value => ({
           ...value,
