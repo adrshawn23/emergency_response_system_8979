@@ -475,7 +475,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
         location: draft.location,
         priority: draft.priority,
         contact_name: profile?.full_name || 'Command user',
-        contact_phone: draft.callback,
+        contact_phone: profile?.phone_number || draft.callback,
         service_area_status: draft.serviceAreaStatus,
         images: imageDataUrls
       }
