@@ -864,12 +864,16 @@ export default function Dashboard({ section = 'command' }) {
   // Fetch departments for broadcast modal
   useEffect(() => {
     const fetchDepartments = async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('departments')
-        .select('*')
-        .eq('is_active', true);
+        .select('*');
       
-      if (data) setDepartments(data);
+      if (error) {
+        console.error('Error fetching departments:', error);
+        return;
+      }
+      
+      if (data) setDepartments(data.filter(d => d.is_active !== false));
     };
 
     fetchDepartments();
