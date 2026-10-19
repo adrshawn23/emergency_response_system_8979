@@ -326,7 +326,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
         </div>
         <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div className="grid grid-cols-[minmax(0,1.2fr)_minmax(0,1.3fr)_minmax(110px,.7fr)_minmax(170px,.8fr)] gap-4 border-b border-slate-100 bg-slate-50 px-5 py-3 text-xs font-bold uppercase tracking-wider text-slate-400"><span>Incident</span><span>Location</span><span>Priority</span><span>Status / action</span></div>
-          {visibleReports.map(report => <div key={report.id} className="grid grid-cols-[minmax(0,1.2fr)_minmax(0,1.3fr)_minmax(110px,.7fr)_minmax(170px,.8fr)] items-center gap-4 border-b border-slate-100 px-5 py-4 last:border-0">
+          {visibleReports.map(report => <div key={report.id || report.report_id} className="grid grid-cols-[minmax(0,1.2fr)_minmax(0,1.3fr)_minmax(110px,.7fr)_minmax(170px,.8fr)] items-center gap-4 border-b border-slate-100 px-5 py-4 last:border-0">
             <div className="min-w-0"><p className="font-semibold capitalize">{report.report_type || report.incident_type} <span className="font-mono text-xs text-slate-400">{report.report_id || report.id?.slice(0, 8)}</span></p><p className="mt-1 truncate text-xs text-slate-500">{report.content || report.description}</p></div>
             <p className="truncate text-sm text-slate-600">{report.attachments?.location || report.location}</p>
             <span className={`w-fit rounded-full px-2 py-1 text-[10px] font-bold uppercase ${priorityStyles[report.attachments?.priority || report.priority]}`}>{report.attachments?.priority || report.priority}</span>
