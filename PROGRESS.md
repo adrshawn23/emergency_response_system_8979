@@ -91,6 +91,14 @@
    - Added `assigned_department_id` column to emergency_reports
    - Enables incident assignment to responders
 
+6. **20261019060000_dispatcher_assign_incidents.sql**
+   - RLS policy allowing dispatchers to update emergency_reports
+   - Enables dispatchers to assign incidents to responders
+
+7. **20261019070000_responder_update_assigned_incidents.sql**
+   - RLS policy allowing responders to update their assigned incidents
+   - Enables responders to acknowledge and resolve incidents
+
 ## Pending Features
 
 ### High Priority
@@ -108,8 +116,10 @@
 
 ## Next Steps
 
-1. Run migration 20261019050000_add_assignment_columns_to_reports.sql in Supabase
-2. Test incident assignment as dispatcher
-3. Verify assigned incidents appear in responder workspace
-4. Test cross-department assistance workflow
-5. Test emergency contacts management
+1. Run migration 20261019060000_dispatcher_assign_incidents.sql in Supabase
+2. Run migration 20261019070000_responder_update_assigned_incidents.sql in Supabase
+3. Test incident assignment as dispatcher
+4. Verify assigned incidents appear in responder workspace
+5. Test responder acknowledge and resolve workflow
+6. Test cross-department assistance workflow
+7. Test emergency contacts management
