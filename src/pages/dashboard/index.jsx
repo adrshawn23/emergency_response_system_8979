@@ -915,6 +915,22 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
                   </p>
                 </div>
               )}
+              {selectedReport.attachments?.images && selectedReport.attachments.images.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 uppercase mb-2">Evidence Images</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {selectedReport.attachments.images.map((image, index) => (
+                      <img
+                        key={index}
+                        src={image.url || image}
+                        alt={`Evidence ${index + 1}`}
+                        className="w-full h-24 object-cover rounded-lg border border-slate-200 cursor-pointer hover:opacity-80"
+                        onClick={() => window.open(image.url || image, '_blank')}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
               <div className="flex justify-end gap-2 pt-4 border-t border-slate-200">
                 <button 
                   onClick={() => setIsReportDetailModalOpen(false)}
