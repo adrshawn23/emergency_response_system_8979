@@ -163,6 +163,20 @@ const Register = () => {
     setIsLoading(true);
     
     try {
+      // Check for duplicate name
+      const fullName = `${formData.firstName} ${formData.lastName}`;
+      const { data: existingUsers, error: checkError } = await supabase
+        .from('user_profiles')
+        .select('id, full_name')
+        .eq('full_name', fullName)
+        .limit(1);
+
+      if (checkError) throw checkError;
+
+      if (existingUsers && existingUsers.length > 0) {
+        throw new Error('A user with this name already exists. Please contact support if this is an error.');
+      }
+
       const { data, error: signUpError } = await signUp(
         formData.email.trim(),
         formData.password,
