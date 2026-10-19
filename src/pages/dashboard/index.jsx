@@ -470,6 +470,16 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
       setSubmitted(true);
       setDraft({ type: 'fire', priority: 'high', location: '', description: '', callback: '', latitude: null, longitude: null, serviceAreaStatus: 'manual' });
       setImageFiles([]);
+      
+      // Refresh reports list to show the new incident
+      const { data: refreshedReports } = await supabase
+        .from('emergency_reports')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (refreshedReports) {
+        setReports(refreshedReports);
+      }
     }
   };
   return <div className="min-h-screen bg-slate-50 text-slate-900"><div className="flex min-h-screen">
