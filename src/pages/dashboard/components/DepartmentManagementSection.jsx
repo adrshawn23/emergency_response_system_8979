@@ -30,8 +30,7 @@ const DepartmentManagementSection = () => {
 
         const { data: userData, error: userError } = await supabase
           .from('user_profiles')
-          .select('*')
-          .eq('is_active', true);
+          .select('*');
         
         if (userError) throw userError;
         setUsers(userData || []);
@@ -139,8 +138,7 @@ const DepartmentManagementSection = () => {
       // Refresh users
       const { data: userData, error: userError } = await supabase
         .from('user_profiles')
-        .select('*')
-        .eq('is_active', true);
+        .select('*');
       
       if (userError) throw userError;
       setUsers(userData || []);
@@ -177,8 +175,7 @@ const DepartmentManagementSection = () => {
       // Refresh users
       const { data: userData, error: userError } = await supabase
         .from('user_profiles')
-        .select('*')
-        .eq('is_active', true);
+        .select('*');
       
       if (userError) throw userError;
       setUsers(userData || []);
