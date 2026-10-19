@@ -54,6 +54,10 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
   const [newContact, setNewContact] = useState({ name: '', relationship: '', phone_number: '', is_primary: false });
   const [boundaryPoints, setBoundaryPoints] = useState([]);
   const [isBoundaryModalOpen, setIsBoundaryModalOpen] = useState(false);
+  const [assistingDepartments, setAssistingDepartments] = useState([]);
+  const [isAssistanceModalOpen, setIsAssistanceModalOpen] = useState(false);
+  const [selectedAssistanceReport, setSelectedAssistanceReport] = useState(null);
+  const [selectedAssistanceDepts, setSelectedAssistanceDepts] = useState([]);
 
   // Fetch reports from Supabase
   useEffect(() => {
@@ -231,6 +235,22 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
     setIsBoundaryModalOpen(false);
   };
 
+  const handleRequestAssistance = async (reportId, departmentIds) => {
+    // This would create assistance requests in a cross_department_assistance table
+    // For now, just log the request
+    console.log('Requesting assistance from departments:', departmentIds, 'for report:', reportId);
+    setAssistingDepartments(prev => [...prev, { reportId, departmentIds }]);
+    setIsAssistanceModalOpen(false);
+    setSelectedAssistanceReport(null);
+    setSelectedAssistanceDepts([]);
+  };
+
+  const handleAssistanceClick = (report) => {
+    setSelectedAssistanceReport(report);
+    setSelectedAssistanceDepts([]);
+    setIsAssistanceModalOpen(true);
+  };
+
   useEffect(() => {
     if (section !== 'new') return undefined;
 
@@ -312,7 +332,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
             <span className={`w-fit rounded-full px-2 py-1 text-[10px] font-bold uppercase ${priorityStyles[report.attachments?.priority || report.priority]}`}>{report.attachments?.priority || report.priority}</span>
             <div className="flex min-w-0 items-center gap-2">
               <span className={`inline-flex h-8 min-w-[84px] items-center justify-center rounded-full px-2 text-xs font-medium capitalize ${statusStyles[report.attachments?.status || report.status] || 'bg-slate-100 text-slate-700'}`}>{formatStatus(report.attachments?.status || report.status)}</span>
-              {profile?.role === 'dispatcher' && (report.attachments?.status || report.status) !== 'resolved' && <button onClick={() => (report.attachments?.status || report.status) === 'pending' ? handleAssignClick(report) : setReportStatus(report.report_id || report.id, 'resolved')} className="inline-flex h-8 min-w-[72px] items-center justify-center rounded-lg border border-blue-200 bg-blue-50 px-3 text-xs font-bold text-blue-700 transition hover:border-blue-300 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">{(report.attachments?.status || report.status) === 'pending' ? 'Assign' : 'Resolve'}</button>}
+              {profile?.role === 'dispatcher' && (report.attachments?.status || report.status) !== 'resolved' && <div className="flex gap-1"><button onClick={() => (report.attachments?.status || report.status) === 'pending' ? handleAssignClick(report) : setReportStatus(report.report_id || report.id, 'resolved')} className="inline-flex h-8 min-w-[72px] items-center justify-center rounded-lg border border-blue-200 bg-blue-50 px-3 text-xs font-bold text-blue-700 transition hover:border-blue-300 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">{(report.attachments?.status || report.status) === 'pending' ? 'Assign' : 'Resolve'}</button><button onClick={() => handleAssistanceClick(report)} className="inline-flex h-8 items-center justify-center rounded-lg border border-amber-200 bg-amber-50 px-3 text-xs font-bold text-amber-700 transition hover:border-amber-300 hover:bg-amber-100" title="Request cross-department assistance"><Icon name="Users" size={14}/></button></div>}
             </div>
           </div>)}
         </div>
@@ -450,6 +470,59 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
                     Save Boundary
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Cross-Department Assistance Modal */}
+      {isAssistanceModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4">
+          <div className="bg-white border border-slate-200 rounded-lg shadow-lg w-full max-w-md">
+            <div className="flex items-center justify-between p-4 border-b border-slate-200">
+              <h3 className="font-bold text-lg">Request Assistance</h3>
+              <button onClick={() => setIsAssistanceModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+                <Icon name="X" size={20} />
+              </button>
+            </div>
+            <div className="p-4 space-y-4">
+              <p className="text-sm text-slate-600">Select departments to assist with this incident:</p>
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {departments
+                  .filter(d => d.id !== selectedAssistanceReport?.assigned_department_id)
+                  .map(dept => (
+                    <label key={dept.id} className="flex items-center gap-2 p-2 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer">
+                      <input 
+                        type="checkbox"
+                        checked={selectedAssistanceDepts.includes(dept.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedAssistanceDepts([...selectedAssistanceDepts, dept.id]);
+                          } else {
+                            setSelectedAssistanceDepts(selectedAssistanceDepts.filter(id => id !== dept.id));
+                          }
+                        }}
+                        className="rounded border-slate-200"
+                      />
+                      <span className="text-sm">{dept.name}</span>
+                    </label>
+                  ))}
+              </div>
+              <div className="flex justify-end gap-2 pt-4">
+                <button 
+                  onClick={() => setIsAssistanceModalOpen(false)}
+                  className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={() => handleRequestAssistance(selectedAssistanceReport?.id, selectedAssistanceDepts)}
+                  disabled={selectedAssistanceDepts.length === 0}
+                  className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Request
+                </button>
               </div>
             </div>
           </div>
