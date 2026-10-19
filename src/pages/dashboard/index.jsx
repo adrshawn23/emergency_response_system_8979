@@ -52,6 +52,8 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
   const [emergencyContacts, setEmergencyContacts] = useState([]);
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
   const [newContact, setNewContact] = useState({ name: '', relationship: '', phone_number: '', is_primary: false });
+  const [boundaryPoints, setBoundaryPoints] = useState([]);
+  const [isBoundaryModalOpen, setIsBoundaryModalOpen] = useState(false);
 
   // Fetch reports from Supabase
   useEffect(() => {
@@ -222,6 +224,13 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
     }
   };
 
+  const handleSaveBoundary = async () => {
+    // Save boundary points to database (would need a service_boundaries table)
+    // For now, save to localStorage as demo
+    localStorage.setItem('service_boundary', JSON.stringify({ points: boundaryPoints }));
+    setIsBoundaryModalOpen(false);
+  };
+
   useEffect(() => {
     if (section !== 'new') return undefined;
 
@@ -312,7 +321,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
       {section === 'new' && <form onSubmit={submitIncident} className="mt-7 grid gap-5 lg:grid-cols-[1.4fr_.6fr]"><div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><div className="grid gap-5 sm:grid-cols-2"><label className="text-sm font-semibold">Emergency type<select value={draft.type} onChange={e => setDraft(value => ({...value, type: e.target.value}))} className="mt-2 w-full rounded-xl border-slate-200 bg-white text-sm"><option value="fire">Fire</option><option value="medical">Medical</option><option value="accident">Accident</option><option value="police">Public safety</option><option value="natural">Natural hazard</option></select></label><label className="text-sm font-semibold">Priority<select value={draft.priority} onChange={e => setDraft(value => ({...value, priority: e.target.value}))} className="mt-2 w-full rounded-xl border-slate-200 bg-white text-sm"><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="critical">Critical</option></select></label></div><label className="mt-5 block text-sm font-semibold">Incident location<input required value={draft.location} onChange={e => setDraft(value => ({...value, location: e.target.value}))} placeholder="Address, landmark, or selected map pin" className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-3 text-sm"/></label><div className="mt-3 flex items-center gap-2 rounded-xl bg-blue-50 p-3 text-xs text-blue-800"><Icon name="MapPin" size={15}/>GPS and map provider are optional. A manual location is always accepted; outside-boundary reports go to dispatch for triage.</div><label className="mt-5 block text-sm font-semibold">What is happening?<textarea required value={draft.description} onChange={e => setDraft(value => ({...value, description: e.target.value}))} placeholder="Describe hazards, people involved, and immediate risks." rows="6" className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-3 text-sm"/></label><label className="mt-5 block text-sm font-semibold">Callback number <span className="font-normal text-slate-400">(optional)</span><input value={draft.callback} onChange={e => setDraft(value => ({...value, callback: e.target.value}))} placeholder="09XXXXXXXXX" className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-3 text-sm"/></label><div className="mt-6 flex justify-end"><button className="rounded-xl bg-red-500 px-5 py-3 text-sm font-bold text-white hover:bg-red-600"><Icon name="Send" size={16} className="mr-2 inline"/>Submit incident report</button></div>{submitted && <div className="mt-4 rounded-xl bg-emerald-50 p-3 text-sm font-medium text-emerald-800"><Icon name="CheckCircle2" size={16} className="mr-2 inline"/>Report created and placed in the live incident queue. ID: {submittedReportId}</div>}</div><aside className="space-y-5"><div className="rounded-2xl border border-amber-200 bg-amber-50 p-5"><div className="flex items-center gap-2 font-bold text-amber-900"><Icon name="PhoneCall" size={18}/>Urgent safety guidance</div><p className="mt-3 text-sm leading-6 text-amber-800">This application does not replace local emergency phone services. Use the appropriate emergency call channel whenever it is safe to do so.</p></div><div className="rounded-2xl border border-slate-200 bg-white p-5"><h3 className="font-bold">Evidence</h3><p className="mt-2 text-sm leading-6 text-slate-500">Photo and video uploads require private storage configuration. In this demo, evidence is not uploaded or shared publicly.</p></div></aside></form>}
       {section === 'residents' && <div className="mt-7 grid gap-5 lg:grid-cols-2"><div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><div className="flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-xl bg-amber-50 text-amber-700"><Icon name="FileSearch" size={20}/></div><div><h3 className="font-bold">ID verification queue</h3><p className="text-sm text-slate-500">No records awaiting review</p></div></div><p className="mt-5 text-xs leading-5 text-slate-500">OCR is assistive only. Approval, clearer-upload requests, and rejection decisions are made by an authorized administrator.</p></div><div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><h3 className="font-bold">Account access</h3><p className="mt-1 text-sm text-slate-500">Department access cannot be self-granted.</p><div className="mt-5 text-sm text-slate-500">Manage departments via the Department Management page.</div></div></div>}
       {section === 'departments' && <DepartmentManagementSection />}
-      {section === 'settings' && <div className="mt-7 grid gap-5 lg:grid-cols-2"><div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><div className="flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-xl bg-blue-50 text-blue-700"><Icon name="Map" size={20}/></div><div><h3 className="font-bold">Service boundary</h3><p className="text-sm text-slate-500">Kalubihan demo boundary · version 1</p></div></div><p className="mt-5 text-sm leading-6 text-slate-500">Changes are versioned and never rewrite historical incident locations or statuses.</p><button className="mt-5 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold">Configure boundary</button></div><div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><h3 className="font-bold">Delivery providers</h3><p className="mt-2 text-sm text-slate-500">In-app notifications are available in mock mode. SMS, email, push, map GIS, and OCR require provider credentials.</p><button className="mt-5 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold">Provider settings</button></div></div>}
+      {section === 'settings' && <div className="mt-7 grid gap-5 lg:grid-cols-2"><div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><div className="flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-xl bg-blue-50 text-blue-700"><Icon name="Map" size={20}/></div><div><h3 className="font-bold">Service boundary</h3><p className="text-sm text-slate-500">Kalubihan demo boundary · version 1</p></div></div><p className="mt-5 text-sm leading-6 text-slate-500">Changes are versioned and never rewrite historical incident locations or statuses.</p><button onClick={() => setIsBoundaryModalOpen(true)} className="mt-5 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold hover:bg-slate-50">Configure boundary</button></div><div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><h3 className="font-bold">Delivery providers</h3><p className="mt-2 text-sm text-slate-500">In-app notifications are available in mock mode. SMS, email, push, map GIS, and OCR require provider credentials.</p><button className="mt-5 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold">Provider settings</button></div></div>}
       {section === 'profile' && <div className="mt-7 max-w-2xl rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><div className="flex items-center gap-4"><div className="grid h-14 w-14 place-items-center rounded-full bg-blue-700 text-lg font-bold text-white">{profile?.first_name?.[0] || 'A'}</div><div><h3 className="text-lg font-bold">{profile?.full_name || 'Administrator'}</h3><p className="text-sm capitalize text-slate-500">{profile?.role || 'Administrator'} account</p></div></div><div className="mt-7 grid gap-4 border-t border-slate-100 pt-5 sm:grid-cols-2"><div><p className="text-xs font-bold uppercase tracking-wider text-slate-400">Email</p><p className="mt-1 text-sm">{profile?.email}</p></div><div><p className="text-xs font-bold uppercase tracking-wider text-slate-400">Status</p><p className="mt-1 text-sm text-emerald-700">Active / on duty</p></div></div>
         
         <div className="mt-7 border-t border-slate-100 pt-5">
@@ -404,6 +413,43 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
                 >
                   Add Contact
                 </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Boundary Configuration Modal */}
+      {isBoundaryModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4">
+          <div className="bg-white border border-slate-200 rounded-lg shadow-lg w-full max-w-2xl">
+            <div className="flex items-center justify-between p-4 border-b border-slate-200">
+              <h3 className="font-bold text-lg">Configure Service Boundary</h3>
+              <button onClick={() => setIsBoundaryModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+                <Icon name="X" size={20} />
+              </button>
+            </div>
+            <div className="p-4">
+              <p className="text-sm text-slate-600 mb-4">Click on the map to add boundary points. The polygon defines your service area for automatic incident routing.</p>
+              <div className="h-64 bg-slate-100 rounded-lg border border-slate-200 flex items-center justify-center mb-4">
+                <p className="text-sm text-slate-500">Map integration coming soon</p>
+              </div>
+              <div className="flex justify-between items-center">
+                <p className="text-xs text-slate-500">{boundaryPoints.length} points added</p>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => setBoundaryPoints([])}
+                    className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold hover:bg-slate-50"
+                  >
+                    Clear
+                  </button>
+                  <button 
+                    onClick={handleSaveBoundary}
+                    className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800"
+                  >
+                    Save Boundary
+                  </button>
+                </div>
               </div>
             </div>
           </div>
