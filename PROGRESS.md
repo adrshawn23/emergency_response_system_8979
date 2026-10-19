@@ -91,6 +91,15 @@
 - IP address and user agent tracking
 - RLS policies for admin read access
 
+### 16. AI-Assisted ID Review ✅
+- Created id_verifications table for ID document tracking
+- OCR data extraction with confidence scores
+- Verification statuses: pending, under_review, approved, rejected, needs_clarity
+- Registration flow creates verification records
+- Admin review modal with extracted data preview
+- Approve (activates account), Reject, Request Clarity actions
+- RLS policies for user and admin access
+
 ## Database Migrations Applied
 
 1. **20261017040000_fix_departments_rls.sql**
@@ -127,13 +136,18 @@
    - Tracks user actions, table changes, and IP addresses
    - RLS policies for admin read access
 
+9. **20261019090000_id_verifications.sql**
+   - Created id_verifications table for ID document tracking
+   - OCR data extraction with confidence scores
+   - Verification statuses and review workflow
+   - RLS policies for user and admin access
+
 ## Pending Features
 
 ### High Priority
 - Test complete workflow (requires running all migrations)
 
 ### Medium Priority
-- Implement AI-assisted ID review with human approval
 - Add retention policies for audit logs
 
 ### Low Priority
@@ -145,7 +159,8 @@
 1. 20261019050000_add_assignment_columns_to_reports.sql ✅ (already run)
 2. 20261019060000_dispatcher_assign_incidents.sql ✅ (already run)
 3. 20261019070000_responder_update_assigned_incidents.sql ✅ (already run)
-4. 20261019080000_audit_logs.sql (NEW - run this)
+4. 20261019080000_audit_logs.sql ✅ (already run)
+5. 20261019090000_id_verifications.sql (NEW - run this)
 
 **Test the complete workflow:**
 1. Assign responder to department (admin)
@@ -158,3 +173,5 @@
 8. Test notification panel (any user)
 9. Test boundary configuration (admin)
 10. View community verification section (admin)
+11. Register new user with ID upload (test ID verification creation)
+12. Review ID verification as admin (approve/reject/request clarity)
