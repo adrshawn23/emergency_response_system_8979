@@ -48,6 +48,26 @@
 - Delete contacts
 - Contacts displayed in profile section
 
+### 8. Queue Badge Count ✅
+- Badge correctly shows pending report count
+- Uses both `attachments?.status` and `status` fields for compatibility
+
+### 9. Boundary Configuration UI ✅
+- Modal for configuring service boundary
+- Placeholder for map integration
+- Points saved to localStorage (demo)
+- Clear and save functionality
+
+### 10. Cross-Department Assistance UI ✅
+- Assistance button next to Assign/Resolve
+- Modal to select assisting departments
+- Excludes already-assigned department
+- Multi-select for multiple departments
+
+### 11. React Key Warnings Fixed ✅
+- Fixed React key warning in incident queue
+- Uses fallback key `report.id || report.report_id`
+
 ## Database Migrations Applied
 
 1. **20261017040000_fix_departments_rls.sql**
@@ -75,11 +95,8 @@
 
 ### High Priority
 - Test incident assignment saves to database (requires running migration 20261019050000)
-- Implement configurable boundary polygon editing
-- Implement cross-department assistance workflow
 
 ### Medium Priority
-- Fix queue badge count to show pending reports
 - Implement community verification and duplicate prevention
 - Implement image upload functionality for incident evidence
 - Implement AI-assisted ID review with human approval
@@ -87,13 +104,12 @@
 - Add server-side security, audit logs, and retention policies
 
 ### Low Priority
-- Fix React key warnings in Dashboard
 - Improve mobile accessibility and account controls
 
 ## Next Steps
 
-1. Run migration 20261019050000_add_assignment_columns_to_reports.sql
+1. Run migration 20261019050000_add_assignment_columns_to_reports.sql in Supabase
 2. Test incident assignment as dispatcher
 3. Verify assigned incidents appear in responder workspace
-4. Implement configurable boundary polygon editing
-5. Implement cross-department assistance workflow
+4. Test cross-department assistance workflow
+5. Test emergency contacts management
