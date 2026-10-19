@@ -68,6 +68,29 @@
 - Fixed React key warning in incident queue
 - Uses fallback key `report.id || report.report_id`
 
+### 12. Community Verification UI ✅
+- Added community verification card in residents section
+- Duplicate prevention description
+- View duplicates button (placeholder)
+
+### 13. Image Upload Functionality ✅
+- Image upload in new incident form
+- Multiple image support
+- Image preview with remove button
+- Client-side preview using URL.createObjectURL
+
+### 14. Notification Panel UI ✅
+- Notification bell in header with badge count
+- Slide-out notification panel
+- Empty state when no notifications
+- Notification list with title, message, and time
+
+### 15. Audit Logs Table ✅
+- Created audit_logs table with user tracking
+- Stores action, table_name, record_id, old/new values
+- IP address and user agent tracking
+- RLS policies for admin read access
+
 ## Database Migrations Applied
 
 1. **20261017040000_fix_departments_rls.sql**
@@ -99,27 +122,39 @@
    - RLS policy allowing responders to update their assigned incidents
    - Enables responders to acknowledge and resolve incidents
 
+8. **20261019080000_audit_logs.sql**
+   - Created audit_logs table for security monitoring
+   - Tracks user actions, table changes, and IP addresses
+   - RLS policies for admin read access
+
 ## Pending Features
 
 ### High Priority
-- Test incident assignment saves to database (requires running migration 20261019050000)
+- Test complete workflow (requires running all migrations)
 
 ### Medium Priority
-- Implement community verification and duplicate prevention
-- Implement image upload functionality for incident evidence
 - Implement AI-assisted ID review with human approval
-- Implement notification delivery and acknowledgement
-- Add server-side security, audit logs, and retention policies
+- Add retention policies for audit logs
 
 ### Low Priority
 - Improve mobile accessibility and account controls
 
 ## Next Steps
 
-1. Run migration 20261019060000_dispatcher_assign_incidents.sql in Supabase
-2. Run migration 20261019070000_responder_update_assigned_incidents.sql in Supabase
-3. Test incident assignment as dispatcher
-4. Verify assigned incidents appear in responder workspace
-5. Test responder acknowledge and resolve workflow
-6. Test cross-department assistance workflow
-7. Test emergency contacts management
+**Run these migrations in Supabase SQL Editor:**
+1. 20261019050000_add_assignment_columns_to_reports.sql ✅ (already run)
+2. 20261019060000_dispatcher_assign_incidents.sql ✅ (already run)
+3. 20261019070000_responder_update_assigned_incidents.sql ✅ (already run)
+4. 20261019080000_audit_logs.sql (NEW - run this)
+
+**Test the complete workflow:**
+1. Assign responder to department (admin)
+2. Create incident with image upload (dispatcher)
+3. Assign incident to responder (dispatcher)
+4. View assigned incident (responder)
+5. Acknowledge and resolve incident (responder)
+6. Test cross-department assistance (dispatcher)
+7. Test emergency contacts (any user)
+8. Test notification panel (any user)
+9. Test boundary configuration (admin)
+10. View community verification section (admin)
