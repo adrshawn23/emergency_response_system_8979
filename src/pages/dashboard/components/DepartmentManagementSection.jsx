@@ -18,16 +18,15 @@ const DepartmentManagementSection = () => {
       try {
         const { data: deptData, error: deptError } = await supabase
           .from('departments')
-          .select('*, user_profiles(count)')
+          .select('*')
           .order('created_at', { ascending: false });
+        
+        console.log('Fetched departments:', deptData);
+        console.log('Department error:', deptError);
         
         if (deptError) throw deptError;
         
-        const departmentsWithCounts = (deptData || []).map(dept => ({
-          ...dept,
-          totalMembers: dept.user_profiles?.[0]?.count || 0
-        }));
-        setDepartments(departmentsWithCounts);
+        setDepartments(deptData || []);
 
         const { data: userData, error: userError } = await supabase
           .from('user_profiles')
@@ -52,7 +51,13 @@ const DepartmentManagementSection = () => {
     fetchData();
   }, []);
 
-  const filteredDepartments = departments?.filter(dept => {
+  // Calculate member counts separately
+  const departmentsWithCounts = departments?.map(dept => {
+    const memberCount = users?.filter(u => u?.department_id === dept?.id)?.length || 0;
+    return { ...dept, totalMembers: memberCount };
+  });
+
+  const filteredDepartmentsWithCounts = departmentsWithCounts?.filter(dept => {
     const matchesSearch = dept?.name?.toLowerCase()?.includes(searchTerm?.toLowerCase()) ||
                          dept?.description?.toLowerCase()?.includes(searchTerm?.toLowerCase());
     return matchesSearch;
@@ -122,19 +127,14 @@ const DepartmentManagementSection = () => {
         if (error) throw error;
       }
       
-      // Refresh departments to get updated member counts
+      // Refresh departments
       const { data: deptData, error: deptError } = await supabase
         .from('departments')
-        .select('*, user_profiles(count)')
+        .select('*')
         .order('created_at', { ascending: false });
       
       if (deptError) throw deptError;
-      
-      const departmentsWithCounts = (deptData || []).map(dept => ({
-        ...dept,
-        totalMembers: dept.user_profiles?.[0]?.count || 0
-      }));
-      setDepartments(departmentsWithCounts);
+      setDepartments(deptData || []);
       
       // Refresh users
       const { data: userData, error: userError } = await supabase
@@ -165,19 +165,14 @@ const DepartmentManagementSection = () => {
       
       if (error) throw error;
       
-      // Refresh departments to get updated member counts
+      // Refresh departments
       const { data: deptData, error: deptError } = await supabase
         .from('departments')
-        .select('*, user_profiles(count)')
+        .select('*')
         .order('created_at', { ascending: false });
       
       if (deptError) throw deptError;
-      
-      const departmentsWithCounts = (deptData || []).map(dept => ({
-        ...dept,
-        totalMembers: dept.user_profiles?.[0]?.count || 0
-      }));
-      setDepartments(departmentsWithCounts);
+      setDepartments(deptData || []);
       
       // Refresh users
       const { data: userData, error: userError } = await supabase
@@ -231,7 +226,7 @@ const DepartmentManagementSection = () => {
       </div>
 
       {/* Department List */}
-      {filteredDepartments?.length === 0 ? (
+      {filteredDepartmentsWithCounts?.length === 0 ? (
         <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center">
           <Icon name="Building" size={48} className="text-slate-400 mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-slate-700 mb-2">No departments found</h3>
@@ -251,7 +246,7 @@ const DepartmentManagementSection = () => {
         </div>
       ) : (
         <div className="grid gap-4">
-          {filteredDepartments?.map(department => (
+          {filteredDepartmentsWithCounts?.map(department => (
             <div 
               key={department?.id}
               className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
