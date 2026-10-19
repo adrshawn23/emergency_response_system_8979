@@ -67,6 +67,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
   const [isReportDetailModalOpen, setIsReportDetailModalOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const handleImageUpload = (e) => {
     const files = Array.from(e.target.files);
@@ -180,7 +181,22 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
     { key: 'settings', label: 'System settings', icon: 'Settings', path: '/settings', roles: ['admin'] }
   ].filter(link => link.roles.includes(profile?.role));
   const current = sectionCopy[section];
-  const visibleReports = status === 'all' ? reports : reports.filter(report => (report.attachments?.status || report.status) === status);
+  const filteredReports = searchQuery 
+    ? reports.filter(report => {
+        const query = searchQuery.toLowerCase();
+        return (
+          (report.report_type || report.incident_type || '').toLowerCase().includes(query) ||
+          (report.content || report.description || '').toLowerCase().includes(query) ||
+          (report.attachments?.location || report.location || '').toLowerCase().includes(query) ||
+          (report.attachments?.contact_name || '').toLowerCase().includes(query) ||
+          (report.attachments?.contact_phone || '').toLowerCase().includes(query) ||
+          (report.report_id || report.id || '').toLowerCase().includes(query) ||
+          (report.attachments?.priority || report.priority || '').toLowerCase().includes(query) ||
+          (report.attachments?.status || report.status || '').toLowerCase().includes(query)
+        );
+      })
+    : reports;
+  const visibleReports = status === 'all' ? filteredReports : filteredReports.filter(report => (report.attachments?.status || report.status) === status);
   const pendingCount = reports.filter(r => (r.attachments?.status || r.status) === 'pending').length;
   const handleNavigation = link => onSectionChange(link.key);
   const setReportStatus = (id, nextStatus) => {
@@ -488,7 +504,19 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
       {section === 'queue' && <>
         <div className="mt-7 flex flex-wrap items-center justify-between gap-3">
           <div className="flex gap-2">{['all','pending','assigned','in-progress','resolved'].map(item => <button key={item} onClick={() => setStatus(item)} className={`rounded-lg px-3 py-2 text-sm font-medium capitalize ${status === item ? 'bg-blue-700 text-white' : 'border border-slate-200 bg-white text-slate-600'}`}>{item === 'in-progress' ? 'in progress' : item}</button>)}</div>
-          <button onClick={() => navigate('/emergency-report')} className="rounded-xl bg-red-500 px-4 py-2.5 text-sm font-semibold text-white"><Icon name="Plus" size={16} className="mr-1 inline"/>New incident</button>
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Search incidents..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-64 rounded-lg border border-slate-200 px-3 py-2 pl-9 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <Icon name="Search" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            </div>
+            <button onClick={() => navigate('/emergency-report')} className="rounded-xl bg-red-500 px-4 py-2.5 text-sm font-semibold text-white"><Icon name="Plus" size={16} className="mr-1 inline"/>New incident</button>
+          </div>
         </div>
         <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div className="grid grid-cols-[minmax(0,1.2fr)_minmax(0,1.3fr)_minmax(110px,.7fr)_minmax(170px,.8fr)] gap-4 border-b border-slate-100 bg-slate-50 px-5 py-3 text-xs font-bold uppercase tracking-wider text-slate-400"><span>Incident</span><span>Location</span><span>Priority</span><span>Status / action</span></div>
