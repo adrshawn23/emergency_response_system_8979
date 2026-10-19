@@ -43,6 +43,12 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
   const [submitted, setSubmitted] = useState(false);
   const [submittedReportId, setSubmittedReportId] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+  const [selectedReport, setSelectedReport] = useState(null);
+  const [departments, setDepartments] = useState([]);
+  const [responders, setResponders] = useState([]);
+  const [selectedDepartment, setSelectedDepartment] = useState(null);
+  const [selectedResponder, setSelectedResponder] = useState(null);
 
   // Fetch reports from Supabase
   useEffect(() => {
@@ -86,6 +92,28 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
     };
   }, []);
 
+  // Fetch departments and responders for assignment modal
+  useEffect(() => {
+    const fetchAssignmentData = async () => {
+      if (!isAssignModalOpen) return;
+
+      const { data: deptData } = await supabase
+        .from('departments')
+        .select('*');
+      
+      if (deptData) setDepartments(deptData);
+
+      const { data: responderData } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('role', 'responder');
+      
+      if (responderData) setResponders(responderData);
+    };
+
+    fetchAssignmentData();
+  }, [isAssignModalOpen]);
+
   const links = [
     { key: 'command', label: 'Command center', icon: 'LayoutDashboard', path: '/', roles: ['admin', 'dispatcher'] },
     { key: 'queue', label: 'Incident queue', icon: 'Siren', path: '/report-management', roles: ['admin', 'dispatcher'] },
@@ -101,6 +129,43 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
     setReports(items => items.map(item => item.report_id === id ? { ...item, status: nextStatus } : item));
     // Update in Supabase
     supabase.from('emergency_reports').update({ status: nextStatus }).eq('report_id', id);
+  };
+
+  const handleAssignClick = (report) => {
+    setSelectedReport(report);
+    setSelectedDepartment(null);
+    setSelectedResponder(null);
+    setIsAssignModalOpen(true);
+  };
+
+  const handleAssignmentSubmit = async () => {
+    if (!selectedReport || !selectedDepartment || !selectedResponder) return;
+
+    const { error } = await supabase
+      .from('emergency_reports')
+      .update({
+        assigned_to: selectedResponder,
+        assigned_department_id: selectedDepartment,
+        status: 'assigned'
+      })
+      .eq('id', selectedReport.id);
+
+    if (error) {
+      console.error('Assignment error:', error);
+      return;
+    }
+
+    // Update local state
+    setReports(prev => prev.map(r => 
+      r.id === selectedReport.id 
+        ? { ...r, assigned_to: selectedResponder, assigned_department_id: selectedDepartment, status: 'assigned' }
+        : r
+    ));
+
+    setIsAssignModalOpen(false);
+    setSelectedReport(null);
+    setSelectedDepartment(null);
+    setSelectedResponder(null);
   };
 
   useEffect(() => {
@@ -184,7 +249,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
             <span className={`w-fit rounded-full px-2 py-1 text-[10px] font-bold uppercase ${priorityStyles[report.attachments?.priority || report.priority]}`}>{report.attachments?.priority || report.priority}</span>
             <div className="flex min-w-0 items-center gap-2">
               <span className={`inline-flex h-8 min-w-[84px] items-center justify-center rounded-full px-2 text-xs font-medium capitalize ${statusStyles[report.attachments?.status || report.status] || 'bg-slate-100 text-slate-700'}`}>{formatStatus(report.attachments?.status || report.status)}</span>
-              {profile?.role === 'dispatcher' && (report.attachments?.status || report.status) !== 'resolved' && <button onClick={() => setReportStatus(report.report_id || report.id, (report.attachments?.status || report.status) === 'pending' ? 'assigned' : 'resolved')} className="inline-flex h-8 min-w-[72px] items-center justify-center rounded-lg border border-blue-200 bg-blue-50 px-3 text-xs font-bold text-blue-700 transition hover:border-blue-300 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">{(report.attachments?.status || report.status) === 'pending' ? 'Assign' : 'Resolve'}</button>}
+              {profile?.role === 'dispatcher' && (report.attachments?.status || report.status) !== 'resolved' && <button onClick={() => (report.attachments?.status || report.status) === 'pending' ? handleAssignClick(report) : setReportStatus(report.report_id || report.id, 'resolved')} className="inline-flex h-8 min-w-[72px] items-center justify-center rounded-lg border border-blue-200 bg-blue-50 px-3 text-xs font-bold text-blue-700 transition hover:border-blue-300 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">{(report.attachments?.status || report.status) === 'pending' ? 'Assign' : 'Resolve'}</button>}
             </div>
           </div>)}
         </div>
@@ -195,6 +260,66 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
       {section === 'departments' && <DepartmentManagementSection />}
       {section === 'settings' && <div className="mt-7 grid gap-5 lg:grid-cols-2"><div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><div className="flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-xl bg-blue-50 text-blue-700"><Icon name="Map" size={20}/></div><div><h3 className="font-bold">Service boundary</h3><p className="text-sm text-slate-500">Kalubihan demo boundary · version 1</p></div></div><p className="mt-5 text-sm leading-6 text-slate-500">Changes are versioned and never rewrite historical incident locations or statuses.</p><button className="mt-5 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold">Configure boundary</button></div><div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><h3 className="font-bold">Delivery providers</h3><p className="mt-2 text-sm text-slate-500">In-app notifications are available in mock mode. SMS, email, push, map GIS, and OCR require provider credentials.</p><button className="mt-5 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold">Provider settings</button></div></div>}
       {section === 'profile' && <div className="mt-7 max-w-2xl rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><div className="flex items-center gap-4"><div className="grid h-14 w-14 place-items-center rounded-full bg-blue-700 text-lg font-bold text-white">{profile?.first_name?.[0] || 'A'}</div><div><h3 className="text-lg font-bold">{profile?.full_name || 'Administrator'}</h3><p className="text-sm capitalize text-slate-500">{profile?.role || 'Administrator'} account</p></div></div><div className="mt-7 grid gap-4 border-t border-slate-100 pt-5 sm:grid-cols-2"><div><p className="text-xs font-bold uppercase tracking-wider text-slate-400">Email</p><p className="mt-1 text-sm">{profile?.email}</p></div><div><p className="text-xs font-bold uppercase tracking-wider text-slate-400">Status</p><p className="mt-1 text-sm text-emerald-700">Active / on duty</p></div></div></div>}
+      
+      {/* Assignment Modal */}
+      {isAssignModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4">
+          <div className="bg-white border border-slate-200 rounded-lg shadow-lg w-full max-w-md">
+            <div className="flex items-center justify-between p-4 border-b border-slate-200">
+              <h3 className="font-bold text-lg">Assign Incident</h3>
+              <button onClick={() => setIsAssignModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+                <Icon name="X" size={20} />
+              </button>
+            </div>
+            <div className="p-4 space-y-4">
+              <div>
+                <label className="block text-sm font-semibold mb-2">Department</label>
+                <select 
+                  value={selectedDepartment || ''}
+                  onChange={(e) => setSelectedDepartment(e.target.value)}
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                >
+                  <option value="">Select a department</option>
+                  {departments.map(dept => (
+                    <option key={dept.id} value={dept.id}>{dept.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold mb-2">Responder</label>
+                <select 
+                  value={selectedResponder || ''}
+                  onChange={(e) => setSelectedResponder(e.target.value)}
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                  disabled={!selectedDepartment}
+                >
+                  <option value="">Select a responder</option>
+                  {responders
+                    .filter(r => !selectedDepartment || r.department_id === selectedDepartment)
+                    .map(responder => (
+                      <option key={responder.id} value={responder.id}>{responder.full_name || responder.email}</option>
+                    ))}
+                </select>
+              </div>
+              <div className="flex justify-end gap-2 pt-4">
+                <button 
+                  onClick={() => setIsAssignModalOpen(false)}
+                  className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleAssignmentSubmit}
+                  disabled={!selectedDepartment || !selectedResponder}
+                  className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Assign
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div></main></div></div>;
 }
 
