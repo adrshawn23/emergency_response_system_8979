@@ -48,6 +48,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
   const [responders, setResponders] = useState([]);
   const [selectedDepartment, setSelectedDepartment] = useState(null);
   const [selectedResponder, setSelectedResponder] = useState(null);
+  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [emergencyContacts, setEmergencyContacts] = useState([]);
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
   const [newContact, setNewContact] = useState({ name: '', relationship: '', phone_number: '', is_primary: false });
@@ -63,6 +64,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
   const [idVerifications, setIdVerifications] = useState([]);
   const [selectedVerification, setSelectedVerification] = useState(null);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [isReportDetailModalOpen, setIsReportDetailModalOpen] = useState(false);
 
   const handleImageUpload = (e) => {
     const files = Array.from(e.target.files);
