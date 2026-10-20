@@ -87,7 +87,7 @@ const Routes = () => {
               } />
               <Route path="/profile" element={
                 <ProtectedRoute>
-                  <Profile />
+                  <Dashboard section="profile" />
                 </ProtectedRoute>
               } />
               <Route path="/settings" element={
