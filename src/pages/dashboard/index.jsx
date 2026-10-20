@@ -131,13 +131,20 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
       
       if (deptData) setDepartments(deptData);
 
-      const { data: responderData } = await supabase
+      const { data: responderData, error: responderError } = await supabase
         .from('user_profiles')
         .select('*')
         .eq('role', 'responder')
         .eq('is_active', true);
       
-      if (responderData) setResponders(responderData);
+      console.log('Fetched responders:', responderData);
+      console.log('Responder error:', responderError);
+      if (responderData) {
+        responderData.forEach(r => {
+          console.log(`Responder: ${r.full_name || r.email}, dept_id: ${r.department_id}, role: ${r.role}, is_active: ${r.is_active}`);
+        });
+        setResponders(responderData);
+      }
     };
 
     fetchAssignmentData();
