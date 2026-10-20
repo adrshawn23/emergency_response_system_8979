@@ -69,6 +69,7 @@ export default function ResponderView() {
             </div>
           </div>
           <div className="flex gap-2">
+            <button onClick={() => navigate('/profile')} className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold">Profile</button>
             <button onClick={() => navigate('/report-management')} className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold">Incident queue</button>
             <button onClick={signOut} className="rounded-xl p-2 text-slate-500 hover:bg-slate-100">
               <Icon name="LogOut" size={19}/>

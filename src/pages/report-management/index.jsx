@@ -388,6 +388,14 @@ const ReportManagement = () => {
             </div>
             
             <Button
+              variant="outline"
+              onClick={() => handleNavigation('/profile')}
+              iconName="User"
+              iconPosition="left"
+            >
+              Profile
+            </Button>
+            <Button
               variant="default"
               onClick={() => handleNavigation('/emergency-report')}
               iconName="Plus"

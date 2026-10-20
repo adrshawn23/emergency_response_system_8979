@@ -133,7 +133,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
 
       const { data: responderData } = await supabase
         .from('user_profiles')
-        .select('*, departments(id, name)')
+        .select('*')
         .eq('role', 'responder')
         .eq('is_active', true);
       
@@ -886,7 +886,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
                   {responders
                     .filter(r => !selectedDepartment || r.department_id === selectedDepartment)
                     .map(responder => (
-                      <option key={responder.id} value={responder.id}>{responder.full_name || responder.email} {responder.departments?.name ? `(${responder.departments.name})` : ''}</option>
+                      <option key={responder.id} value={responder.id}>{responder.full_name || responder.email}</option>
                     ))}
                 </select>
               </div>
