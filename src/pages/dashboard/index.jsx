@@ -1264,7 +1264,8 @@ export default function Dashboard({ section = 'command' }) {
     { label: 'New incident', icon: 'PlusCircle', path: '/emergency-report', roles: ['admin', 'dispatcher'] },
     { label: 'Residents & review', icon: 'Users', path: '/user-management', roles: ['admin'] },
     { label: 'Departments', icon: 'Building2', path: '/department-management', roles: ['admin'] },
-    { label: 'System settings', icon: 'Settings', path: '/settings', roles: ['admin'] }
+    { label: 'System settings', icon: 'Settings', path: '/settings', roles: ['admin'] },
+    { label: 'Profile', icon: 'User', path: '/profile', roles: ['admin', 'dispatcher'] }
   ].filter(link => link.roles.includes(profile?.role));
 
   return <div className="min-h-screen bg-slate-50 text-slate-900">
