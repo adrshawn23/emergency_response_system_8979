@@ -1277,7 +1277,7 @@ export default function Dashboard({ section = 'command' }) {
         </div>
         <div className="flex-1 px-3 py-7 sm:px-4">
           <p className="mb-3 hidden px-3 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500 sm:block">Operations</p>
-          <nav className="space-y-1">{sidebarLinks.map(link => <button key={link.label} title={link.label} onClick={() => { const nextSection = ({ '/report-management': 'queue', '/user-management': 'residents', '/department-management': 'departments', '/settings': 'settings' })[link.path]; if (nextSection) setActiveSection(nextSection); else navigate(link.path); }} className={`flex w-full items-center justify-center gap-3 rounded-xl px-3 py-3 text-left text-sm transition sm:justify-start ${link.path === '/' ? 'bg-white/10 font-medium text-white' : 'hover:bg-white/5 hover:text-white'}`}>
+          <nav className="space-y-1">{sidebarLinks.map(link => <button key={link.label} title={link.label} onClick={() => { const nextSection = ({ '/report-management': 'queue', '/user-management': 'residents', '/department-management': 'departments', '/settings': 'settings', '/profile': 'profile' })[link.path]; if (nextSection) setActiveSection(nextSection); else navigate(link.path); }} className={`flex w-full items-center justify-center gap-3 rounded-xl px-3 py-3 text-left text-sm transition sm:justify-start ${link.path === '/' ? 'bg-white/10 font-medium text-white' : 'hover:bg-white/5 hover:text-white'}`}>
             <Icon name={link.icon} size={18}/><span className="hidden flex-1 sm:block">{link.label}</span>{link.badge ? <span className="hidden rounded-full bg-red-500 px-2 py-0.5 text-xs font-bold text-white sm:block">{link.badge}</span> : null}
           </button>)}</nav>
         </div>
