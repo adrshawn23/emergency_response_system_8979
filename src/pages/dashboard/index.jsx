@@ -754,12 +754,50 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
               </button>
             </div>
             <div className="p-4">
-              <p className="text-sm text-slate-600 mb-4">Click on the map to add boundary points. The polygon defines your service area for automatic incident routing.</p>
-              <div className="h-64 bg-slate-100 rounded-lg border border-slate-200 flex items-center justify-center mb-4">
-                <p className="text-sm text-slate-500">Map integration coming soon</p>
+              <p className="text-sm text-slate-600 mb-4">Click on the canvas to add boundary points. The polygon defines your service area for automatic incident routing.</p>
+              <div 
+                className="h-64 bg-slate-100 rounded-lg border border-slate-200 relative cursor-crosshair overflow-hidden mb-4"
+                onClick={(e) => {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  const x = ((e.clientX - rect.left) / rect.width) * 100;
+                  const y = ((e.clientY - rect.top) / rect.height) * 100;
+                  setBoundaryPoints([...boundaryPoints, { x, y }]);
+                }}
+              >
+                <svg className="w-full h-full">
+                  {boundaryPoints.length > 0 && (
+                    <polygon
+                      points={boundaryPoints.map(p => `${p.x}% ${p.y}%`).join(' ')}
+                      fill="rgba(59, 130, 246, 0.2)"
+                      stroke="#3b82f6"
+                      strokeWidth="2"
+                    />
+                  )}
+                  {boundaryPoints.map((point, index) => (
+                    <circle
+                      key={index}
+                      cx={`${point.x}%`}
+                      cy={`${point.y}%`}
+                      r="6"
+                      fill="#3b82f6"
+                      stroke="white"
+                      strokeWidth="2"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setBoundaryPoints(boundaryPoints.filter((_, i) => i !== index));
+                      }}
+                      className="cursor-pointer hover:fill-red-500"
+                    />
+                  ))}
+                </svg>
+                {boundaryPoints.length === 0 && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <p className="text-sm text-slate-500">Click to add boundary points</p>
+                  </div>
+                )}
               </div>
               <div className="flex justify-between items-center">
-                <p className="text-xs text-slate-500">{boundaryPoints.length} points added</p>
+                <p className="text-xs text-slate-500">{boundaryPoints.length} points added (click a point to remove it)</p>
                 <div className="flex gap-2">
                   <button 
                     onClick={() => setBoundaryPoints([])}
@@ -769,7 +807,8 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
                   </button>
                   <button 
                     onClick={handleSaveBoundary}
-                    className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800"
+                    disabled={boundaryPoints.length < 3}
+                    className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Save Boundary
                   </button>
