@@ -8,6 +8,8 @@ import DepartmentManagementSection from './components/DepartmentManagementSectio
 import { isPointInBoundary } from '../../utils/geofence';
 import ResidentHome from '../resident-home';
 import ResponderView from '../responder-view';
+import { MapContainer, TileLayer, Polygon, Marker, useMapEvents } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
 
 const priorityStyles = {
   critical: 'bg-rose-100 text-rose-700 ring-rose-200',
@@ -24,6 +26,15 @@ const statusStyles = {
 };
 
 const formatStatus = (value) => value?.replace('-', ' ');
+
+const BoundaryEditor = ({ boundaryPoints, setBoundaryPoints }) => {
+  useMapEvents({
+    click(e) {
+      setBoundaryPoints([...boundaryPoints, { lat: e.latlng.lat, lng: e.latlng.lng }]);
+    }
+  });
+  return null;
+};
 
 const formatTimeAgo = (dateString) => {
   if (!dateString) return 'Unknown time';
@@ -65,7 +76,14 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
   const [emergencyContacts, setEmergencyContacts] = useState([]);
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
   const [newContact, setNewContact] = useState({ name: '', relationship: '', phone_number: '', is_primary: false });
-  const [boundaryPoints, setBoundaryPoints] = useState([]);
+  const [boundaryPoints, setBoundaryPoints] = useState(() => {
+    const saved = localStorage.getItem('service_boundary');
+    if (saved) {
+      const data = JSON.parse(saved);
+      return data.points.map(p => ({ lat: p.latitude, lng: p.longitude }));
+    }
+    return [];
+  });
   const [isBoundaryModalOpen, setIsBoundaryModalOpen] = useState(false);
   const [assistingDepartments, setAssistingDepartments] = useState([]);
   const [isAssistanceModalOpen, setIsAssistanceModalOpen] = useState(false);
@@ -347,9 +365,9 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
   };
 
   const handleSaveBoundary = async () => {
-    // Save boundary points to database (would need a service_boundaries table)
-    // For now, save to localStorage as demo
-    localStorage.setItem('service_boundary', JSON.stringify({ points: boundaryPoints }));
+    // Convert to the format expected by geofence utility (latitude/longitude)
+    const points = boundaryPoints.map(p => ({ latitude: p.lat, longitude: p.lng }));
+    localStorage.setItem('service_boundary', JSON.stringify({ points }));
     setIsBoundaryModalOpen(false);
   };
 
@@ -754,50 +772,41 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
               </button>
             </div>
             <div className="p-4">
-              <p className="text-sm text-slate-600 mb-4">Click on the canvas to add boundary points. The polygon defines your service area for automatic incident routing.</p>
-              <div 
-                className="h-64 bg-slate-100 rounded-lg border border-slate-200 relative cursor-crosshair overflow-hidden mb-4"
-                onClick={(e) => {
-                  const rect = e.currentTarget.getBoundingClientRect();
-                  const x = ((e.clientX - rect.left) / rect.width) * 100;
-                  const y = ((e.clientY - rect.top) / rect.height) * 100;
-                  setBoundaryPoints([...boundaryPoints, { x, y }]);
-                }}
-              >
-                <svg className="w-full h-full">
-                  {boundaryPoints.length > 0 && (
-                    <polygon
-                      points={boundaryPoints.map(p => `${p.x}% ${p.y}%`).join(' ')}
-                      fill="rgba(59, 130, 246, 0.2)"
-                      stroke="#3b82f6"
-                      strokeWidth="2"
+              <p className="text-sm text-slate-600 mb-4">Click on the map to add boundary points. The polygon defines your service area for automatic incident routing.</p>
+              <div className="h-80 rounded-lg border border-slate-200 overflow-hidden mb-4">
+                <MapContainer center={[10.3172, 123.8951]} zoom={13} style={{ height: '100%', width: '100%' }}>
+                  <TileLayer
+                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  />
+                  <BoundaryEditor 
+                    boundaryPoints={boundaryPoints}
+                    setBoundaryPoints={setBoundaryPoints}
+                  />
+                  {boundaryPoints.length > 2 && (
+                    <Polygon
+                      positions={boundaryPoints.map(p => [p.lat, p.lng])}
+                      color="#3b82f6"
+                      fillColor="#3b82f6"
+                      fillOpacity={0.2}
                     />
                   )}
                   {boundaryPoints.map((point, index) => (
-                    <circle
+                    <Marker
                       key={index}
-                      cx={`${point.x}%`}
-                      cy={`${point.y}%`}
-                      r="6"
-                      fill="#3b82f6"
-                      stroke="white"
-                      strokeWidth="2"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setBoundaryPoints(boundaryPoints.filter((_, i) => i !== index));
+                      position={[point.lat, point.lng]}
+                      eventHandlers={{
+                        click: (e) => {
+                          e.originalEvent.stopPropagation();
+                          setBoundaryPoints(boundaryPoints.filter((_, i) => i !== index));
+                        }
                       }}
-                      className="cursor-pointer hover:fill-red-500"
                     />
                   ))}
-                </svg>
-                {boundaryPoints.length === 0 && (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <p className="text-sm text-slate-500">Click to add boundary points</p>
-                  </div>
-                )}
+                </MapContainer>
               </div>
               <div className="flex justify-between items-center">
-                <p className="text-xs text-slate-500">{boundaryPoints.length} points added (click a point to remove it)</p>
+                <p className="text-xs text-slate-500">{boundaryPoints.length} points added (click a marker to remove it)</p>
                 <div className="flex gap-2">
                   <button 
                     onClick={() => setBoundaryPoints([])}
