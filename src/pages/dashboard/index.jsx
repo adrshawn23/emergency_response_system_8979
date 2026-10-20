@@ -467,9 +467,17 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
     }
 
     try {
-      setPasswordSuccess('Password changed successfully!');
-      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
-      setTimeout(() => setPasswordSuccess(''), 3000);
+      const { data, error } = await supabase.auth.updateUser({
+        password: passwordForm.newPassword
+      });
+
+      if (error) {
+        setPasswordErrors({ currentPassword: error.message || 'Failed to change password. Please try again.' });
+      } else {
+        setPasswordSuccess('Password changed successfully!');
+        setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+        setTimeout(() => setPasswordSuccess(''), 3000);
+      }
     } catch (error) {
       setPasswordErrors({ currentPassword: 'Failed to change password. Please try again.' });
     } finally {
