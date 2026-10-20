@@ -133,8 +133,9 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
 
       const { data: responderData } = await supabase
         .from('user_profiles')
-        .select('*')
-        .eq('role', 'responder');
+        .select('*, departments(id, name)')
+        .eq('role', 'responder')
+        .eq('is_active', true);
       
       if (responderData) setResponders(responderData);
     };
@@ -178,7 +179,8 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
     { key: 'new', label: 'New incident', icon: 'PlusCircle', path: '/emergency-report', roles: ['admin', 'dispatcher'] },
     { key: 'residents', label: 'Residents & review', icon: 'Users', path: '/user-management', roles: ['admin'] },
     { key: 'departments', label: 'Departments', icon: 'Building2', path: '/department-management', roles: ['admin'] },
-    { key: 'settings', label: 'System settings', icon: 'Settings', path: '/settings', roles: ['admin'] }
+    { key: 'settings', label: 'System settings', icon: 'Settings', path: '/settings', roles: ['admin'] },
+    { key: 'profile', label: 'Profile', icon: 'User', path: '/profile', roles: ['admin', 'dispatcher', 'responder'] }
   ].filter(link => link.roles.includes(profile?.role));
   const current = sectionCopy[section];
   const filteredReports = searchQuery 
@@ -526,19 +528,18 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
             <span className={`w-fit rounded-full px-2 py-1 text-[10px] font-bold uppercase ${priorityStyles[report.attachments?.priority || report.priority]}`}>{report.attachments?.priority || report.priority}</span>
             <div className="flex min-w-0 items-center gap-2">
               <span className={`inline-flex h-8 min-w-[84px] items-center justify-center rounded-full px-2 text-xs font-medium capitalize ${statusStyles[report.attachments?.status || report.status] || 'bg-slate-100 text-slate-700'}`}>{formatStatus(report.attachments?.status || report.status)}</span>
-              {(profile?.role === 'dispatcher' || profile?.role === 'admin') && (report.attachments?.status || report.status) !== 'resolved' && <div className="flex gap-1"><button onClick={() => (report.attachments?.status || report.status) === 'pending' ? handleAssignClick(report) : setReportStatus(report.report_id || report.id, 'resolved')} className="inline-flex h-8 min-w-[72px] items-center justify-center rounded-lg border border-blue-200 bg-blue-50 px-3 text-xs font-bold text-blue-700 transition hover:border-blue-300 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">{(report.attachments?.status || report.status) === 'pending' ? 'Assign' : 'Resolve'}</button><button onClick={() => handleAssistanceClick(report)} className="inline-flex h-8 items-center justify-center rounded-lg border border-amber-200 bg-amber-50 px-3 text-xs font-bold text-amber-700 transition hover:border-amber-300 hover:bg-amber-100" title="Request cross-department assistance"><Icon name="Users" size={14}/></button></div>}
+              {(profile?.role === 'dispatcher' || profile?.role === 'admin') && (report.attachments?.status || report.status) !== 'resolved' && <div className="flex gap-1"><button onClick={(e) => { e.stopPropagation(); (report.attachments?.status || report.status) === 'pending' ? handleAssignClick(report) : setReportStatus(report.report_id || report.id, 'resolved'); }} className="inline-flex h-8 min-w-[72px] items-center justify-center rounded-lg border border-blue-200 bg-blue-50 px-3 text-xs font-bold text-blue-700 transition hover:border-blue-300 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">{(report.attachments?.status || report.status) === 'pending' ? 'Assign' : 'Resolve'}</button><button onClick={(e) => { e.stopPropagation(); handleAssistanceClick(report); }} className="inline-flex h-8 items-center justify-center rounded-lg border border-amber-200 bg-amber-50 px-3 text-xs font-bold text-amber-700 transition hover:border-amber-300 hover:bg-amber-100" title="Request cross-department assistance"><Icon name="Users" size={14}/></button></div>}
             </div>
           </div>)}
         </div>
       </>}
       {section === 'new' && <form onSubmit={submitIncident} className="mt-7 grid gap-5 lg:grid-cols-[1.4fr_.6fr]"><div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><div className="grid gap-5 sm:grid-cols-2"><label className="text-sm font-semibold">Emergency type<select value={draft.type} onChange={e => setDraft(value => ({...value, type: e.target.value}))} className="mt-2 w-full rounded-xl border-slate-200 bg-white text-sm"><option value="fire">Fire</option><option value="medical">Medical</option><option value="accident">Accident</option><option value="police">Public safety</option><option value="natural">Natural hazard</option></select></label><label className="text-sm font-semibold">Priority<select value={draft.priority} onChange={e => setDraft(value => ({...value, priority: e.target.value}))} className="mt-2 w-full rounded-xl border-slate-200 bg-white text-sm"><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="critical">Critical</option></select></label></div><label className="mt-5 block text-sm font-semibold">Incident location<input required value={draft.location} onChange={e => setDraft(value => ({...value, location: e.target.value}))} placeholder="Address, landmark, or selected map pin" className="mt-2 w-full rounded-xl border-slate-200 px-3 py-3 text-sm"/></label><div className="mt-3 flex items-center gap-2 rounded-xl bg-blue-50 p-3 text-xs text-blue-800"><Icon name="MapPin" size={15}/>GPS and map provider are optional. A manual location is always accepted; outside-boundary reports go to dispatch for triage.</div><label className="mt-5 block text-sm font-semibold">What is happening?<textarea required value={draft.description} onChange={e => setDraft(value => ({...value, description: e.target.value}))} placeholder="Describe hazards, people involved, and immediate risks." rows="6" className="mt-2 w-full rounded-xl border-slate-200 px-3 py-3 text-sm"/></label>
         <div className="mt-5">
-          <label className="block text-sm font-semibold mb-2">Upload evidence (required)</label>
+          <label className="block text-sm font-semibold mb-2">Upload evidence (optional)</label>
           <input 
             type="file" 
             multiple 
             accept="image/*"
-            required
             onChange={handleImageUpload}
             className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm"
           />
@@ -885,7 +886,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
                   {responders
                     .filter(r => !selectedDepartment || r.department_id === selectedDepartment)
                     .map(responder => (
-                      <option key={responder.id} value={responder.id}>{responder.full_name || responder.email}</option>
+                      <option key={responder.id} value={responder.id}>{responder.full_name || responder.email} {responder.departments?.name ? `(${responder.departments.name})` : ''}</option>
                     ))}
                 </select>
               </div>

@@ -83,10 +83,6 @@ const EmergencyReport = () => {
       newErrors.description = 'Description must be at least 10 characters';
     }
 
-    if (!formData?.images || formData?.images?.length === 0) {
-      newErrors.images = 'At least one evidence image is required';
-    }
-
     setErrors(newErrors);
     return Object.keys(newErrors)?.length === 0;
   };
