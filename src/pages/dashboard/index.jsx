@@ -120,8 +120,44 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'emergency_reports' }, (payload) => {
         if (payload.eventType === 'INSERT') {
           setReports(prev => [payload.new, ...prev]);
+          // Add notification for new incident
+          const newNotif = {
+            id: `new-${payload.new.id}`,
+            type: 'new_incident',
+            title: 'New incident reported',
+            message: `${payload.new.emergency_type || 'Emergency'} at ${payload.new.attachments?.location || payload.new.location || 'Unknown location'}`,
+            reportId: payload.new.id,
+            timestamp: new Date().toISOString(),
+            read: false
+          };
+          setNotifications(prev => [newNotif, ...prev]);
         } else if (payload.eventType === 'UPDATE') {
           setReports(prev => prev.map(r => r.id === payload.new.id ? payload.new : r));
+          // Add notification for status changes
+          if (payload.old.status !== payload.new.status) {
+            const statusNotif = {
+              id: `status-${payload.new.id}-${Date.now()}`,
+              type: 'status_change',
+              title: 'Incident status updated',
+              message: `Incident ${payload.new.report_id || payload.new.id?.slice(0, 8)} is now ${payload.new.status}`,
+              reportId: payload.new.id,
+              timestamp: new Date().toISOString(),
+              read: false
+            };
+            setNotifications(prev => [statusNotif, ...prev]);
+          }
+          if (payload.old.assigned_to !== payload.new.assigned_to) {
+            const assignNotif = {
+              id: `assign-${payload.new.id}-${Date.now()}`,
+              type: 'assignment',
+              title: 'Incident assigned',
+              message: `Incident ${payload.new.report_id || payload.new.id?.slice(0, 8)} has been assigned`,
+              reportId: payload.new.id,
+              timestamp: new Date().toISOString(),
+              read: false
+            };
+            setNotifications(prev => [assignNotif, ...prev]);
+          }
         } else if (payload.eventType === 'DELETE') {
           setReports(prev => prev.filter(r => r.id !== payload.old.id));
         }
@@ -856,11 +892,29 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
                 <p className="text-sm text-slate-500 text-center py-8">No new notifications</p>
               ) : (
                 <div className="space-y-3">
-                  {notifications.map((notif, index) => (
-                    <div key={index} className="rounded-lg border border-slate-200 p-3 hover:bg-slate-50 cursor-pointer">
-                      <p className="text-sm font-medium">{notif.title}</p>
-                      <p className="text-xs text-slate-500 mt-1">{notif.message}</p>
-                      <p className="text-[10px] text-slate-400 mt-2">{notif.time}</p>
+                  {notifications.map((notif) => (
+                    <div 
+                      key={notif.id} 
+                      onClick={() => {
+                        if (notif.reportId) {
+                          const report = reports.find(r => r.id === notif.reportId);
+                          if (report) setSelectedReport(report);
+                        }
+                        setIsNotificationPanelOpen(false);
+                      }}
+                      className={`rounded-lg border p-3 hover:bg-slate-50 cursor-pointer transition ${!notif.read ? 'border-blue-200 bg-blue-50/30' : 'border-slate-200'}`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className={`mt-0.5 h-2 w-2 rounded-full ${notif.type === 'new_incident' ? 'bg-red-500' : notif.type === 'status_change' ? 'bg-amber-500' : 'bg-blue-500'}`}/>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-slate-900">{notif.title}</p>
+                          <p className="text-xs text-slate-600 mt-1">{notif.message}</p>
+                          <p className="text-[10px] text-slate-400 mt-2">{formatTimeAgo(notif.timestamp)}</p>
+                        </div>
+                        {!notif.read && (
+                          <div className="h-2 w-2 rounded-full bg-blue-500"/>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -1080,6 +1134,7 @@ export default function Dashboard({ section = 'command' }) {
   const [currentDate, setCurrentDate] = useState('');
   const [showNotifications, setShowNotifications] = useState(false);
   const [departments, setDepartments] = useState([]);
+  const [notifications, setNotifications] = useState([]);
 
   // Set current date and greeting
   useEffect(() => {
@@ -1127,8 +1182,42 @@ export default function Dashboard({ section = 'command' }) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'emergency_reports' }, (payload) => {
         if (payload.eventType === 'INSERT') {
           setReports(prev => [payload.new, ...prev]);
+          const newNotif = {
+            id: `new-${payload.new.id}`,
+            type: 'new_incident',
+            title: 'New incident reported',
+            message: `${payload.new.emergency_type || payload.new.incident_type || 'Emergency'} at ${payload.new.attachments?.location || payload.new.location || 'Unknown location'}`,
+            reportId: payload.new.id,
+            timestamp: new Date().toISOString(),
+            read: false
+          };
+          setNotifications(prev => [newNotif, ...prev]);
         } else if (payload.eventType === 'UPDATE') {
           setReports(prev => prev.map(r => r.id === payload.new.id ? payload.new : r));
+          if (payload.old.status !== payload.new.status) {
+            const statusNotif = {
+              id: `status-${payload.new.id}-${Date.now()}`,
+              type: 'status_change',
+              title: 'Incident status updated',
+              message: `Incident ${payload.new.report_id || payload.new.id?.slice(0, 8)} is now ${payload.new.status}`,
+              reportId: payload.new.id,
+              timestamp: new Date().toISOString(),
+              read: false
+            };
+            setNotifications(prev => [statusNotif, ...prev]);
+          }
+          if (payload.old.assigned_to !== payload.new.assigned_to) {
+            const assignNotif = {
+              id: `assign-${payload.new.id}-${Date.now()}`,
+              type: 'assignment',
+              title: 'Incident assigned',
+              message: `Incident ${payload.new.report_id || payload.new.id?.slice(0, 8)} has been assigned`,
+              reportId: payload.new.id,
+              timestamp: new Date().toISOString(),
+              read: false
+            };
+            setNotifications(prev => [assignNotif, ...prev]);
+          }
         } else if (payload.eventType === 'DELETE') {
           setReports(prev => prev.filter(r => r.id !== payload.old.id));
         }
@@ -1210,12 +1299,42 @@ export default function Dashboard({ section = 'command' }) {
               </button>
             </div>
             <div className="max-h-96 overflow-y-auto">
-              <div className="px-4 py-3 text-sm text-slate-500">
-                <div className="flex items-start gap-3">
-                  <div className="mt-0.5 h-2 w-2 rounded-full bg-red-500"/>
-                  <p>No new notifications</p>
+              {notifications.length === 0 ? (
+                <div className="px-4 py-3 text-sm text-slate-500">
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5 h-2 w-2 rounded-full bg-red-500"/>
+                    <p>No new notifications</p>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="space-y-1">
+                  {notifications.map((notif) => (
+                    <div 
+                      key={notif.id}
+                      onClick={() => {
+                        if (notif.reportId) {
+                          const report = reports.find(r => r.id === notif.reportId);
+                          if (report) setActiveReport(report);
+                        }
+                        setShowNotifications(false);
+                      }}
+                      className={`px-4 py-3 cursor-pointer transition hover:bg-slate-50 ${!notif.read ? 'bg-blue-50/30' : ''}`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className={`mt-0.5 h-2 w-2 rounded-full ${notif.type === 'new_incident' ? 'bg-red-500' : notif.type === 'status_change' ? 'bg-amber-500' : 'bg-blue-500'}`}/>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-slate-900">{notif.title}</p>
+                          <p className="text-xs text-slate-600 mt-1">{notif.message}</p>
+                          <p className="text-[10px] text-slate-400 mt-2">{formatTimeAgo(notif.timestamp)}</p>
+                        </div>
+                        {!notif.read && (
+                          <div className="h-2 w-2 rounded-full bg-blue-500"/>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
