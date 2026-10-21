@@ -1236,6 +1236,29 @@ export default function Dashboard({ section = 'command' }) {
   const [showNotifications, setShowNotifications] = useState(false);
   const [departments, setDepartments] = useState([]);
   const [notifications, setNotifications] = useState([]);
+  const [boundaryPoints, setBoundaryPoints] = useState([]);
+  const [isBoundaryModalOpen, setIsBoundaryModalOpen] = useState(false);
+
+  // Load saved boundary on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('service_boundary');
+    if (saved) {
+      try {
+        const data = JSON.parse(saved);
+        if (data.points && Array.isArray(data.points)) {
+          setBoundaryPoints(data.points.map(p => ({ lat: p.latitude, lng: p.longitude })));
+        }
+      } catch (e) {
+        console.error('Failed to parse saved boundary:', e);
+      }
+    }
+  }, []);
+
+  const handleSaveBoundary = () => {
+    const points = boundaryPoints.map(p => ({ latitude: p.lat, longitude: p.lng }));
+    localStorage.setItem('service_boundary', JSON.stringify({ points }));
+    setIsBoundaryModalOpen(false);
+  };
 
   // Set current date and greeting
   useEffect(() => {
@@ -1478,4 +1501,69 @@ export default function Dashboard({ section = 'command' }) {
     </div>
     {showBroadcast && <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/50 p-4"><div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl"><div className="flex items-start justify-between border-b border-slate-100 p-6"><div><div className="mb-2 grid h-10 w-10 place-items-center rounded-xl bg-blue-50 text-blue-700"><Icon name="Radio" size={20}/></div><h2 className="text-lg font-bold">Request department assistance</h2><p className="mt-1 text-sm text-slate-500">Targeted only to selected, on-duty departments.</p></div><button onClick={() => {setShowBroadcast(false);setSent(false)}} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100"><Icon name="X"/></button></div><div className="space-y-5 p-6">{sent ? <div className="rounded-xl bg-emerald-50 p-5 text-center"><Icon name="CheckCircle2" size={32} className="mx-auto text-emerald-600"/><p className="mt-3 font-semibold text-emerald-900">Assistance request sent</p><p className="mt-1 text-sm text-emerald-700">The incident timeline now records this targeted request.</p><button onClick={() => {setShowBroadcast(false);setSent(false)}} className="mt-4 text-sm font-semibold text-emerald-700">Done</button></div> : <><div><label className="block text-sm font-semibold mb-2">Select departments</label><div className="max-h-48 overflow-y-auto rounded-lg border border-slate-200 bg-white p-2 space-y-1">{(departments || []).length === 0 ? <p className="text-sm text-slate-500 py-4 text-center">No departments available</p> : (departments || []).map(dept => <label key={dept.id} className={`flex items-center gap-3 rounded-lg p-3 cursor-pointer transition ${selectedDepartments.includes(dept.id) ? 'bg-blue-50 border border-blue-200' : 'hover:bg-slate-50'}`}><input type="checkbox" checked={selectedDepartments.includes(dept.id)} onChange={() => toggleDepartment(dept.id)} className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"/><div className="flex-1"><p className="text-sm font-medium">{dept.name}</p><p className="text-xs text-slate-500">{dept.type}</p></div></label>)}</div><p className="mt-2 text-xs text-slate-500">{selectedDepartments.length} department(s) selected</p></div><button onClick={() => setSent(true)} disabled={selectedDepartments.length === 0} className="w-full rounded-xl bg-blue-700 px-4 py-3 text-sm font-semibold text-white hover:bg-blue-800 disabled:opacity-50 disabled:cursor-not-allowed">Send request</button></>}</div></div></div>}
   </div>;
+    {isBoundaryModalOpen && (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4">
+        <div className="bg-white border border-slate-200 rounded-lg shadow-lg w-full max-w-2xl">
+          <div className="flex items-center justify-between p-4 border-b border-slate-200">
+            <h3 className="font-bold text-lg">Configure Service Boundary</h3>
+            <button onClick={() => setIsBoundaryModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+              <Icon name="X" size={20} />
+            </button>
+          </div>
+          <div className="p-4">
+            <p className="text-sm text-slate-600 mb-4">Click on the map to add boundary points. The polygon defines your service area for automatic incident routing.</p>
+            <div className="h-80 rounded-lg border border-slate-200 overflow-hidden mb-4">
+              <MapContainer center={[10.3172, 123.8951]} zoom={13} style={{ height: '100%', width: '100%' }}>
+                <TileLayer
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                />
+                <BoundaryEditor 
+                  boundaryPoints={boundaryPoints}
+                  setBoundaryPoints={setBoundaryPoints}
+                />
+                {boundaryPoints.length > 2 && (
+                  <Polygon
+                    positions={boundaryPoints.map(p => [p.lat, p.lng])}
+                    color="#3b82f6"
+                    fillColor="#3b82f6"
+                    fillOpacity={0.2}
+                  />
+                )}
+                {boundaryPoints.map((point, index) => (
+                  <Marker
+                    key={index}
+                    position={[point.lat, point.lng]}
+                    eventHandlers={{
+                      click: (e) => {
+                        e.originalEvent.stopPropagation();
+                        setBoundaryPoints(boundaryPoints.filter((_, i) => i !== index));
+                      }
+                    }}
+                  />
+                ))}
+              </MapContainer>
+            </div>
+            <div className="flex justify-between items-center">
+              <p className="text-xs text-slate-500">{boundaryPoints.length} points added (click a marker to remove it)</p>
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => setBoundaryPoints([])}
+                  className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-lg"
+                >
+                  Clear
+                </button>
+                <button 
+                  onClick={handleSaveBoundary}
+                  disabled={boundaryPoints.length < 3}
+                  className="px-4 py-2 text-sm font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed"
+                >
+                  Save Boundary
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
 }
