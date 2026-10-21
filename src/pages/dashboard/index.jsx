@@ -1443,17 +1443,6 @@ export default function Dashboard({ section = 'command' }) {
               <div className="relative h-[365px] overflow-hidden">
                 <MapContainer center={[10.3172, 123.8951]} zoom={13} style={{ height: '100%', width: '100%' }}>
                   <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"/>
-                  {boundaryPoints.length > 2 && (
-                    <Polygon 
-                      positions={boundaryPoints.map(p => [p.lat, p.lng])} 
-                      color="#3b82f6" 
-                      fillColor="#3b82f6" 
-                      fillOpacity={0.2}
-                    />
-                  )}
-                  {activeReport?.latitude && activeReport?.longitude && (
-                    <Marker position={[activeReport.latitude, activeReport.longitude]}/>
-                  )}
                 </MapContainer>
                 <div className="absolute bottom-5 left-5 rounded-xl bg-white/95 p-3 shadow-lg">
                   <p className="text-xs font-bold">{activeReport?.report_id} · {activeReport?.priority} priority</p>
