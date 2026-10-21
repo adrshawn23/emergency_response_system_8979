@@ -76,14 +76,22 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
   const [emergencyContacts, setEmergencyContacts] = useState([]);
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
   const [newContact, setNewContact] = useState({ name: '', relationship: '', phone_number: '', is_primary: false });
-  const [boundaryPoints, setBoundaryPoints] = useState(() => {
+  const [boundaryPoints, setBoundaryPoints] = useState([]);
+
+  // Load saved boundary on mount
+  useEffect(() => {
     const saved = localStorage.getItem('service_boundary');
     if (saved) {
-      const data = JSON.parse(saved);
-      return data.points.map(p => ({ lat: p.latitude, lng: p.longitude }));
+      try {
+        const data = JSON.parse(saved);
+        if (data.points && Array.isArray(data.points)) {
+          setBoundaryPoints(data.points.map(p => ({ lat: p.latitude, lng: p.longitude })));
+        }
+      } catch (e) {
+        console.error('Failed to parse saved boundary:', e);
+      }
     }
-    return [];
-  });
+  }, []);
   const [isBoundaryModalOpen, setIsBoundaryModalOpen] = useState(false);
   const [assistingDepartments, setAssistingDepartments] = useState([]);
   const [isAssistanceModalOpen, setIsAssistanceModalOpen] = useState(false);
