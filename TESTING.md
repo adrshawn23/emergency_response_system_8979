@@ -174,7 +174,7 @@ Before testing, ensure all database migrations have been run in Supabase SQL Edi
 
 ---
 
-## Test 9: Boundary Configuration
+## Test 9: Boundary Configuration with Leaflet Map
 
 **Role:** Admin
 
@@ -182,13 +182,18 @@ Before testing, ensure all database migrations have been run in Supabase SQL Edi
 1. Login as admin
 2. Click "Settings" in sidebar
 3. Click "Configure boundary"
-4. Verify modal opens with map placeholder
-5. Click "Clear" (if any points exist)
-6. Click "Save Boundary"
-7. Verify modal closes
-8. Sign out
+4. Verify modal opens with interactive Leaflet map
+5. Click on the map at different locations to add boundary points
+6. Verify markers appear at clicked locations
+7. Click on a marker to remove it
+8. Add at least 3 points to form a polygon
+9. Verify the polygon is drawn on the map
+10. Click "Save Boundary"
+11. Verify modal closes
+12. Go to "Command center" and verify the service boundary is displayed on the map
+13. Sign out
 
-**Expected Result:** Boundary configuration modal works
+**Expected Result:** Boundary points can be added/removed on the map, polygon is drawn, and boundary persists and displays on command center map
 
 ---
 
@@ -358,10 +363,10 @@ After testing, you may want to clean up test data:
 
 ## Known Limitations
 
-- **Map Integration:** Boundary configuration uses a placeholder; actual map integration requires a mapping service (Google Maps, Mapbox, etc.)
 - **OCR/AI:** ID verification uses mock OCR data; actual OCR requires an AI service (Google Vision, AWS Textract, etc.)
 - **Image Storage:** Images are previewed client-side; actual storage requires Supabase Storage or similar service
 - **Notifications:** Notification panel is a UI placeholder; actual push notifications require a notification service
+- **Service Boundary:** Currently saved to localStorage; for production, should be stored in a database table with proper persistence
 
 ---
 
