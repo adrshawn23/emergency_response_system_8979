@@ -38,8 +38,10 @@ test.describe.serial('Full incident lifecycle (resident -> dispatch -> responder
     await login(page, 'resident@example.com', 'resident123');
 
     // ResidentHome -> "Report an emergency" -> /emergency-report (section 'new')
-    await page.click('text=Report an emergency');
-    await page.waitForURL('/emergency-report');
+    await Promise.all([
+      page.waitForURL('/emergency-report'),
+      page.getByRole('button', { name: 'Report an emergency' }).click(),
+    ]);
 
     await page.getByLabel('Emergency type').selectOption('fire');
     await page.getByLabel('Priority').selectOption('high');
