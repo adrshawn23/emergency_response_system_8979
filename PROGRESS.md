@@ -110,6 +110,15 @@
 1. **20261017040000_fix_departments_rls.sql**
    - Fixed departments RLS policy to use `is_admin()` function
    - Enables admin department management
+10. **20261021210000_fix_emergency_reports_schema_v20.sql**
+   - Refactored `emergency_reports` schema (status, priority, report_id)
+   - Added ENUM types for type safety
+   - Migrated JSONB data to SQL columns
+   - Implemented `NOT NULL` constraints
+   - Added automated ID generation trigger
+   - Patched dashboard incident submission logic
+
+
 
 2. **20261019020000_admin_read_all_profiles.sql**
    - Admin can read all user_profiles

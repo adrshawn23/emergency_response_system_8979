@@ -115,7 +115,7 @@ export const userProfilesService = {
     let query = supabase?.from('user_profiles')?.select(`
         *,
         department:departments(*)
-      `)?.eq('role', 'responder')?.eq('is_active', true);
+      `)?.eq('role', 'responder')?.eq('status', 'active');
 
     if (departmentType) {
       query = query?.eq('departments.type', departmentType);

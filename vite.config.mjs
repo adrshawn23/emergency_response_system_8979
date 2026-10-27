@@ -18,7 +18,7 @@ export default defineConfig(({ mode }) => ({
   ],
 
   server: {
-    port: 4028,
+    port: 4190,
     host: "0.0.0.0",
     strictPort: true,
     allowedHosts: [

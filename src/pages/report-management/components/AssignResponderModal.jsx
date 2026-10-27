@@ -26,7 +26,10 @@ const AssignResponderModal = ({
           .from('user_profiles')
           .select('*, departments(*)')
           .in('role', ['responder', 'dispatcher'])
-          .eq('is_active', true);
+          .eq('status', 'active');
+        
+        console.log('Fetched responders:', data);
+        console.log('Responder error:', JSON.stringify(error));
         
         if (error) throw error;
         setResponders(data || []);

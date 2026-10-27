@@ -13,6 +13,8 @@ Before testing, ensure all database migrations have been run in Supabase SQL Edi
 7. ✅ 20261019070000_responder_update_assigned_incidents.sql
 8. ✅ 20261019080000_audit_logs.sql
 9. ✅ 20261019090000_id_verifications.sql
+10. ✅ 20261021210000_fix_emergency_reports_schema_v20.sql
+
 
 ## Test Accounts
 

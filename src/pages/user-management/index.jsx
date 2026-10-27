@@ -44,7 +44,7 @@ const UserManagement = () => {
           const { data: activeUsers, error: activeError } = await supabase
             .from('user_profiles')
             .select('*, department:departments(*)')
-            .eq('is_active', true)
+            .eq('status', 'active')
             .order('created_at', { ascending: false });
           
           if (activeError) throw activeError;
@@ -52,7 +52,7 @@ const UserManagement = () => {
           const { data: pendingUsersData, error: pendingError } = await supabase
             .from('user_profiles')
             .select('*, department:departments(*)')
-            .eq('is_active', false)
+            .eq('status', 'inactive')
             .order('created_at', { ascending: false });
           
           if (pendingError) throw pendingError;
@@ -76,14 +76,14 @@ const UserManagement = () => {
                          user?.email?.toLowerCase()?.includes(searchTerm?.toLowerCase());
     const matchesRole = !selectedRole || user?.role === selectedRole;
     const matchesDepartment = !selectedDepartment || user?.department?.name?.toLowerCase()?.includes(selectedDepartment?.toLowerCase());
-    const matchesStatus = !selectedStatus || user?.is_active === (selectedStatus === 'active');
+    const matchesStatus = !selectedStatus || user?.status === selectedStatus;
     
     return matchesSearch && matchesRole && matchesDepartment && matchesStatus;
   });
 
   const stats = {
     totalUsers: users?.length,
-    activeUsers: users?.filter(u => u?.is_active)?.length,
+    activeUsers: users?.filter(u => u?.status === 'active')?.length,
     pendingApprovals: pendingUsers?.length,
     onlineUsers: 0
   };
@@ -136,22 +136,22 @@ const UserManagement = () => {
 
   const handleToggleUserStatus = async (user) => {
     try {
-      const newStatus = !user?.is_active;
+      const newStatus = user?.status === 'active' ? 'inactive' : 'active';
       if (useMock) {
         // Mock mode: update local state
         setUsers(prev => prev?.map(u => 
-          u?.id === user?.id ? { ...u, is_active: newStatus } : u
+          u?.id === user?.id ? { ...u, status: newStatus } : u
         ));
       } else {
         // Supabase mode
         const { error } = await supabase
           .from('user_profiles')
-          .update({ is_active: newStatus })
+          .update({ status: newStatus })
           .eq('id', user.id);
         
         if (error) throw error;
         setUsers(prev => prev?.map(u => 
-          u?.id === user?.id ? { ...u, is_active: newStatus } : u
+          u?.id === user?.id ? { ...u, status: newStatus } : u
         ));
       }
     } catch (error) {
@@ -194,14 +194,17 @@ const UserManagement = () => {
     try {
       const { error } = await supabase
         .from('user_profiles')
-        .update({ is_active: true })
+        .update({
+          status: 'active',
+          account_status: 'active'
+        })
         .eq('id', userId);
-      
+
       if (error) throw error;
-      
+
       const approvedUser = pendingUsers?.find(u => u?.id === userId);
       if (approvedUser) {
-        setUsers(prev => [...prev, { ...approvedUser, is_active: true }]);
+        setUsers(prev => [...prev, { ...approvedUser, status: 'active', account_status: 'active' }]);
         setPendingUsers(prev => prev?.filter(u => u?.id !== userId));
       }
     } catch (error) {

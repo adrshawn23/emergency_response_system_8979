@@ -199,7 +199,7 @@ const Profile = () => {
                     <div>
                       <label className="text-sm font-medium text-muted-foreground">Status</label>
                       <p className="text-success">
-                        {profile?.is_active !== false ? 'Active' : 'Inactive'}
+                        {profile?.status === 'active' ? 'Active' : 'Inactive'}
                       </p>
                     </div>
                   </div>

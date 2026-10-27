@@ -79,8 +79,8 @@ const PendingRegistrations = ({
               <div className="flex items-start space-x-4">
                 <div className="relative">
                   <Image
-                    src={user?.avatar}
-                    alt={user?.name}
+                    src={user?.avatar || user?.avatar_url}
+                    alt={user?.name || user?.full_name || user?.email}
                     className="w-12 h-12 rounded-full object-cover"
                   />
                   <div className="absolute -top-1 -right-1 w-4 h-4 bg-warning border-2 border-card rounded-full flex items-center justify-center">
@@ -91,24 +91,24 @@ const PendingRegistrations = ({
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <h3 className="font-medium text-foreground">{user?.name}</h3>
+                      <h3 className="font-medium text-foreground">{user?.name || user?.full_name || user?.email}</h3>
                       <p className="text-sm text-muted-foreground">{user?.email}</p>
                       
                       <div className="flex items-center space-x-4 mt-2">
                         <div className="flex items-center space-x-1">
-                          <Icon name={getRoleIcon(user?.requestedRole)} size={14} className="text-muted-foreground" />
-                          <span className="text-sm text-foreground capitalize">{user?.requestedRole}</span>
+                          <Icon name={getRoleIcon(user?.requestedRole || user?.role)} size={14} className="text-muted-foreground" />
+                          <span className="text-sm text-foreground capitalize">{user?.requestedRole || user?.role || 'resident'}</span>
                         </div>
                         
                         <div className="flex items-center space-x-1">
                           <Icon name="Building" size={14} className="text-muted-foreground" />
-                          <span className="text-sm text-foreground">{user?.requestedDepartment}</span>
+                          <span className="text-sm text-foreground">{user?.requestedDepartment || user?.department?.name || 'None'}</span>
                         </div>
                         
                         <div className="flex items-center space-x-1">
                           <Icon name="Calendar" size={14} className="text-muted-foreground" />
                           <span className="text-sm text-muted-foreground">
-                            Applied {formatTimeAgo(user?.applicationDate)}
+                            Applied {formatTimeAgo(user?.applicationDate || user?.created_at)}
                           </span>
                         </div>
                       </div>

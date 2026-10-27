@@ -85,7 +85,7 @@ const PersonalInfoSection = ({
           value={formData?.address}
           onChange={onChange}
           error={errors?.address}
-          description="Required for location-based emergency services"
+          description="Must be within Barangay Kalubihan — required for location-based emergency services"
           required
           className="w-full"
         />

@@ -12,6 +12,7 @@ import TrustIndicators from './components/TrustIndicators';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { useMockData } from '../../contexts/MockDataContext';
+import { isAddressInServiceArea } from '../../utils/geofence';
 
 const Register = () => {
   const navigate = useNavigate();
@@ -85,7 +86,11 @@ const Register = () => {
           newErrors.phone = 'Please enter a valid 11-digit phone number starting with 0 (e.g., 09948270026)';
         }
         if (!formData?.dateOfBirth) newErrors.dateOfBirth = 'Date of birth is required';
-        if (!formData?.address?.trim()) newErrors.address = 'Address is required';
+        if (!formData?.address?.trim()) {
+          newErrors.address = 'Address is required';
+        } else if (!isAddressInServiceArea(formData.address)) {
+          newErrors.address = 'Address must be within Barangay Kalubihan to register. Include "Kalubihan" or "Brgy Kalubihan" in your address.';
+        }
         break;
 
       case 2: // Account Credentials
@@ -163,17 +168,14 @@ const Register = () => {
     setIsLoading(true);
     
     try {
-      // Check for duplicate name
+      // Check for duplicate name (RPC — anonymous users can't read user_profiles under RLS)
       const fullName = `${formData.firstName} ${formData.lastName}`;
-      const { data: existingUsers, error: checkError } = await supabase
-        .from('user_profiles')
-        .select('id, full_name')
-        .eq('full_name', fullName)
-        .limit(1);
+      const { data: nameTaken, error: checkError } = await supabase
+        .rpc('is_name_taken', { p_name: fullName });
 
       if (checkError) throw checkError;
 
-      if (existingUsers && existingUsers.length > 0) {
+      if (nameTaken) {
         throw new Error('A user with this name already exists. Please contact support if this is an error.');
       }
 
@@ -183,16 +185,22 @@ const Register = () => {
         {
           first_name: formData.firstName,
           last_name: formData.lastName,
+          full_name: fullName,
           phone: formData.phone,
+          birthdate: formData.dateOfBirth,
           date_of_birth: formData.dateOfBirth,
           address: formData.address,
+          emergency_contacts: formData.emergencyContacts?.map(contact => ({
+            name: contact.name,
+            phone: contact.phone,
+            relationship: contact.relationship
+          })),
           role: formData.role
         }
       );
 
       if (signUpError) throw signUpError;
-
-      const userId = data.user.id;
+      if (!data?.user) throw new Error('Registration failed. Please try again.');
 
       // Mock mode demonstrates manual approval without an OCR or storage provider.
       if (useMock) {
@@ -200,53 +208,13 @@ const Register = () => {
         return;
       }
 
-      const { error: profileError } = await supabase.from('user_profiles').update({
-        first_name: formData.firstName,
-        last_name: formData.lastName,
-        email: formData.email,
-        phone_number: formData.phone,
-        birthdate: formData.dateOfBirth,
-        address: formData.address,
-        role: 'resident',
-        is_active: false,
-        account_status: 'pending'
-      }).eq('id', userId);
-
-      if (profileError) throw profileError;
-
-      // Create ID verification record
-      if (formData.idDocument) {
-        const { error: verificationError } = await supabase.from('id_verifications').insert({
-          user_id: userId,
-          id_document_url: 'mock_upload_url', // In production, this would be the actual storage URL
-          ocr_data: {
-            extracted_name: `${formData.firstName} ${formData.lastName}`,
-            extracted_dob: formData.dateOfBirth,
-            confidence: 85 // Mock confidence score
-          },
-          ocr_confidence: 85,
-          verification_status: 'pending'
-        });
-
-        if (verificationError) console.error('Failed to create ID verification:', verificationError);
-      }
-
-      if (formData.emergencyContacts && formData.emergencyContacts.length > 0) {
-        const { error: contactsError } = await supabase.from('emergency_contacts').insert(
-          formData.emergencyContacts.map(contact => ({
-            user_id: userId,
-            name: contact.name,
-            phone: contact.phone,
-            relationship: contact.relationship
-          }))
-        );
-
-        if (contactsError) console.error('Failed to insert emergency contacts:', contactsError);
-      }
-
+      // handle_new_user creates the complete pending profile, ID verification,
+      // and emergency contacts from signup metadata in every mode (with or
+      // without email confirmation). Nothing to write client-side — re-inserting
+      // here would duplicate the trigger's rows.
       navigate('/login', { 
         state: { 
-          message: 'Registration successful! Please check your email for verification instructions.',
+          message: 'Registration received. An administrator will review your account and ID before activation.',
           type: 'success'
         }
       });

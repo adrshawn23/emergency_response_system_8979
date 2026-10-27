@@ -114,7 +114,7 @@ const EmergencyReport = () => {
           priority: formData.priority,
           description: formData.description,
           contact_name: profile?.full_name || 'Command user',
-          contact_phone: profile?.phone_number,
+          contact_phone: profile?.phone,
           status: 'pending',
           location_source: formData.locationMetadata?.source,
           location_accuracy: formData.locationMetadata?.accuracy,
@@ -144,7 +144,7 @@ const EmergencyReport = () => {
             location: formData.location,
             priority: formData.priority,
             contact_name: profile?.full_name || 'Command user',
-            contact_phone: profile?.phone_number,
+            contact_phone: profile?.phone,
             service_area_status: formData.locationMetadata?.serviceArea || 'manual'
           }
         }).select().single();

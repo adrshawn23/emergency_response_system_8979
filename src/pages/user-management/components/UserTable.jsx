@@ -320,7 +320,7 @@ const UserTable = ({
                 </td>
                 
                 <td className="p-4">
-                  {getStatusBadge(user?.is_active ? 'active' : 'inactive')}
+                  {getStatusBadge(user?.status === 'active' ? 'active' : 'inactive')}
                 </td>
                 
                 <td className="p-4">

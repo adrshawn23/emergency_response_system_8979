@@ -13,12 +13,13 @@ export default function ResponderView() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!profile?.id) return; // skip the eq.undefined 400 + broken subscription before profile loads
     const fetchAssignedReports = async () => {
       setLoading(true);
       const { data, error } = await supabase
         .from('emergency_reports')
         .select('*')
-        .eq('assigned_to', profile?.id)
+        .eq('assigned_to', profile.id)
         .order('created_at', { ascending: false });
       
       if (data && !error) {
@@ -32,7 +33,7 @@ export default function ResponderView() {
     // Real-time subscription for assigned reports
     const subscription = supabase
       .channel('assigned_reports_changes')
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'emergency_reports', filter: `assigned_to=eq.${profile?.id}` }, (payload) => {
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'emergency_reports', filter: `assigned_to=eq.${profile.id}` }, (payload) => {
         setAssignedReports(prev => prev.map(r => r.id === payload.new.id ? payload.new : r));
       })
       .subscribe();
@@ -48,11 +49,13 @@ export default function ResponderView() {
       .update({ status: newStatus })
       .eq('id', reportId);
 
-    if (!error) {
-      setAssignedReports(prev => prev.map(r => 
-        r.id === reportId ? { ...r, status: newStatus } : r
-      ));
+    if (error) {
+      console.error('Status update failed:', error);
+      return;
     }
+    setAssignedReports(prev => prev.map(r =>
+      r.id === reportId ? { ...r, status: newStatus } : r
+    ));
   };
 
   return (
@@ -71,7 +74,7 @@ export default function ResponderView() {
           <div className="flex gap-2">
             <button onClick={() => navigate('/profile')} className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold">Profile</button>
             <button onClick={() => navigate('/report-management')} className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold">Incident queue</button>
-            <button onClick={signOut} className="rounded-xl p-2 text-slate-500 hover:bg-slate-100">
+            <button onClick={signOut} aria-label="Sign out" title="Sign out" className="rounded-xl p-2 text-slate-500 hover:bg-slate-100">
               <Icon name="LogOut" size={19}/>
             </button>
           </div>

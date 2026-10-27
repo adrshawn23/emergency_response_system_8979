@@ -83,7 +83,7 @@ const DepartmentManagement = () => {
           const { data: userData, error: userError } = await supabase
             .from('user_profiles')
             .select('*')
-            .eq('is_active', true);
+            .eq('status', 'active');
           
           if (userError) throw userError;
           setAvailableUsers(userData || []);

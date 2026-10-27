@@ -11,6 +11,8 @@ import UserManagement from './pages/user-management';
 import ReportManagement from './pages/report-management';
 import EmergencyReport from './pages/emergency-report';
 import Register from './pages/register';
+import ForgotPassword from './pages/forgot-password';
+import ResetPassword from './pages/reset-password';
 import Profile from './pages/profile';
 import Settings from './pages/settings';
 import Dashboard from './pages/dashboard';
@@ -60,6 +62,8 @@ const Routes = () => {
               {/* Define your route here */}
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/" element={
                 <ProtectedRoute>
                   <Dashboard />
