@@ -1,20 +1,16 @@
-import { useMockData } from '../contexts/MockDataContext';
 import { supabase } from '../lib/supabase';
-import { mockUsers, mockDepartments, mockEmergencyReports, mockEmergencyContacts } from '../data/mockData';
 
+// Historical name kept so legacy imports don't break — this always queries
+// Supabase; there is no mock data source.
 export const useMockDataQuery = () => {
-  const { useMock, mockDb } = useMockData();
-
-  const getSupabaseOrMock = (tableName) => {
-    return useMock ? mockDb.from(tableName) : supabase.from(tableName);
-  };
+  const getSupabaseOrMock = (tableName) => supabase.from(tableName);
 
   return {
-    useMock,
+    useMock: false,
     getSupabaseOrMock,
-    mockUsers,
-    mockDepartments,
-    mockEmergencyReports,
-    mockEmergencyContacts
+    mockUsers: [],
+    mockDepartments: [],
+    mockEmergencyReports: [],
+    mockEmergencyContacts: []
   };
 };

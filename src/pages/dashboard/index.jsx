@@ -69,6 +69,11 @@ const formatTimeAgo = (dateString) => {
   return date.toLocaleDateString();
 };
 
+// Normalizes free-text comparisons (case/whitespace-insensitive) for the
+// OCR-vs-registration auto-check and the review modal's match chips.
+const normText = s => (s ?? '').toString().toLowerCase().replace(/\s+/g, ' ').trim();
+const AUTO_APPROVE_MIN_OCR_CONFIDENCE = 80;
+
 const sectionCopy = {
   queue: { eyebrow: 'Live operations', title: 'Incident queue', description: 'Review, prioritize, and assign incoming emergency reports.' },
   new: { eyebrow: 'Live operations', title: 'New incident report', description: 'Create a report now. Dispatch sees urgent reports immediately, even while verification is pending.' },
@@ -320,8 +325,50 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
         .from('id_verifications')
         .select('*, user_profiles!id_verifications_user_id_fkey(full_name, email, phone, address, birthdate)')
         .order('created_at', { ascending: false });
-      
-      if (data) setIdVerifications(data);
+
+      if (!data) return;
+
+      // Auto-approve when OCR read the same name and birthdate the resident
+      // declared. Anything without both matches stays in the manual queue.
+      // New rows carry name_match/dob_match flags computed from the OCR text;
+      // older rows fall back to comparing the extracted strings.
+      const fieldsMatch = v => {
+        const ocr = v.ocr_data ?? {};
+        const nameOk = ocr.name_match ?? (!!normText(ocr.extracted_name)
+          && normText(ocr.extracted_name) === normText(v.user_profiles?.full_name));
+        const dobOk = ocr.dob_match ?? (!!normText(ocr.extracted_dob)
+          && normText(ocr.extracted_dob) === normText(v.user_profiles?.birthdate));
+        return nameOk && dobOk;
+      };
+      const matched = data.filter(v =>
+        v.verification_status === 'pending'
+        && (v.ocr_confidence ?? 0) >= AUTO_APPROVE_MIN_OCR_CONFIDENCE
+        && fieldsMatch(v));
+
+      if (matched.length > 0) {
+        const notes = 'Auto-approved: OCR-extracted name and birthdate match the registered profile.';
+        const { error } = await supabase
+          .from('id_verifications')
+          .update({ verification_status: 'approved', reviewed_by: profile?.id, review_notes: notes })
+          .in('id', matched.map(v => v.id));
+
+        if (!error) {
+          const userIds = matched.map(v => v.user_id);
+          const { error: activationError } = await supabase
+            .from('user_profiles')
+            .update({ status: 'active', account_status: 'active' })
+            .in('id', userIds);
+          if (activationError) console.error('Auto-activation failed:', activationError);
+          else setPendingUsers(prev => prev.filter(u => !userIds.includes(u?.id)));
+          setIdVerifications(data.map(v => matched.some(m => m.id === v.id)
+            ? { ...v, verification_status: 'approved', reviewed_by: profile?.id, review_notes: notes }
+            : v));
+          return;
+        }
+        console.error('Auto-approve failed:', error);
+      }
+
+      setIdVerifications(data);
     };
 
     fetchVerifications();
@@ -812,11 +859,12 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
       }
     }
   };
-  const normText = s => (s ?? '').toString().toLowerCase().replace(/\s+/g, ' ').trim();
   const ocrName = normText(selectedVerification?.ocr_data?.extracted_name);
   const ocrDob = normText(selectedVerification?.ocr_data?.extracted_dob);
-  const ocrNameMatch = !!ocrName && ocrName === normText(selectedVerification?.user_profiles?.full_name);
-  const ocrDobMatch = !!ocrDob && ocrDob === normText(selectedVerification?.user_profiles?.birthdate);
+  const ocrNameMatch = selectedVerification?.ocr_data?.name_match
+    ?? (!!ocrName && ocrName === normText(selectedVerification?.user_profiles?.full_name));
+  const ocrDobMatch = selectedVerification?.ocr_data?.dob_match
+    ?? (!!ocrDob && ocrDob === normText(selectedVerification?.user_profiles?.birthdate));
   const idDocUrl = selectedVerification?.id_document_url;
   const idDocIsReal = typeof idDocUrl === 'string' && /^(https?:|data:|blob:)/.test(idDocUrl);
 

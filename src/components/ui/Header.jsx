@@ -1,11 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Icon from '../AppIcon';
 import Button from './Button';
-import { useMockData } from '../../contexts/MockDataContext';
 import { useAuth } from '../../contexts/AuthContext';
 
 const Header = ({ user = null, notificationCount = 0, onNavigate = () => {} }) => {
-  const { useMock, toggleMockMode } = useMockData();
   const { signOut } = useAuth();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -21,11 +19,7 @@ const Header = ({ user = null, notificationCount = 0, onNavigate = () => {} }) =
     { label: 'Department Management', path: '/department-management', icon: 'Building', roles: ['admin'] }
   ];
 
-  const mockNotifications = [
-    { id: 1, type: 'emergency', title: 'High Priority Alert', message: 'Fire reported at Main Street', time: '2 min ago', priority: 'high' },
-    { id: 2, type: 'system', title: 'System Update', message: 'Maintenance scheduled for tonight', time: '1 hour ago', priority: 'medium' },
-    { id: 3, type: 'info', title: 'Training Reminder', message: 'Monthly safety training due', time: '3 hours ago', priority: 'low' }
-  ];
+  const notifications = [];
 
   const getVisibleNavItems = () => {
     if (!user) return navigationItems?.filter(item => item?.roles?.includes('all'));
@@ -109,20 +103,6 @@ const Header = ({ user = null, notificationCount = 0, onNavigate = () => {} }) =
 
         {/* Right Side Actions */}
         <div className="flex items-center space-x-4">
-          {/* Mock Mode Toggle */}
-          <button
-            onClick={toggleMockMode}
-            className={`flex items-center space-x-2 px-3 py-1.5 text-xs font-medium rounded-md transition-emergency ${
-              useMock 
-                ? 'bg-primary text-primary-foreground' 
-                : 'bg-muted text-muted-foreground hover:bg-muted/80'
-            }`}
-            title={useMock ? 'Mock Mode Enabled' : 'Mock Mode Disabled'}
-          >
-            <Icon name={useMock ? 'Database' : 'Cloud'} size={14} />
-            <span className="hidden sm:inline">{useMock ? 'Mock' : 'Live'}</span>
-          </button>
-
           {/* Notifications */}
           {user && (
             <div className="relative" ref={notificationRef}>
@@ -145,7 +125,10 @@ const Header = ({ user = null, notificationCount = 0, onNavigate = () => {} }) =
                     <h3 className="text-sm font-semibold text-foreground">Notifications</h3>
                   </div>
                   <div className="max-h-96 overflow-y-auto">
-                    {mockNotifications?.map((notification) => (
+                    {(notifications ?? []).length === 0 && (
+                      <p className="p-4 text-sm text-muted-foreground">You're all caught up. No new notifications.</p>
+                    )}
+                    {(notifications ?? [])?.map((notification) => (
                       <div key={notification?.id} className="p-4 border-b border-border hover:bg-muted transition-emergency">
                         <div className="flex items-start space-x-3">
                           <div className={`flex-shrink-0 ${getPriorityColor(notification?.priority)}`}>

@@ -1,5 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { mockAuth, mockDb, mockEmergencyReports } from '../data/mockData';
+import React, { createContext, useContext, useState } from 'react';
 
 const MockDataContext = createContext();
 
@@ -13,23 +12,9 @@ export const useMockData = () => {
 
 export const MockDataProvider = ({ children }) => {
   const [reports, setReports] = useState([]);
-  const [useMock, setUseMock] = useState(false);
-
-  const toggleMockMode = () => {
-    setUseMock(prev => !prev);
-  };
-
-  const value = {
-    useMock: false, // Always false - using Supabase only
-    toggleMockMode,
-    mockAuth,
-    mockDb,
-    reports,
-    setReports
-  };
 
   return (
-    <MockDataContext.Provider value={value}>
+    <MockDataContext.Provider value={{ reports, setReports }}>
       {children}
     </MockDataContext.Provider>
   );

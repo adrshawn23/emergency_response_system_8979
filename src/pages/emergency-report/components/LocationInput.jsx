@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Icon from '../../../components/AppIcon';
 import Input from '../../../components/ui/Input';
 import Button from '../../../components/ui/Button';
-import { useMockData } from '../../../contexts/MockDataContext';
-import { mockServiceBoundary } from '../../../data/mockData';
+import { supabase } from '../../../lib/supabase';
 
 const LocationInput = ({ 
   location, 
@@ -11,9 +10,25 @@ const LocationInput = ({
   onLocationMetadataChange = () => {},
   error = null 
 }) => {
-  const { useMock } = useMockData();
   const [isDetecting, setIsDetecting] = useState(false);
   const [coordinates, setCoordinates] = useState(null);
+  const [boundaryPoints, setBoundaryPoints] = useState(null);
+  const [boundaryName, setBoundaryName] = useState(null);
+
+  // Load the administrator-managed service boundary from Supabase.
+  useEffect(() => {
+    supabase
+      .from('geofence_boundaries')
+      .select('name, points')
+      .eq('is_active', true)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.points?.length >= 3) {
+          setBoundaryPoints(data.points);
+          setBoundaryName(data.name ?? 'configured service boundary');
+        }
+      });
+  }, []);
 
   const isInsideBoundary = (point, polygon) => {
     let inside = false;
@@ -26,16 +41,9 @@ const LocationInput = ({
     return inside;
   };
 
-  const insideServiceArea = coordinates ? isInsideBoundary(coordinates, mockServiceBoundary.points) : null;
-
-  // Mock GPS locations for testing
-  const mockLocations = [
-    { lat: 14.6091, lng: 121.0225, address: '123 Main Street, Downtown Manila' },
-    { lat: 14.6100, lng: 121.0230, address: '456 Oak Avenue, Residential Area' },
-    { lat: 14.6110, lng: 121.0240, address: '789 Highway 1, Intersection' },
-    { lat: 14.6080, lng: 121.0210, address: '321 Riverside Drive, Flood Zone' },
-    { lat: 14.6095, lng: 121.0228, address: '654 Commercial Street, Business District' }
-  ];
+  const insideServiceArea = coordinates && boundaryPoints
+    ? isInsideBoundary(coordinates, boundaryPoints.map(p => ({ lat: p.latitude ?? p.lat, lng: p.longitude ?? p.lng })))
+    : null;
 
   const detectLocation = () => {
     setIsDetecting(true);
@@ -56,12 +64,13 @@ const LocationInput = ({
           source: 'gps',
           accuracy: position.coords.accuracy,
           coordinates: positionCoordinates,
-          serviceArea: isInsideBoundary(positionCoordinates, mockServiceBoundary.points) ? 'inside' : 'outside'
+          serviceArea: boundaryPoints
+            ? (isInsideBoundary(positionCoordinates, boundaryPoints.map(p => ({ lat: p.latitude ?? p.lat, lng: p.longitude ?? p.lng }))) ? 'inside' : 'outside')
+            : 'unverified'
         });
-        
-        // Mock reverse geocoding - in real app, use Google Maps API
-        const mockAddress = `${latitude?.toFixed(4)}, ${longitude?.toFixed(4)} (GPS Coordinates)`;
-        onLocationChange(mockAddress);
+
+        const gpsAddress = `${latitude?.toFixed(4)}, ${longitude?.toFixed(4)} (GPS Coordinates)`;
+        onLocationChange(gpsAddress);
         setIsDetecting(false);
       },
       (error) => {
@@ -121,13 +130,15 @@ const LocationInput = ({
           <p className="text-sm text-muted-foreground">
             Latitude: {coordinates?.lat?.toFixed(6)}, Longitude: {coordinates?.lng?.toFixed(6)}
           </p>
-          <div className={`mt-3 rounded-md p-3 text-sm ${insideServiceArea ? 'bg-success/10 text-success' : 'bg-warning/15 text-amber-800'}`}>
-            <Icon name={insideServiceArea ? 'ShieldCheck' : 'TriangleAlert'} size={16} className="mr-2 inline" />
-            {insideServiceArea
-              ? 'Inside the configured Barangay Kalubihan service boundary.'
-              : 'Outside the configured service boundary. Your report will still be submitted as Outside Service Area for dispatcher triage.'}
+          <div className={`mt-3 rounded-md p-3 text-sm ${insideServiceArea === null ? 'bg-muted text-muted-foreground' : insideServiceArea ? 'bg-success/10 text-success' : 'bg-warning/15 text-amber-800'}`}>
+            <Icon name={insideServiceArea === null ? 'MapPin' : insideServiceArea ? 'ShieldCheck' : 'TriangleAlert'} size={16} className="mr-2 inline" />
+            {insideServiceArea === null
+              ? 'Service-area verification unavailable — no active boundary is configured in Supabase. Dispatch will triage this report.'
+              : insideServiceArea
+                ? 'Inside the configured Barangay Kalubihan service boundary.'
+                : 'Outside the configured service boundary. Your report will still be submitted as Outside Service Area for dispatcher triage.'}
           </div>
-          <p className="mt-2 text-xs text-muted-foreground">Boundary: {mockServiceBoundary.name}. This demo polygon is replaced by the Administrator-managed GIS boundary in production.</p>
+          {boundaryName && <p className="mt-2 text-xs text-muted-foreground">Boundary: {boundaryName} (administrator-managed in Supabase).</p>}
           <div className="mt-3">
             <iframe
               width="100%"

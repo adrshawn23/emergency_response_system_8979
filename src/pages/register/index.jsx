@@ -11,13 +11,13 @@ import EmergencyContactSection from './components/EmergencyContactSection';
 import TrustIndicators from './components/TrustIndicators';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
-import { useMockData } from '../../contexts/MockDataContext';
 import { isAddressInServiceArea } from '../../utils/geofence';
+import { ocrIdDocument, fileToDataUrl } from '../../utils/ocr';
 
 const Register = () => {
   const navigate = useNavigate();
   const { signUp } = useAuth();
-  const { useMock } = useMockData();
+  const [submitPhase, setSubmitPhase] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const totalSteps = 5;
@@ -187,6 +187,31 @@ const Register = () => {
         throw new Error('A user with this name already exists. Please contact support if this is an error.');
       }
 
+      // Read the uploaded ID with real OCR (tesseract.js, in-browser). The
+      // extracted name/birthdate are matched against the declared values so
+      // the admin auto-check and review chips use genuine ID data.
+      setSubmitPhase('Reading your ID…');
+      let idDocumentUrl = null;
+      let ocrData = null;
+      let ocrConfidence = null;
+      try {
+        const result = await ocrIdDocument(formData.idDocument, {
+          fullName,
+          birthdate: formData.dateOfBirth
+        });
+        idDocumentUrl = result.docDataUrl;
+        ocrData = result.ocrData;
+        ocrConfidence = result.confidence;
+      } catch (ocrError) {
+        // OCR failure must not block registration — the document is still
+        // stored and the verification stays pending for manual review.
+        console.error('ID OCR failed:', ocrError);
+        idDocumentUrl = await fileToDataUrl(formData.idDocument).catch(() => null);
+        ocrData = { extracted_name: null, extracted_dob: null, name_match: false, dob_match: false };
+        ocrConfidence = 0;
+      }
+      setSubmitPhase('Creating your account…');
+
       const { data, error: signUpError } = await signUp(
         formData.email.trim(),
         formData.password,
@@ -203,18 +228,15 @@ const Register = () => {
             phone: contact.phone,
             relationship: contact.relationship
           })),
-          role: formData.role
+          role: formData.role,
+          id_document_url: idDocumentUrl,
+          ocr_data: ocrData,
+          ocr_confidence: ocrConfidence
         }
       );
 
       if (signUpError) throw signUpError;
       if (!data?.user) throw new Error('Registration failed. Please try again.');
-
-      // Mock mode demonstrates manual approval without an OCR or storage provider.
-      if (useMock) {
-        navigate('/login', { state: { message: 'Registration received. An administrator will review your account and ID before activation.', type: 'success' } });
-        return;
-      }
 
       // handle_new_user creates the complete pending profile, ID verification,
       // and emergency contacts from signup metadata in every mode (with or
@@ -231,6 +253,7 @@ const Register = () => {
       setErrors({ submit: error?.message || 'Registration failed. Please try again.' });
     } finally {
       setIsLoading(false);
+      setSubmitPhase('');
     }
   };
 
@@ -471,7 +494,7 @@ const Register = () => {
                       iconPosition="left"
                       className="min-w-32"
                     >
-                      Create Account
+                      {isLoading ? (submitPhase || 'Creating account…') : 'Create Account'}
                     </Button>
                   )}
                 </div>

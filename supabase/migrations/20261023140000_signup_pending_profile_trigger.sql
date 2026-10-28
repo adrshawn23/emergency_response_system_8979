@@ -62,8 +62,9 @@ BEGIN
         'pending'
     );
 
-    -- Pending ID verification so the account also lands in the admin
-    -- residents review queue (OCR is mock in this project).
+    -- Pending ID verification backed by the real OCR run performed during
+    -- registration (tesseract.js in-browser). id_document_url is the stored
+    -- ID photo (data URL); ocr_data carries the parsed name/DOB match flags.
     INSERT INTO public.id_verifications (
         user_id,
         id_document_url,
@@ -73,17 +74,9 @@ BEGIN
     )
     VALUES (
         NEW.id,
-        'mock_upload_url',
-        jsonb_build_object(
-            'extracted_name', COALESCE(
-                NEW.raw_user_meta_data->>'full_name',
-                NULLIF(concat_ws(' ',
-                    NEW.raw_user_meta_data->>'first_name',
-                    NEW.raw_user_meta_data->>'last_name'), '')),
-            'extracted_dob', NEW.raw_user_meta_data->>'birthdate',
-            'confidence', 85
-        ),
-        85,
+        NULLIF(NEW.raw_user_meta_data->>'id_document_url', ''),
+        COALESCE(NEW.raw_user_meta_data->'ocr_data', '{}')::jsonb,
+        COALESCE((NEW.raw_user_meta_data->>'ocr_confidence')::int, 0),
         'pending'
     );
 
