@@ -77,12 +77,18 @@ const PendingRegistrations = ({
           pendingUsers?.map((user) => (
             <div key={user?.id} className="p-6 hover:bg-muted/30 transition-emergency">
               <div className="flex items-start space-x-4">
-                <div className="relative">
-                  <Image
-                    src={user?.avatar || user?.avatar_url}
-                    alt={user?.name || user?.full_name || user?.email}
-                    className="w-12 h-12 rounded-full object-cover"
-                  />
+                <div className="relative h-12 w-12 shrink-0">
+                  <div className="grid h-12 w-12 place-items-center rounded-full bg-indigo-100 text-sm font-bold text-indigo-700">
+                    {(user?.full_name || user?.name || user?.email || '?').trim().split(/\s+/).map(w => w?.[0]).slice(0, 2).join('').toUpperCase()}
+                  </div>
+                  {(user?.avatar || user?.avatar_url) && (
+                    <Image
+                      src={user?.avatar || user?.avatar_url}
+                      alt=""
+                      className="absolute inset-0 h-12 w-12 rounded-full object-cover"
+                      onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                    />
+                  )}
                   <div className="absolute -top-1 -right-1 w-4 h-4 bg-warning border-2 border-card rounded-full flex items-center justify-center">
                     <Icon name="Clock" size={10} className="text-warning-foreground" />
                   </div>

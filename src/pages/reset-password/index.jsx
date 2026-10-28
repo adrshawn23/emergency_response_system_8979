@@ -76,7 +76,7 @@ const ResetPassword = () => {
     <div className="flex min-h-screen items-center justify-center bg-slate-100 px-4">
       <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
         <div className="mb-6 flex justify-center">
-          <div className="grid h-14 w-14 place-items-center rounded-xl bg-blue-700 text-white">
+          <div className="grid h-14 w-14 place-items-center rounded-xl bg-indigo-600 text-white">
             <Icon name="ShieldCheck" size={28} />
           </div>
         </div>
@@ -97,7 +97,7 @@ const ResetPassword = () => {
             <button
               type="button"
               onClick={() => navigate('/login')}
-              className="mt-6 w-full rounded-xl bg-blue-700 px-4 py-3 text-sm font-semibold text-white hover:bg-blue-800"
+              className="mt-6 w-full rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white hover:bg-indigo-700"
             >
               Continue to sign in
             </button>
@@ -119,7 +119,7 @@ const ResetPassword = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="At least 6 characters"
-                className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
               />
             </div>
             <div>
@@ -132,13 +132,13 @@ const ResetPassword = () => {
                 value={confirm}
                 onChange={(e) => setConfirm(e.target.value)}
                 placeholder="Re-enter your new password"
-                className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
               />
             </div>
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full rounded-xl bg-blue-700 px-4 py-3 text-sm font-semibold text-white hover:bg-blue-800 disabled:opacity-60"
+              className="w-full rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
             >
               {isLoading ? 'Updating…' : 'Update password'}
             </button>
@@ -150,7 +150,7 @@ const ResetPassword = () => {
               forgot-password page.
             </div>
             <p className="mt-6 text-center text-sm">
-              <Link to="/forgot-password" className="font-semibold text-blue-700 hover:underline">
+              <Link to="/forgot-password" className="font-semibold text-indigo-700 hover:underline">
                 Request a new reset link
               </Link>
             </p>

@@ -201,7 +201,7 @@ const DepartmentManagementSection = () => {
         </div>
         <button 
           onClick={() => setIsCreateModalOpen(true)}
-          className="rounded-xl bg-blue-700 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800"
+          className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
         >
           Create Department
         </button>
@@ -231,7 +231,7 @@ const DepartmentManagementSection = () => {
           {!searchTerm && (
             <button
               onClick={() => setIsCreateModalOpen(true)}
-              className="rounded-xl bg-blue-700 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800"
+              className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
             >
               Create First Department
             </button>
@@ -259,7 +259,7 @@ const DepartmentManagementSection = () => {
                         setSelectedDepartment(department);
                         setIsAssignModalOpen(true);
                       }}
-                      className="text-xs text-blue-600 hover:text-blue-800"
+                      className="text-xs text-indigo-600 hover:text-indigo-800"
                     >
                       Assign members
                     </button>
@@ -322,7 +322,7 @@ const DepartmentManagementSection = () => {
                   ) : (
                     <button
                       onClick={() => handleAssignUsers(selectedDepartment?.id, [user?.id])}
-                      className="text-xs text-blue-600 hover:text-blue-800"
+                      className="text-xs text-indigo-600 hover:text-indigo-800"
                     >
                       Assign
                     </button>

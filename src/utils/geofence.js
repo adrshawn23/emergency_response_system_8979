@@ -24,10 +24,19 @@ export function isPointInBoundary({ latitude, longitude }, points = []) {
 /**
  * Text-based service-area check for addresses. The app has no geocoding
  * provider, so a resident's declared address must explicitly sit inside
- * Barangay Kalubihan. Accepts common spellings ("Kalubihan", "Brgy Kalubihan",
- * "Barangay Kalubihan", "Calubihan").
+ * Barangay Kalubihan. The address is normalized (case, punctuation, diacritics
+ * and extra spaces removed), so any format written on an ID or document is
+ * accepted: "Kalubihan", "Calubihan", "Brgy. Kalubihan", "Purok 4, Kalubihan,
+ * Cebu City", etc.
  */
 export function isAddressInServiceArea(address) {
   if (typeof address !== 'string' || !address.trim()) return false;
-  return /\b(k|barangay\s+k|brgy\.?\s+k)alubihan\b/i.test(address);
+  const normalized = address
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return /\b[kc]alubihan\b/.test(normalized);
 }

@@ -95,7 +95,7 @@ const Register = () => {
         if (!formData?.address?.trim()) {
           newErrors.address = 'Address is required';
         } else if (!isAddressInServiceArea(formData.address)) {
-          newErrors.address = 'Address must be within Barangay Kalubihan to register. Include "Kalubihan" or "Brgy Kalubihan" in your address.';
+          newErrors.address = 'Address must be within Barangay Kalubihan to register. Any format works — e.g. "Brgy. Kalubihan, Cebu City" or the spelling shown on your ID.';
         }
         break;
 
@@ -330,16 +330,16 @@ const Register = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="bg-card border-b border-border shadow-emergency">
-        <div className="w-full px-4 py-6">
+      <div className="sticky top-0 z-30 border-b border-slate-200/70 bg-white/80 shadow-sm backdrop-blur-md">
+        <div className="w-full px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className="flex items-center justify-center w-10 h-10 bg-primary rounded-lg">
-                <Icon name="Shield" size={24} color="white" />
+              <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-600 via-violet-600 to-rose-500 shadow-glow-primary">
+                <Icon name="Siren" size={20} color="white" />
               </div>
               <div>
-                <h1 className="text-xl font-semibold text-foreground">Emergency Response System</h1>
-                <p className="text-sm text-muted-foreground">Create Your Account</p>
+                <h1 className="text-lg font-bold tracking-tight text-foreground">Kalubihan Emergency Response</h1>
+                <p className="text-xs text-muted-foreground">Create your account</p>
               </div>
             </div>
             <Button
@@ -360,8 +360,8 @@ const Register = () => {
             <aside className="hidden lg:block lg:w-72 lg:shrink-0">
               <div className="sticky top-8 space-y-6">
                 {/* Progress Steps */}
-                <div className="bg-card rounded-lg border border-border p-4">
-                  <h3 className="text-sm font-semibold text-foreground mb-4">Registration Progress</h3>
+                <div className="bg-card rounded-2xl border border-slate-200/70 p-5 shadow-sm">
+                  <h3 className="text-sm font-semibold text-foreground mb-4">Registration progress</h3>
                   <div className="space-y-3">
                     {Array.from({ length: totalSteps }, (_, index) => {
                       const step = index + 1;
@@ -401,10 +401,10 @@ const Register = () => {
             <main className="flex-1 min-w-0 w-full">
               <form onSubmit={handleSubmit} className="space-y-8">
               {/* Step Header */}
-              <div className="bg-card rounded-lg border border-border p-6">
+              <div className="bg-card rounded-2xl border border-slate-200/70 p-6 shadow-sm">
                 <div className="flex items-center justify-between mb-4">
                   <div>
-                    <h2 className="text-xl font-semibold text-foreground">
+                    <h2 className="text-xl font-semibold tracking-tight text-foreground">
                       Step {currentStep} of {totalSteps}: {getStepTitle(currentStep)}
                     </h2>
                     <p className="text-sm text-muted-foreground mt-1">
@@ -424,21 +424,21 @@ const Register = () => {
                 </div>
                 
                 {/* Progress Bar */}
-                <div className="w-full bg-muted rounded-full h-2">
+                <div className="w-full bg-slate-100 rounded-full h-2">
                   <div 
-                    className="bg-primary h-2 rounded-full transition-all duration-300"
+                    className="h-2 rounded-full bg-gradient-to-r from-indigo-600 to-violet-500 transition-all duration-300"
                     style={{ width: `${(currentStep / totalSteps) * 100}%` }}
                   />
                 </div>
               </div>
 
               {/* Step Content */}
-              <div className="bg-card rounded-lg border border-border p-6">
+              <div className="bg-card rounded-2xl border border-slate-200/70 p-6 shadow-sm">
                 {renderStepContent()}
               </div>
 
               {/* Navigation Buttons */}
-              <div className="flex items-center justify-between bg-card rounded-lg border border-border p-6">
+              <div className="flex items-center justify-between bg-card rounded-2xl border border-slate-200/70 p-6 shadow-sm">
                 <div>
                   {currentStep > 1 && (
                     <Button
@@ -492,7 +492,7 @@ const Register = () => {
         </div>
       </div>
       {/* Footer */}
-      <div className="bg-card border-t border-border mt-12">
+      <div className="border-t border-slate-200/70 bg-white/70 backdrop-blur mt-12">
         <div className="max-w-4xl mx-auto px-4 py-6">
           <div className="flex items-center justify-between text-sm text-muted-foreground">
             <div>

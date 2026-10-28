@@ -63,7 +63,7 @@ export default function ResponderView() {
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4">
           <div className="flex items-center gap-3">
-            <div className="grid h-10 w-10 place-items-center rounded-xl bg-blue-700 text-white">
+            <div className="grid h-10 w-10 place-items-center rounded-xl bg-indigo-600 text-white">
               <Icon name="Ambulance" size={21}/>
             </div>
             <div>
@@ -83,7 +83,7 @@ export default function ResponderView() {
       <main className="mx-auto max-w-6xl px-5 py-8">
         <div className="mb-6 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
           <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-blue-700">Live assignments</p>
+            <p className="text-xs font-bold uppercase tracking-wider text-indigo-700">Live assignments</p>
             <h1 className="mt-1 text-3xl font-bold tracking-tight">Response board</h1>
             <p className="mt-2 text-sm text-slate-500">Acknowledge and update your assigned incidents. Dispatch receives every status update.</p>
           </div>
@@ -109,7 +109,7 @@ export default function ResponderView() {
                   <div className="grid h-10 w-10 place-items-center rounded-xl bg-red-50 text-red-600">
                     <Icon name={report.report_type === 'medical' ? 'HeartPulse' : 'Siren'} size={20}/>
                   </div>
-                  <span className="rounded-full bg-blue-50 px-2 py-1 text-[10px] font-bold uppercase text-blue-700">
+                  <span className="rounded-full bg-indigo-50 px-2 py-1 text-[10px] font-bold uppercase text-indigo-700">
                     {report.status || 'pending'}
                   </span>
                 </div>
@@ -120,7 +120,7 @@ export default function ResponderView() {
                   {report.status === 'assigned' && (
                     <button 
                       onClick={() => updateStatus(report.id, 'in-progress')}
-                      className="flex-1 rounded-lg bg-blue-700 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-800"
+                      className="flex-1 rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-700"
                     >
                       Acknowledge
                     </button>

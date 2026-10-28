@@ -21,17 +21,14 @@ const TrustSignals = () => {
   ];
 
   return (
-    <div className="mt-8 pt-6 border-t border-border">
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+    <div className="mt-8 pt-6 border-t border-slate-100">
+      <div className="grid grid-cols-3 gap-3">
         {trustBadges?.map((badge, index) => (
-          <div key={index} className="flex items-center space-x-2 text-center sm:text-left">
-            <div className="flex-shrink-0 w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
-              <Icon name={badge?.icon} size={16} className="text-primary" />
+          <div key={index} className="flex flex-col items-center gap-1.5 text-center">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-50 ring-1 ring-indigo-100">
+              <Icon name={badge?.icon} size={16} className="text-indigo-600" />
             </div>
-            <div className="flex-1">
-              <p className="text-xs font-medium text-foreground">{badge?.title}</p>
-              <p className="text-xs text-muted-foreground">{badge?.description}</p>
-            </div>
+            <p className="text-[11px] font-semibold text-slate-700">{badge?.title}</p>
           </div>
         ))}
       </div>
