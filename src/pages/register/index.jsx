@@ -84,8 +84,14 @@ const Register = () => {
           newErrors.phone = 'Phone number is required';
         } else if (!/^0\d{10}$/.test(formData?.phone)) {
           newErrors.phone = 'Please enter a valid 11-digit phone number starting with 0 (e.g., 09948270026)';
+        } else if (/^(\d)\1{10}$/.test(formData?.phone)) {
+          newErrors.phone = 'Please enter a real phone number (not a repeated digit)';
         }
-        if (!formData?.dateOfBirth) newErrors.dateOfBirth = 'Date of birth is required';
+        if (!formData?.dateOfBirth) {
+          newErrors.dateOfBirth = 'Date of birth is required';
+        } else if (new Date(formData.dateOfBirth) > new Date()) {
+          newErrors.dateOfBirth = 'Date of birth cannot be in the future';
+        }
         if (!formData?.address?.trim()) {
           newErrors.address = 'Address is required';
         } else if (!isAddressInServiceArea(formData.address)) {
@@ -128,6 +134,8 @@ const Register = () => {
             newErrors[`emergencyContact_${contact.id}_phone`] = 'Contact phone is required';
           } else if (!/^0\d{10}$/.test(contact?.phone)) {
             newErrors[`emergencyContact_${contact.id}_phone`] = 'Please enter a valid 11-digit phone number starting with 0 (e.g., 09948270026)';
+          } else if (/^(\d)\1{10}$/.test(contact?.phone)) {
+            newErrors[`emergencyContact_${contact.id}_phone`] = 'Please enter a real phone number (not a repeated digit)';
           }
           if (!contact?.relationship) {
             newErrors[`emergencyContact_${contact.id}_relationship`] = 'Relationship is required';

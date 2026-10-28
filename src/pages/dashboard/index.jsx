@@ -98,6 +98,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
     });
   };
   const [draft, setDraft] = useState({ type: 'fire', priority: 'high', location: '', description: '', latitude: null, longitude: null, serviceAreaStatus: 'manual' });
+  const draftKey = `incident-draft-${profile?.id || 'anon'}`;
   const [gpsStatus, setGpsStatus] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [submittedReportId, setSubmittedReportId] = useState(null);
@@ -130,6 +131,33 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
       }
     }
   }, []);
+
+  // Restore an unsubmitted incident draft once the reporter's id is known
+  useEffect(() => {
+    if (!profile?.id) return;
+    try {
+      const saved = JSON.parse(localStorage.getItem(draftKey));
+      if (saved && typeof saved === 'object') {
+        setDraft(prev => ({
+          ...prev,
+          type: saved.type || prev.type,
+          priority: saved.priority || prev.priority,
+          location: prev.location || saved.location || '',
+          description: prev.description || saved.description || ''
+        }));
+      }
+    } catch {}
+  }, [profile?.id, draftKey]);
+
+  // Persist the draft whenever text fields change; cleared on successful submit
+  useEffect(() => {
+    try {
+      if (draft.location || draft.description) {
+        localStorage.setItem(draftKey, JSON.stringify(draft));
+      }
+    } catch {}
+  }, [draft, draftKey]);
+
   const [isBoundaryModalOpen, setIsBoundaryModalOpen] = useState(false);
   const [assistingDepartments, setAssistingDepartments] = useState([]);
   const [isAssistanceModalOpen, setIsAssistanceModalOpen] = useState(false);
@@ -379,7 +407,8 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
     : reports;
   const visibleReports = status === 'all' ? filteredReports : filteredReports.filter(report => report.status === status);
   const pendingCount = reports.filter(r => r.status === 'pending').length;
-  const handleNavigation = link => onSectionChange(link.key);
+  // Navigate by URL so the route and the displayed section never disagree
+  const handleNavigation = link => navigate(link.path);
   const setReportStatus = async (id, nextStatus) => {
     const { error } = await supabase
       .from('emergency_reports')
@@ -768,6 +797,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
     {
       setSubmittedReportId(data.id);
       setSubmitted(true);
+      try { localStorage.removeItem(draftKey); } catch {}
       setDraft({ type: 'fire', priority: 'high', location: '', description: '', latitude: null, longitude: null, serviceAreaStatus: 'manual' });
       setImageFiles([]);
       
@@ -783,8 +813,9 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
     }
   };
   return <div className="min-h-screen bg-slate-50 text-slate-900"><div className="flex min-h-screen">
-    <aside className="sticky top-0 flex h-screen w-20 shrink-0 flex-col overflow-x-hidden bg-slate-950 text-slate-300 sm:w-72"><div className="flex h-20 items-center justify-center gap-3 border-b border-slate-800 px-3 sm:justify-start sm:px-7"><div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-red-500 text-white"><Icon name="Siren" size={22}/></div><div className="hidden sm:block"><p className="font-semibold text-white">Kalubihan</p><p className="text-xs text-slate-500">Emergency Command</p></div></div><div className="flex-1 px-3 py-7 sm:px-4"><p className="mb-3 hidden px-3 text-[10px] font-bold uppercase tracking-[.16em] text-slate-500 sm:block">Operations</p><nav className="space-y-1">{links.map(link => <button key={link.key} onClick={() => handleNavigation(link)} title={link.label} className={`flex w-full items-center justify-center gap-3 rounded-xl px-3 py-3 text-left text-sm transition sm:justify-start ${link.key === section ? 'bg-white/10 font-medium text-white' : 'hover:bg-white/5 hover:text-white'}`}><Icon name={link.icon} size={18}/><span className="hidden flex-1 sm:block">{link.label}</span>{link.key === 'queue' && <span className="hidden rounded-full bg-red-500 px-2 py-0.5 text-xs font-bold text-white sm:block">{pendingCount}</span>}</button>)}</nav></div><div className="m-3 rounded-2xl bg-slate-900 p-3 sm:m-4 sm:p-4"><div className="flex items-center justify-center gap-3 sm:justify-start"><div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-blue-700 text-sm font-bold text-white">{profile?.first_name?.[0] || 'A'}</div><div className="hidden min-w-0 flex-1 sm:block"><p className="truncate text-sm font-medium text-white">{profile?.full_name || 'Administrator'}</p><p className="text-xs capitalize text-slate-500">{profile?.role}</p></div><button aria-label="Sign out" onClick={signOut} className="hidden text-slate-500 hover:text-white sm:block"><Icon name="LogOut" size={17}/></button></div></div></aside>
-    <main className="min-w-0 flex-1"><header className="flex h-20 items-center justify-between border-b border-slate-200 bg-white px-5 sm:px-8"><div><p className="text-xs font-medium uppercase tracking-wider text-slate-400">Kalubihan emergency command</p><h1 className="text-lg font-bold">{current.title}</h1></div><div className="flex items-center gap-3"><div className="rounded-full bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700"><span className="mr-2 inline-block h-2 w-2 rounded-full bg-emerald-500"/>All systems operational</div><button onClick={() => setIsNotificationPanelOpen(!isNotificationPanelOpen)} className="relative rounded-xl border border-slate-200 p-2 text-slate-500 hover:bg-slate-50"><Icon name="Bell" size={18}/>{notifications.length > 0 && <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-500 text-[10px] font-bold text-white">{notifications.length}</span>}</button></div></header><div className="mx-auto max-w-[1400px] p-5 sm:p-8"><p className="text-xs font-bold uppercase tracking-wider text-blue-700">{current.eyebrow}</p><h2 className="mt-1 text-3xl font-bold tracking-tight">{current.title}</h2><p className="mt-2 text-sm text-slate-500">{current.description}</p>
+    <aside className="sticky top-0 hidden h-screen w-20 shrink-0 flex-col overflow-x-hidden bg-slate-950 text-slate-300 sm:flex sm:w-72"><div className="flex h-20 items-center justify-center gap-3 border-b border-slate-800 px-3 sm:justify-start sm:px-7"><div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-red-500 text-white"><Icon name="Siren" size={22}/></div><div className="hidden sm:block"><p className="font-semibold text-white">Kalubihan</p><p className="text-xs text-slate-500">Emergency Command</p></div></div><div className="flex-1 px-3 py-7 sm:px-4"><p className="mb-3 hidden px-3 text-[10px] font-bold uppercase tracking-[.16em] text-slate-500 sm:block">Operations</p><nav className="space-y-1">{links.map(link => <button key={link.key} onClick={() => handleNavigation(link)} title={link.label} className={`flex w-full items-center justify-center gap-3 rounded-xl px-3 py-3 text-left text-sm transition sm:justify-start ${link.key === section ? 'bg-white/10 font-medium text-white' : 'hover:bg-white/5 hover:text-white'}`}><Icon name={link.icon} size={18}/><span className="hidden flex-1 sm:block">{link.label}</span>{link.key === 'queue' && <span className="hidden rounded-full bg-red-500 px-2 py-0.5 text-xs font-bold text-white sm:block">{pendingCount}</span>}</button>)}</nav></div><div className="m-3 rounded-2xl bg-slate-900 p-3 sm:m-4 sm:p-4"><div className="flex items-center justify-center gap-3 sm:justify-start"><div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-blue-700 text-sm font-bold text-white">{profile?.first_name?.[0] || 'A'}</div><div className="hidden min-w-0 flex-1 sm:block"><p className="truncate text-sm font-medium text-white">{profile?.full_name || 'Administrator'}</p><p className="text-xs capitalize text-slate-500">{profile?.role}</p></div><button aria-label="Sign out" onClick={signOut} className="hidden text-slate-500 hover:text-white sm:block"><Icon name="LogOut" size={17}/></button></div></div></aside>
+    <nav className="fixed bottom-0 inset-x-0 z-40 flex overflow-x-auto border-t border-slate-800 bg-slate-950 py-1 sm:hidden">{links.map(link => <button key={link.key} onClick={() => handleNavigation(link)} className={`flex shrink-0 flex-col items-center gap-0.5 px-4 py-1.5 text-[10px] ${link.key === section ? 'text-white' : 'text-slate-400'}`}><Icon name={link.icon} size={20}/><span>{link.label}</span></button>)}<button aria-label="Sign out" onClick={signOut} className="flex shrink-0 flex-col items-center gap-0.5 px-4 py-1.5 text-[10px] text-slate-400"><Icon name="LogOut" size={20}/><span>Sign out</span></button></nav>
+    <main className="min-w-0 flex-1 pb-24 sm:pb-0"><header className="flex h-20 items-center justify-between border-b border-slate-200 bg-white px-5 sm:px-8"><div><p className="text-xs font-medium uppercase tracking-wider text-slate-400">Kalubihan emergency command</p><h1 className="text-lg font-bold">{current.title}</h1></div><div className="flex items-center gap-3"><div className="hidden rounded-full bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700 sm:block"><span className="mr-2 inline-block h-2 w-2 rounded-full bg-emerald-500"/>All systems operational</div><button onClick={() => setIsNotificationPanelOpen(!isNotificationPanelOpen)} className="relative rounded-xl border border-slate-200 p-2 text-slate-500 hover:bg-slate-50"><Icon name="Bell" size={18}/>{notifications.length > 0 && <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-500 text-[10px] font-bold text-white">{notifications.length}</span>}</button></div></header><div className="mx-auto max-w-[1400px] p-5 sm:p-8"><p className="text-xs font-bold uppercase tracking-wider text-blue-700">{current.eyebrow}</p><h2 className="mt-1 text-3xl font-bold tracking-tight">{current.title}</h2><p className="mt-2 text-sm text-slate-500">{current.description}</p>
       {section === 'queue' && <>
         <div className="mt-7 flex flex-wrap items-center justify-between gap-3">
           <div className="flex gap-2">{['all','pending','assigned','in-progress','resolved'].map(item => <button key={item} onClick={() => setStatus(item)} className={`rounded-lg px-3 py-2 text-sm font-medium capitalize ${status === item ? 'bg-blue-700 text-white' : 'border border-slate-200 bg-white text-slate-600'}`}>{item === 'in-progress' ? 'in progress' : item}</button>)}</div>
@@ -802,9 +833,9 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
             <button onClick={() => navigate('/emergency-report')} className="rounded-xl bg-red-500 px-4 py-2.5 text-sm font-semibold text-white"><Icon name="Plus" size={16} className="mr-1 inline"/>New incident</button>
           </div>
         </div>
-        <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="grid grid-cols-[minmax(0,1.2fr)_minmax(0,1.3fr)_minmax(110px,.7fr)_minmax(170px,.8fr)] gap-4 border-b border-slate-100 bg-slate-50 px-5 py-3 text-xs font-bold uppercase tracking-wider text-slate-400"><span>Incident</span><span>Location</span><span>Priority</span><span>Status / action</span></div>
-          {visibleReports.map(report => <div key={report.id || report.report_id} onClick={() => handleReportClick(report)} className="grid grid-cols-[minmax(0,1.2fr)_minmax(0,1.3fr)_minmax(110px,.7fr)_minmax(170px,.8fr)] items-center gap-4 border-b border-slate-100 px-5 py-4 last:border-0 cursor-pointer hover:bg-slate-50 transition">
+        <div className="mt-5 overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="grid min-w-[640px] grid-cols-[minmax(0,1.2fr)_minmax(0,1.3fr)_minmax(110px,.7fr)_minmax(170px,.8fr)] gap-4 border-b border-slate-100 bg-slate-50 px-5 py-3 text-xs font-bold uppercase tracking-wider text-slate-400"><span>Incident</span><span>Location</span><span>Priority</span><span>Status / action</span></div>
+          {visibleReports.map(report => <div key={report.id || report.report_id} onClick={() => handleReportClick(report)} className="grid min-w-[640px] grid-cols-[minmax(0,1.2fr)_minmax(0,1.3fr)_minmax(110px,.7fr)_minmax(170px,.8fr)] items-center gap-4 border-b border-slate-100 px-5 py-4 last:border-0 cursor-pointer hover:bg-slate-50 transition">
             <div className="min-w-0"><p className="font-semibold capitalize">{report.report_type || report.incident_type} <span className="font-mono text-xs text-slate-400">{report.report_id || report.id?.slice(0, 8)}</span></p><p className="mt-1 truncate text-xs text-slate-500">{report.content || report.description}</p></div>
             <p className="truncate text-sm text-slate-600">{report.attachments?.location || report.location}</p>
             <span className={`w-fit rounded-full px-2 py-1 text-[10px] font-bold uppercase ${priorityStyles[report.priority]}`}>{report.priority}</span>
@@ -1384,7 +1415,11 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
                   <button 
                     onClick={() => {
                       setIsReportDetailModalOpen(false);
-                      handleAssignClick(selectedReport);
+                      if (selectedReport.status === 'pending') {
+                        handleAssignClick(selectedReport);
+                      } else {
+                        setReportStatus(selectedReport.report_id || selectedReport.id, 'resolved');
+                      }
                     }}
                     className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800"
                   >
@@ -1590,14 +1625,14 @@ export default function Dashboard({ section = 'command' }) {
 
   return <div className="min-h-screen bg-slate-50 text-slate-900">
     <div className="flex min-h-screen">
-      <aside className="sticky top-0 flex h-screen w-20 shrink-0 flex-col overflow-x-hidden bg-slate-950 text-slate-300 sm:w-72">
+      <aside className="sticky top-0 hidden h-screen w-20 shrink-0 flex-col overflow-x-hidden bg-slate-950 text-slate-300 sm:flex sm:w-72">
         <div className="flex h-20 items-center justify-center gap-3 border-b border-slate-800 px-3 sm:justify-start sm:px-7">
           <div className="grid h-10 w-10 place-items-center rounded-xl bg-red-500 text-white shadow-lg shadow-red-950/50"><Icon name="Siren" size={22}/></div>
           <div className="hidden sm:block"><p className="font-semibold tracking-tight text-white">Kalubihan</p><p className="text-xs text-slate-500">Emergency Command</p></div>
         </div>
         <div className="flex-1 px-3 py-7 sm:px-4">
           <p className="mb-3 hidden px-3 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500 sm:block">Operations</p>
-          <nav className="space-y-1">{sidebarLinks.map(link => <button key={link.label} title={link.label} onClick={() => { const nextSection = ({ '/report-management': 'queue', '/user-management': 'residents', '/department-management': 'departments', '/settings': 'settings', '/profile': 'profile' })[link.path]; if (nextSection) setActiveSection(nextSection); else navigate(link.path); }} className={`flex w-full items-center justify-center gap-3 rounded-xl px-3 py-3 text-left text-sm transition sm:justify-start ${link.path === '/' ? 'bg-white/10 font-medium text-white' : 'hover:bg-white/5 hover:text-white'}`}>
+          <nav className="space-y-1">{sidebarLinks.map(link => <button key={link.label} title={link.label} onClick={() => navigate(link.path)} className={`flex w-full items-center justify-center gap-3 rounded-xl px-3 py-3 text-left text-sm transition sm:justify-start ${link.path === '/' ? 'bg-white/10 font-medium text-white' : 'hover:bg-white/5 hover:text-white'}`}>
             <Icon name={link.icon} size={18}/><span className="hidden flex-1 sm:block">{link.label}</span>{link.badge ? <span className="hidden rounded-full bg-red-500 px-2 py-0.5 text-xs font-bold text-white sm:block">{link.badge}</span> : null}
           </button>)}</nav>
         </div>
@@ -1606,7 +1641,8 @@ export default function Dashboard({ section = 'command' }) {
           <div className="mt-3 hidden items-center gap-2 text-xs text-emerald-400 sm:flex"><span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400"/> Online</div>
         </div>
       </aside>
-      <main className="min-w-0 flex-1">
+      <nav className="fixed bottom-0 inset-x-0 z-40 flex overflow-x-auto border-t border-slate-800 bg-slate-950 py-1 sm:hidden">{sidebarLinks.map(link => <button key={link.label} onClick={() => navigate(link.path)} className="flex shrink-0 flex-col items-center gap-0.5 px-4 py-1.5 text-[10px] text-slate-400"><Icon name={link.icon} size={20}/><span>{link.label}</span></button>)}<button aria-label="Sign out" onClick={signOut} className="flex shrink-0 flex-col items-center gap-0.5 px-4 py-1.5 text-[10px] text-slate-400"><Icon name="LogOut" size={20}/><span>Sign out</span></button></nav>
+      <main className="min-w-0 flex-1 pb-24 sm:pb-0">
         <header className="flex h-20 items-center justify-between border-b border-slate-200 bg-white px-5 sm:px-8">
           <div><p className="text-xs font-medium uppercase tracking-wider text-slate-400">{currentDate}</p><h1 className="text-lg font-bold tracking-tight">{getGreeting()}, {profile?.full_name?.split(' ')[0] || 'User'}</h1></div>
           <div className="flex items-center gap-3"><div className="hidden items-center gap-2 rounded-full bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700 sm:flex"><span className="h-2 w-2 rounded-full bg-emerald-500"/>All systems operational</div><button onClick={() => setShowNotifications(!showNotifications)} className="relative rounded-xl border border-slate-200 p-2.5 text-slate-500 hover:bg-slate-50"><Icon name="Bell" size={19}/><span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-red-500"/></button></div>
@@ -1674,9 +1710,9 @@ export default function Dashboard({ section = 'command' }) {
                   <h3 className="font-bold">Service area & active response</h3>
                   <p className="mt-0.5 text-xs text-slate-500">Configured Barangay Kalubihan boundary</p>
                 </div>
-                <button onClick={() => setIsBoundaryModalOpen(true)} className="inline-flex items-center gap-1 text-xs font-semibold text-blue-700 hover:text-blue-900">
+                {profile?.role === 'admin' && <button onClick={() => setIsBoundaryModalOpen(true)} className="inline-flex items-center gap-1 text-xs font-semibold text-blue-700 hover:text-blue-900">
                   <Icon name="Settings" size={14}/>Configure
-                </button>
+                </button>}
               </div>
               <div className="relative h-[365px] overflow-hidden">
                 <CommandCenterMap boundaryPoints={boundaryPoints} activeReport={activeReport} />
