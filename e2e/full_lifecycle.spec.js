@@ -117,8 +117,17 @@ test.describe.serial('Full incident lifecycle (resident -> dispatch -> responder
     await expect(card.getByText('in-progress', { exact: true })).toBeVisible({ timeout: 30000 });
     await expect(card.getByRole('button', { name: 'Resolve' })).toBeVisible();
 
-    // Resolve -> resolved
+    // Resolve requires photo proof via the incident modal
     await card.getByRole('button', { name: 'Resolve' }).click();
+    const modal = page.getByRole('dialog');
+    await expect(modal).toBeVisible();
+    await modal.locator('input[type="file"]').setInputFiles({
+      name: 'proof.png',
+      mimeType: 'image/png',
+      buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64'),
+    });
+    await modal.getByRole('button', { name: 'Resolve', exact: true }).click();
+    await expect(modal).toBeHidden({ timeout: 30000 });
     await expect(card.getByText('resolved', { exact: true })).toBeVisible({ timeout: 30000 });
     await expect(card.getByRole('button', { name: 'Resolve' })).toBeHidden();
 

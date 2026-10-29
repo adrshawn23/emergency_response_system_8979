@@ -1476,6 +1476,20 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
                   </div>
                 </div>
               )}
+              {selectedReport.attachments?.resolution_proof && (
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Resolution Proof</p>
+                  <img
+                    src={selectedReport.attachments.resolution_proof}
+                    alt="Resolution proof"
+                    className="h-32 w-48 rounded-lg border border-emerald-200 object-cover cursor-pointer hover:opacity-80"
+                    onClick={() => {
+                      setSelectedImage(selectedReport.attachments.resolution_proof);
+                      setIsImageModalOpen(true);
+                    }}
+                  />
+                </div>
+              )}
               <div className="flex justify-end gap-2 pt-4 border-t border-slate-200">
                 <button 
                   onClick={() => setIsReportDetailModalOpen(false)}
