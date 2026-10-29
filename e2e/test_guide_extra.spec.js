@@ -97,11 +97,13 @@ test.describe('TESTING.md remaining tests', () => {
     await page.click('button[title="Incident queue"]');
     await page.waitForSelector('button:has-text("pending")', { timeout: 30000 });
 
-    // Sidebar badge on "Incident queue" must equal the pending row count
+    // Sidebar badge on "Incident queue" must equal the pending row count.
+    // The badge query resolves before the filtered grid's rows land, so
+    // poll the row count until it settles instead of sampling once.
     await page.click('button:has-text("pending")');
     const badgeText = (await page.locator('button[title="Incident queue"] span').last().textContent()).trim();
-    const pendingRows = await page.locator('div.grid.cursor-pointer').count();
-    expect(Number(badgeText)).toBe(pendingRows);
+    const rows = page.locator('div.grid.cursor-pointer');
+    await expect.poll(() => rows.count(), { timeout: 30000 }).toBe(Number(badgeText));
 
     // Each status filter shows only matching rows
     for (const status of ['assigned', 'in progress', 'resolved']) {
