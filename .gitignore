@@ -9,3 +9,5 @@ vite.config.*s.*
 
 playwright-report/
 test-results/
+
+report.zip
