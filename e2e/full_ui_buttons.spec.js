@@ -273,7 +273,9 @@ test.describe('Full UI button coverage', () => {
     await expect(smsSwitch).toHaveAttribute('aria-checked', 'true');
     await smsSwitch.click();
     await expect(smsSwitch).toHaveAttribute('aria-checked', 'false');
-    await providerModal.getByRole('button', { name: 'Close' }).click();
+    // Modal has two Close-named buttons: the X icon (aria-label) and the
+    // footer text button — .last() picks the footer button.
+    await providerModal.getByRole('button', { name: 'Close' }).last().click();
     await expect(providerModal).toBeHidden();
     await expect(page.getByRole('heading', { level: 2, name: 'System settings' })).toBeVisible();
   });

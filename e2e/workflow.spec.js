@@ -73,9 +73,10 @@ test.describe.serial('End-to-End Incident Workflow', () => {
       await expect(responderRow.getByText('Remove', { exact: true })).toBeVisible({ timeout: 30000 });
     }
 
-    // Close modal and sign out
+    // Close modal and sign out (dashboard renders a desktop-sidebar and a
+    // mobile bottom-nav sign-out button — .first() picks the visible desktop one)
     await modal.locator('div.border-b button').click();
-    await page.locator('button[aria-label="Sign out"]').click();
+    await page.locator('button[aria-label="Sign out"]').first().click();
     await page.waitForURL('/login', { timeout: 30000 });
   });
 
@@ -149,8 +150,8 @@ test.describe.serial('End-to-End Incident Workflow', () => {
     await expect(row.getByText('assigned', { exact: true })).toBeVisible();
     await expect(row.locator('button', { hasText: 'Resolve' })).toBeVisible();
 
-    // Sign out
-    await page.locator('button[aria-label="Sign out"]').click();
+    // Sign out (two sign-out buttons exist: desktop sidebar + mobile nav)
+    await page.locator('button[aria-label="Sign out"]').first().click();
     await page.waitForURL('/login', { timeout: 30000 });
   });
 
