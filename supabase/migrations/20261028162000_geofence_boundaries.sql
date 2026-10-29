@@ -16,9 +16,18 @@ CREATE TABLE IF NOT EXISTS public.geofence_boundaries (
 );
 
 -- Every polygon needs at least 3 vertices to be a ray-castable polygon.
-ALTER TABLE public.geofence_boundaries
-    ADD CONSTRAINT geofence_boundaries_min_vertices
-    CHECK (jsonb_array_length(points) >= 3);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'geofence_boundaries_min_vertices'
+          AND conrelid = 'public.geofence_boundaries'::regclass
+    ) THEN
+        ALTER TABLE public.geofence_boundaries
+            ADD CONSTRAINT geofence_boundaries_min_vertices
+            CHECK (jsonb_array_length(points) >= 3);
+    END IF;
+END $$;
 
 -- At most one active boundary: the client reads `.eq('is_active', true)`
 -- with maybeSingle(), so two active rows would silently return null.
@@ -30,6 +39,8 @@ ALTER TABLE public.geofence_boundaries ENABLE ROW LEVEL SECURITY;
 
 -- Everyone authenticated needs to READ the active boundary for the GPS check
 -- (the emergency-report flow runs as a logged-in resident).
+DROP POLICY IF EXISTS geofence_boundaries_read_active
+    ON public.geofence_boundaries;
 CREATE POLICY geofence_boundaries_read_active
     ON public.geofence_boundaries
     FOR SELECT
@@ -37,6 +48,8 @@ CREATE POLICY geofence_boundaries_read_active
     USING (true);
 
 -- Only admins manage polygons.
+DROP POLICY IF EXISTS geofence_boundaries_admin_write
+    ON public.geofence_boundaries;
 CREATE POLICY geofence_boundaries_admin_write
     ON public.geofence_boundaries
     FOR ALL
@@ -65,6 +78,8 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS geofence_boundaries_updated_at
+    ON public.geofence_boundaries;
 CREATE TRIGGER geofence_boundaries_updated_at
     BEFORE UPDATE ON public.geofence_boundaries
     FOR EACH ROW EXECUTE FUNCTION public.geofence_touch_updated_at();
@@ -73,8 +88,10 @@ CREATE TRIGGER geofence_boundaries_updated_at
 -- barangay center ~10.2968 N, 123.8996 E). Replace these vertices with the
 -- official GIS boundary when available — widen/shrink as needed; the client
 -- only needs an ordered ring.
+-- Skip the seed when a boundary already exists (the single-active index
+-- would reject a second is_active=true row, and name has no unique key).
 INSERT INTO public.geofence_boundaries (name, points, is_active)
-VALUES (
+SELECT
     'Barangay Kalubihan (approximate)',
     '[
         {"latitude": 10.2895, "longitude": 123.8925},
@@ -84,5 +101,6 @@ VALUES (
         {"latitude": 10.2895, "longitude": 123.8925}
     ]'::jsonb,
     true
-)
-ON CONFLICT DO NOTHING;
+WHERE NOT EXISTS (
+    SELECT 1 FROM public.geofence_boundaries WHERE is_active
+);
