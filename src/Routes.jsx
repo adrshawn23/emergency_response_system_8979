@@ -43,10 +43,12 @@ const RoleRoute = ({ roles, children }) => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (profile && !roles.includes(profile.role)) navigate('/', { replace: true });
+    // Only bounce once a role is actually known — a transient role-less
+    // profile (e.g. mid-refetch after navigation) must not redirect.
+    if (profile?.role && !roles.includes(profile.role)) navigate('/', { replace: true });
   }, [profile, roles, navigate]);
 
-  if (loading || !profile) return <div className="flex items-center justify-center min-h-screen">Loading permissions...</div>;
+  if (loading || !profile?.role) return <div className="flex items-center justify-center min-h-screen">Loading permissions...</div>;
 
   return roles.includes(profile.role) ? children : null;
 };
