@@ -299,33 +299,57 @@ test.describe('Full UI button coverage', () => {
   });
 
   test('resident: change password, relogin, revert', async ({ page }) => {
-    await loginAs(page, 'resident');
-    await expect(page.getByText('Kalubihan Emergency')).toBeVisible({ timeout: 30000 });
+    let passwordChanged = false;
+    try {
+      await loginAs(page, 'resident');
+      await expect(page.getByText('Kalubihan Emergency')).toBeVisible({ timeout: 30000 });
 
-    await page.goto('/profile');
-    await page.getByRole('button', { name: 'Security' }).click();
-    await page.fill('input[type="password"]', 'resident123');
-    await page.locator('input[type="password"]').nth(1).fill('Resident@999');
-    await page.locator('input[type="password"]').nth(2).fill('Resident@999');
-    await page.getByRole('button', { name: 'Change Password' }).click();
-    await expect(page.locator('text=/updated|changed|success/i').first()).toBeVisible({ timeout: 15000 });
+      await page.goto('/profile');
+      await page.getByRole('button', { name: 'Security' }).click({ timeout: 30000 });
+      await page.fill('input[type="password"]', 'resident123');
+      await page.locator('input[type="password"]').nth(1).fill('Resident@999');
+      await page.locator('input[type="password"]').nth(2).fill('Resident@999');
+      await page.getByRole('button', { name: 'Change Password' }).click();
+      await expect(page.locator('text=/updated|changed|success/i').first()).toBeVisible({ timeout: 15000 });
+      passwordChanged = true;
 
-    await page.getByRole('button', { name: /sign out|log out/i }).click();
-    await page.waitForURL('/login', { timeout: 15000 });
+      await page.getByRole('button', { name: /sign out|log out/i }).click();
+      await page.waitForURL('/login', { timeout: 15000 });
 
-    // Login with the NEW password
-    await page.fill('input[type="email"]', ACCOUNTS.resident.email);
-    await page.fill('input[type="password"]', 'Resident@999');
-    await page.click('button[type="submit"]');
-    await expect(page.getByText('Kalubihan Emergency')).toBeVisible({ timeout: 30000 });
+      // Login with the NEW password
+      await page.fill('input[type="email"]', ACCOUNTS.resident.email);
+      await page.fill('input[type="password"]', 'Resident@999');
+      await page.click('button[type="submit"]');
+      // 'Kalubihan Emergency' is branding shown on the login page too, so it
+      // can't prove sign-in. The email input detaches only when the login
+      // form unmounts after a successful auth (same check loginAs uses).
+      await page.waitForSelector('input[type="email"]', {
+        state: 'detached',
+        timeout: 30000,
+      });
 
-    // Change it back
-    await page.goto('/profile');
-    await page.getByRole('button', { name: 'Security' }).click();
-    await page.fill('input[type="password"]', 'Resident@999');
-    await page.locator('input[type="password"]').nth(1).fill('resident123');
-    await page.locator('input[type="password"]').nth(2).fill('resident123');
-    await page.getByRole('button', { name: 'Change Password' }).click();
-    await expect(page.locator('text=/updated|changed|success/i').first()).toBeVisible({ timeout: 15000 });
+      // Change it back
+      await page.goto('/profile');
+      await page.getByRole('button', { name: 'Security' }).click({ timeout: 30000 });
+      await page.fill('input[type="password"]', 'Resident@999');
+      await page.locator('input[type="password"]').nth(1).fill('resident123');
+      await page.locator('input[type="password"]').nth(2).fill('resident123');
+      await page.getByRole('button', { name: 'Change Password' }).click();
+      await expect(page.locator('text=/updated|changed|success/i').first()).toBeVisible({ timeout: 15000 });
+      passwordChanged = false;
+    } finally {
+      // A failure between the two updates leaves the live account on the
+      // changed password, which then breaks every spec that signs in as the
+      // resident. Restore it via the auth API so cleanup is unconditional.
+      if (passwordChanged) {
+        const sb = client();
+        const { error } = await sb.auth.signInWithPassword({
+          email: ACCOUNTS.resident.email,
+          password: 'Resident@999',
+        });
+        if (!error) await sb.auth.updateUser({ password: 'resident123' });
+        await sb.auth.signOut();
+      }
+    }
   });
 });

@@ -25,6 +25,9 @@ test.describe.serial('Admin approval flow', () => {
   });
 
   test('admin approves a pending account from the residents section', async ({ page }) => {
+    // Several sequential live-DB waits below (30s each) legitimately exceed
+    // the 120s default, so this test needs a larger budget.
+    test.setTimeout(240000);
     await page.goto('/');
     await page.fill('input[type="email"]', 'admin@emergency.gov');
     await page.fill('input[type="password"]', 'admin123');
