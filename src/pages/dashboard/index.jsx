@@ -106,21 +106,6 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
   const navigate = useNavigate();
   const { reports, setReports } = useMockData();
   const [status, setStatus] = useState('all');
-  const [showProviderModal, setShowProviderModal] = useState(false);
-  const [providerConfig, setProviderConfig] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem('emergency.providers.v1')) || {};
-    } catch {
-      return {};
-    }
-  });
-  const toggleProvider = (key) => {
-    setProviderConfig(prev => {
-      const next = { ...prev, [key]: !prev[key] };
-      try { localStorage.setItem('emergency.providers.v1', JSON.stringify(next)); } catch {}
-      return next;
-    });
-  };
   const [draft, setDraft] = useState({ type: 'fire', priority: 'high', location: '', description: '', latitude: null, longitude: null, serviceAreaStatus: 'manual' });
   const draftKey = `incident-draft-${profile?.id || 'anon'}`;
   const [gpsStatus, setGpsStatus] = useState('');
@@ -985,7 +970,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
               ['incident_updates', 'Incident updates', 'New reports and status changes'],
               ['assignment_updates', 'Assignments', 'Incidents assigned to you'],
               ['registration_reviews', 'Registration reviews', 'Pending residents awaiting review'],
-            ].map(([key, label, desc]) => <div key={key} className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2"><div><span className="text-sm font-medium">{label}</span><p className="text-xs text-slate-500">{desc}</p></div><button role="switch" aria-checked={!!notifPrefs[key]} aria-label={`Toggle ${label}`} onClick={() => toggleNotifPref(key)} className={`relative h-6 w-11 cursor-pointer rounded-full transition ${notifPrefs[key] ? 'bg-taste-500' : 'bg-slate-300'}`}><span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition ${notifPrefs[key] ? 'left-[22px]' : 'left-0.5'}`}/></button></div>)}<div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-2"><div><span className="text-sm font-medium">Verification & security notices</span><p className="text-xs text-slate-500">Required: cannot be turned off</p></div><span className="rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-bold uppercase text-emerald-700 ring-1 ring-emerald-200">Always on</span></div>{prefsMsg && <p className="text-xs text-slate-500">{prefsMsg}</p>}</div></div>{profile?.role === 'admin' && <div className="rounded-lg border border-slate-200/70 bg-white p-6 "><div><h3 className="font-bold">Service boundary</h3><p className="text-sm text-slate-500">Kalubihan traced boundary</p></div><p className="mt-5 text-sm leading-6 text-slate-500">Changes are versioned and never rewrite historical incident locations or statuses.</p><button onClick={() => setIsBoundaryModalOpen(true)} className="mt-5 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold hover:bg-slate-50">Configure boundary</button></div>}{profile?.role === 'admin' && <div className="rounded-lg border border-slate-200/70 bg-white p-6 "><h3 className="font-bold">Delivery providers</h3><p className="mt-2 text-sm text-slate-500">In-app notifications are always on. SMS, email, push, map GIS, and OCR require provider credentials.</p><button onClick={() => setShowProviderModal(true)} className="mt-5 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold hover:bg-slate-50">Provider settings</button></div>}</div>}
+            ].map(([key, label, desc]) => <div key={key} className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2"><div><span className="text-sm font-medium">{label}</span><p className="text-xs text-slate-500">{desc}</p></div><button role="switch" aria-checked={!!notifPrefs[key]} aria-label={`Toggle ${label}`} onClick={() => toggleNotifPref(key)} className={`relative h-6 w-11 cursor-pointer rounded-full transition ${notifPrefs[key] ? 'bg-taste-500' : 'bg-slate-300'}`}><span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition ${notifPrefs[key] ? 'left-[22px]' : 'left-0.5'}`}/></button></div>)}<div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-2"><div><span className="text-sm font-medium">Verification & security notices</span><p className="text-xs text-slate-500">Required: cannot be turned off</p></div><span className="rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-bold uppercase text-emerald-700 ring-1 ring-emerald-200">Always on</span></div>{prefsMsg && <p className="text-xs text-slate-500">{prefsMsg}</p>}</div></div>{profile?.role === 'admin' && <div className="rounded-lg border border-slate-200/70 bg-white p-6 "><div><h3 className="font-bold">Service boundary</h3><p className="text-sm text-slate-500">Kalubihan traced boundary</p></div><p className="mt-5 text-sm leading-6 text-slate-500">Changes are versioned and never rewrite historical incident locations or statuses.</p><button onClick={() => setIsBoundaryModalOpen(true)} className="mt-5 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold hover:bg-slate-50">Configure boundary</button></div>}</div>}
       {section === 'profile' && <div className="mt-7 max-w-3xl"><div className="mb-6 border-b border-slate-200"><nav className="-mb-px flex space-x-8" aria-label="Tabs"><button onClick={() => setProfileTab('info')} className={`py-2 px-1 border-b-2 font-medium text-sm transition ${profileTab === 'info' ? 'border-taste-500 text-taste-500' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-taste-500'}`}>Profile Information</button><button onClick={() => setProfileTab('security')} className={`py-2 px-1 border-b-2 font-medium text-sm transition ${profileTab === 'security' ? 'border-taste-500 text-taste-500' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-taste-500'}`}>Security</button></nav></div>{profileTab === 'info' && <div className="rounded-lg border border-slate-200/70 bg-white p-6 "><div className="flex items-center gap-4">{profile?.avatar_url ? <img src={profile.avatar_url} alt="" className="h-14 w-14 rounded-full object-cover"/> : <div className="grid h-14 w-14 place-items-center rounded-full bg-taste-500 text-lg font-bold text-white">{profile?.first_name?.[0] || 'U'}</div>}<div><h3 className="text-lg font-bold">{profile?.full_name || 'User'}</h3><p className="text-sm capitalize text-slate-500">{profile?.role || 'user'} account</p><label className="mt-1 inline-flex cursor-pointer items-center gap-1 text-xs font-semibold text-taste-500 hover:underline"><Icon name="Camera" size={13}/>{avatarUploading ? 'Uploading…' : 'Change picture'}<input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleAvatarUpload} disabled={avatarUploading}/></label></div></div><div className="mt-7 grid gap-4 border-t border-slate-100 pt-5 sm:grid-cols-2"><div><label className="text-xs font-bold  text-slate-400">First name</label><input value={profileForm.first_name} onChange={e => setProfileForm({...profileForm, first_name: e.target.value})} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"/></div><div><label className="text-xs font-bold  text-slate-400">Last name</label><input value={profileForm.last_name} onChange={e => setProfileForm({...profileForm, last_name: e.target.value})} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"/></div><div><label className="text-xs font-bold  text-slate-400">Phone number</label><input value={profileForm.phone} onChange={e => setProfileForm({...profileForm, phone: e.target.value})} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"/></div><div><p className="text-xs font-bold  text-slate-400">Email</p><p className="mt-2.5 text-sm">{profile?.email}</p></div><div><p className="text-xs font-bold  text-slate-400">Account status</p><p className="mt-2.5 text-sm capitalize">{(profile?.account_status || 'active')}{profile?.status === 'active' ? ' · on duty' : ''}</p></div></div>{profileMsg && <p className="mt-3 text-sm text-taste-600">{profileMsg}</p>}<button onClick={handleProfileSave} className="mt-4 rounded-lg bg-taste-500 px-4 py-2 text-sm font-semibold text-white hover:bg-taste-600">Save profile</button><div className="mt-7 border-t border-slate-100 pt-5"><div className="flex items-center justify-between mb-4"><h4 className="font-bold">Emergency Contacts</h4><button onClick={() => setIsContactModalOpen(true)} className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold hover:bg-slate-50">Add Contact</button></div>{contactError && !isContactModalOpen && <div className="mb-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{contactError}</div>}{emergencyContacts.length === 0 ? <p className="text-sm text-slate-500">No emergency contacts added.</p> : <div className="space-y-3">{emergencyContacts.map(contact => <div key={contact.id} className="flex items-center justify-between rounded-lg border border-slate-200 p-3"><div><p className="font-medium text-sm">{contact.name} {contact.is_primary && <span className="ml-2 rounded-full bg-taste-100 px-2 py-0.5 text-xs text-taste-600">Primary</span>}</p><p className="text-xs text-slate-500">{contact.relationship} · {contact.phone_number}</p></div><button onClick={() => handleDeleteContact(contact.id)} className="text-slate-400 hover:text-red-600"><Icon name="Trash2" size={16}/></button></div>)}</div>}</div></div>}{profileTab === 'security' && <div className="rounded-lg border border-slate-200/70 bg-white p-6 "><div className="mb-6"><h3 className="font-bold">Change password</h3><p className="text-sm text-slate-500">Update your account password</p></div>{passwordSuccess && <div className="mb-4 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">{passwordSuccess}</div>}{Object.keys(passwordErrors).length > 0 && <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{Object.values(passwordErrors).join('. ')}</div>}<form onSubmit={handlePasswordChange} className="space-y-4"><div><label className="block text-sm font-medium mb-2">Current Password</label><input type="password" value={passwordForm.currentPassword} onChange={e => setPasswordForm({...passwordForm, currentPassword: e.target.value})} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"/></div><div><label className="block text-sm font-medium mb-2">New Password</label><input type="password" value={passwordForm.newPassword} onChange={e => setPasswordForm({...passwordForm, newPassword: e.target.value})} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"/></div><div><label className="block text-sm font-medium mb-2">Confirm New Password</label><input type="password" value={passwordForm.confirmPassword} onChange={e => setPasswordForm({...passwordForm, confirmPassword: e.target.value})} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"/></div><div className="flex gap-2"><button type="submit" disabled={isSubmitting} className="rounded-lg bg-taste-500 px-4 py-2 text-sm font-semibold text-white hover:bg-taste-600 disabled:opacity-50">Change Password</button><button type="button" onClick={() => {setPasswordForm({currentPassword: '', newPassword: '', confirmPassword: ''}); setPasswordErrors({}); setPasswordSuccess('');}} className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold hover:bg-slate-50">Cancel</button></div></form></div>}</div>}
       
       {/* Emergency Contact Modal */}
@@ -1067,62 +1052,6 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
         </div>
       )}
       
-      {/* Provider Settings Modal */}
-      {showProviderModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4">
-          <div className="bg-white rounded-2xl ring-1 ring-slate-900/5 shadow-2xl w-full max-w-md">
-            <div className="flex items-center justify-between p-4 border-b border-slate-200">
-              <h3 className="font-bold text-lg">Delivery providers</h3>
-              <button onClick={() => setShowProviderModal(false)} className="text-slate-400 hover:text-slate-600" aria-label="Close">
-                <Icon name="X" size={20} />
-              </button>
-            </div>
-            <div className="p-4 space-y-3">
-              {[
-                { key: 'inapp', name: 'In-app notifications', locked: true },
-                { key: 'sms', name: 'SMS', locked: false },
-                { key: 'email', name: 'Email', locked: false },
-                { key: 'push', name: 'Push', locked: false },
-                { key: 'gis', name: 'Map GIS / OCR', locked: false },
-              ].map(p => {
-                const enabled = p.locked ? true : !!providerConfig[p.key];
-                return (
-                  <div key={p.key} className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2">
-                    <div>
-                      <span className="text-sm font-medium">{p.name}</span>
-                      <p className={`text-[10px] font-bold uppercase ${enabled ? 'text-emerald-600' : 'text-slate-400'}`}>
-                        {enabled ? 'Enabled' : 'Disabled'}
-                      </p>
-                    </div>
-                    {p.locked ? (
-                      <span className="rounded-full px-2 py-1 text-[10px] font-bold uppercase ring-1 bg-emerald-50 text-emerald-700 ring-emerald-200">Always on</span>
-                    ) : (
-                      <button
-                        role="switch"
-                        aria-checked={enabled}
-                        aria-label={`Toggle ${p.name}`}
-                        onClick={() => toggleProvider(p.key)}
-                        className={`relative h-6 w-11 cursor-pointer rounded-full transition ${enabled ? 'bg-taste-500' : 'bg-slate-300'}`}
-                      >
-                        <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition ${enabled ? 'left-[22px]' : 'left-0.5'}`} />
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
-              <p className="text-xs leading-5 text-slate-500">Channel preferences save on this device. Live delivery credentials are still managed by the system administrator.</p>
-              <div className="flex justify-end pt-2">
-                <button
-                  onClick={() => setShowProviderModal(false)}
-                  className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold hover:bg-slate-50"
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Boundary Configuration Modal */}
       {isBoundaryModalOpen && (
