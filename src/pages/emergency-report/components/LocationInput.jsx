@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Icon from '../../../components/AppIcon';
 import Input from '../../../components/ui/Input';
 import Button from '../../../components/ui/Button';
-import { supabase } from '../../../lib/supabase';
+import BoundaryMap from '../../../components/BoundaryMap';
+import useServiceBoundary from '../../../hooks/useServiceBoundary';
 
 const LocationInput = ({ 
   location, 
@@ -12,23 +13,8 @@ const LocationInput = ({
 }) => {
   const [isDetecting, setIsDetecting] = useState(false);
   const [coordinates, setCoordinates] = useState(null);
-  const [boundaryPoints, setBoundaryPoints] = useState(null);
-  const [boundaryName, setBoundaryName] = useState(null);
-
-  // Load the administrator-managed service boundary from Supabase.
-  useEffect(() => {
-    supabase
-      .from('geofence_boundaries')
-      .select('name, points')
-      .eq('is_active', true)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data?.points?.length >= 3) {
-          setBoundaryPoints(data.points);
-          setBoundaryName(data.name ?? 'configured service boundary');
-        }
-      });
-  }, []);
+  // Administrator-managed boundary: Supabase first, localStorage fallback
+  const { points: boundaryPoints, name: boundaryName } = useServiceBoundary();
 
   const isInsideBoundary = (point, polygon) => {
     let inside = false;
@@ -139,16 +125,8 @@ const LocationInput = ({
                 : 'Outside the configured service boundary. Your report will still be submitted as Outside Service Area for dispatcher triage.'}
           </div>
           {boundaryName && <p className="mt-2 text-xs text-muted-foreground">Boundary: {boundaryName} (administrator-managed in Supabase).</p>}
-          <div className="mt-3">
-            <iframe
-              width="100%"
-              height="200"
-              loading="lazy"
-              title="Emergency Location"
-              referrerPolicy="no-referrer-when-downgrade"
-              src={`https://www.google.com/maps?q=${coordinates?.lat},${coordinates?.lng}&z=16&output=embed`}
-              className="rounded-md border border-border"
-            />
+          <div className="mt-3 h-52 overflow-hidden rounded-md border border-border">
+            <BoundaryMap marker={[coordinates.lat, coordinates.lng]} />
           </div>
         </div>
       )}

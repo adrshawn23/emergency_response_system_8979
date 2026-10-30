@@ -1,18 +1,20 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Icon from '../../components/AppIcon';
 import { useAuth } from '../../contexts/AuthContext';
 import { useMockData } from '../../contexts/MockDataContext';
 import NotificationBell from '../../components/NotificationBell';
-import SidebarProfile from '../../components/SidebarProfile';
 import { supabase } from '../../lib/supabase';
 import DepartmentManagementSection from './components/DepartmentManagementSection';
 import PendingRegistrations from '../user-management/components/PendingRegistrations';
 import { isPointInBoundary } from '../../utils/geofence';
 import ResidentHome from '../resident-home';
 import ResponderView from '../responder-view';
-import { MapContainer, TileLayer, Polygon, Marker, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Polygon, Marker, useMapEvents, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
+import BoundaryMap from '../../components/BoundaryMap';
+import AppSidebar from '../../components/AppSidebar';
+import useServiceBoundary from '../../hooks/useServiceBoundary';
 
 const priorityStyles = {
   critical: 'bg-rose-100 text-rose-700 ring-1 ring-inset ring-rose-600/25',
@@ -39,6 +41,21 @@ const BoundaryEditor = ({ boundaryPoints, setBoundaryPoints }) => {
   return null;
 };
 
+// Fits the map once per change of the loaded boundary — a signature
+// keeps re-renders from resetting the user's view.
+const FitToBoundary = ({ positions }) => {
+  const map = useMap();
+  const signature = JSON.stringify(positions);
+  const last = useRef(null);
+  useEffect(() => {
+    if (positions.length && signature !== last.current) {
+      last.current = signature;
+      map.fitBounds(positions, { padding: [24, 24] });
+    }
+  }, [signature]); // eslint-disable-line react-hooks/exhaustive-deps
+  return null;
+};
+
 const CommandCenterMap = ({ boundaryPoints, activeReport }) => {
   return (
     <MapContainer center={[10.3172, 123.8951]} zoom={13} style={{ height: '100%', width: '100%' }}>
@@ -51,6 +68,7 @@ const CommandCenterMap = ({ boundaryPoints, activeReport }) => {
           fillOpacity={0.2}
         />
       )}
+      <FitToBoundary positions={boundaryPoints.length > 2 ? boundaryPoints.map(p => [p.lat, p.lng]) : []} />
       {activeReport?.latitude && activeReport?.longitude && (
         <Marker position={[activeReport.latitude, activeReport.longitude]}/>
       )}
@@ -121,22 +139,9 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
   const [contactError, setContactError] = useState('');
   const [newContact, setNewContact] = useState({ name: '', relationship: '', phone_number: '', is_primary: false });
-  const [boundaryPoints, setBoundaryPoints] = useState([]);
-
-  // Load saved boundary on mount
-  useEffect(() => {
-    const saved = localStorage.getItem('service_boundary');
-    if (saved) {
-      try {
-        const data = JSON.parse(saved);
-        if (data.points && Array.isArray(data.points)) {
-          setBoundaryPoints(data.points.map(p => ({ lat: p.latitude, lng: p.longitude })));
-        }
-      } catch (e) {
-        console.error('Failed to parse saved boundary:', e);
-      }
-    }
-  }, []);
+  // Active service boundary: Supabase geofence_boundaries first,
+  // legacy localStorage copy as the mock/offline fallback.
+  const { points: boundaryPoints, setPoints: setBoundaryPoints, save: saveServiceBoundary } = useServiceBoundary();
 
   // Restore an unsubmitted incident draft once the reporter's id is known
   useEffect(() => {
@@ -410,7 +415,9 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
     // Responders/residents land on /profile via headers and need a way back —
     // key 'command' switches activeSection back to their board/home view.
     { key: 'command', label: 'Response board', icon: 'Ambulance', path: '/', roles: ['responder'] },
+    { key: 'new', label: 'New incident', icon: 'PlusCircle', path: '/emergency-report', roles: ['responder'] },
     { key: 'command', label: 'Home', icon: 'Home', path: '/', roles: ['resident'] },
+    { key: 'new', label: 'Report emergency', icon: 'Siren', path: '/emergency-report', roles: ['resident'] },
     { key: 'profile', label: 'Profile', icon: 'User', path: '/profile', roles: ['admin', 'dispatcher', 'responder', 'resident'] }
   ].filter(link => link.roles.includes(profile?.role));
   const current = sectionCopy[section];
@@ -431,8 +438,6 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
     : reports;
   const visibleReports = status === 'all' ? filteredReports : filteredReports.filter(report => report.status === status);
   const pendingCount = reports.filter(r => r.status === 'pending').length;
-  // Navigate by URL so the route and the displayed section never disagree
-  const handleNavigation = link => navigate(link.path);
   const setReportStatus = async (id, nextStatus) => {
     const { error } = await supabase
       .from('emergency_reports')
@@ -537,9 +542,10 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
   };
 
   const handleSaveBoundary = async () => {
-    // Convert to the format expected by geofence utility (latitude/longitude)
-    const points = boundaryPoints.map(p => ({ latitude: p.lat, longitude: p.lng }));
-    localStorage.setItem('service_boundary', JSON.stringify({ points }));
+    const result = await saveServiceBoundary(boundaryPoints);
+    if (!result.ok) {
+      console.warn('Boundary saved locally; Supabase write failed:', result.error);
+    }
     setIsBoundaryModalOpen(false);
   };
 
@@ -809,16 +815,10 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
         let serviceAreaStatus = 'staff';
         let inServiceArea = null;
         if (isResident) {
-          // Get service boundary from localStorage or use default
-          const savedBoundary = localStorage.getItem('service_boundary');
-          const serviceBoundary = savedBoundary ? JSON.parse(savedBoundary) : { points: [
-            { latitude: 10.3172, longitude: 123.8951 },
-            { latitude: 10.3172, longitude: 123.8981 },
-            { latitude: 10.3192, longitude: 123.8981 },
-            { latitude: 10.3192, longitude: 123.8951 }
-          ]};
-          inServiceArea = isPointInBoundary({ latitude, longitude }, serviceBoundary.points);
-          serviceAreaStatus = inServiceArea ? 'inside' : 'outside';
+          // Check against the active Supabase boundary (hook state);
+          // 'manual' when no boundary is configured or still loading
+          inServiceArea = isPointInBoundary({ latitude, longitude }, boundaryPoints);
+          serviceAreaStatus = inServiceArea == null ? 'manual' : inServiceArea ? 'inside' : 'outside';
         }
 
         setDraft(value => ({
@@ -919,8 +919,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
   const idDocUrl = idDocIsDirect ? idDocRaw : idDocSignedUrl;
 
   return <div className="min-h-screen bg-slate-50 text-slate-900"><div className="flex min-h-screen">
-    <aside className="sticky top-0 hidden h-screen w-20 shrink-0 flex-col overflow-x-hidden bg-[#f9fbfc] text-slate-600 sm:flex sm:w-72"><div className="flex h-20 items-center justify-center gap-3 border-b border-slate-200 px-3 sm:justify-start sm:px-7"><div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-red-600 text-white"><Icon name="Siren" size={22}/></div><div className="hidden sm:block"><p className="font-semibold text-slate-900">Kalubihan</p><p className="text-xs text-slate-500">Emergency Command</p></div></div><div className="flex-1 px-3 py-7 sm:px-4"><p className="mb-3 hidden px-3 text-[13px] font-medium text-slate-500 sm:block">Operations</p><nav className="space-y-1">{links.map(link => <button key={link.key} onClick={() => handleNavigation(link)} title={link.label} className={`flex w-full items-center justify-center gap-3 rounded-xl px-3 py-3 text-left text-sm transition sm:justify-start ${link.key === section ? 'bg-[#ebedee] font-medium text-slate-900' : 'text-slate-600 hover:bg-[#ebedee] hover:text-slate-900'}`}><Icon name={link.icon} size={18}/><span className="hidden flex-1 sm:block">{link.label}</span>{link.key === 'queue' && <span className="hidden rounded-full bg-red-600 px-2 py-0.5 text-xs font-bold text-white sm:block">{pendingCount}</span>}</button>)}</nav></div><div className="m-3 rounded-lg border border-slate-200 bg-white p-3 sm:m-4 sm:p-4"><SidebarProfile profile={profile} signOut={signOut}/></div></aside>
-    <nav className="fixed bottom-0 inset-x-0 z-40 flex overflow-x-auto border-t border-slate-200 bg-[#f9fbfc] py-1 sm:hidden">{links.map(link => <button key={link.key} onClick={() => handleNavigation(link)} className={`flex shrink-0 flex-col items-center gap-0.5 px-4 py-1.5 text-[10px] ${link.key === section ? 'text-slate-900 font-medium' : 'text-slate-500'}`}><Icon name={link.icon} size={20}/><span>{link.label}</span></button>)}<button aria-label="Sign out" onClick={signOut} className="flex shrink-0 flex-col items-center gap-0.5 px-4 py-1.5 text-[10px] text-slate-500"><Icon name="LogOut" size={20}/><span>Sign out</span></button></nav>
+    <AppSidebar links={links.map(l => ({ ...l, badge: l.key === 'queue' ? pendingCount : undefined }))} profile={profile} signOut={signOut} />
     <main className="min-w-0 flex-1 pb-24 sm:pb-0"><header className="sticky top-0 z-30 flex h-20 items-center justify-between border-b border-slate-200/70 bg-white px-5  sm:px-8"><div><p className="text-xs font-medium  text-slate-400">Kalubihan emergency command</p><h1 className="text-lg font-bold">{current.title}</h1></div><div className="flex items-center gap-3"><NotificationBell userId={profile?.id} onOpenIncident={(id) => { const report = reports.find(r => r.id === id); if (report) handleReportClick(report); }}/></div></header><div className="mx-auto max-w-[1400px] p-5 sm:p-8"><p className="text-xs font-bold  text-taste-600">{current.eyebrow}</p><h2 className="mt-1 text-3xl font-bold tracking-tight">{current.title}</h2><p className="mt-2 text-sm text-slate-500">{current.description}</p>
       {section === 'queue' && <>
         <div className="mt-7 flex flex-wrap items-center justify-between gap-3">
@@ -1147,6 +1146,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
                     boundaryPoints={boundaryPoints}
                     setBoundaryPoints={setBoundaryPoints}
                   />
+                  <FitToBoundary positions={boundaryPoints.length > 2 ? boundaryPoints.map(p => [p.lat, p.lng]) : []} />
                   {boundaryPoints.length > 2 && (
                     <Polygon
                       positions={boundaryPoints.map(p => [p.lat, p.lng])}
@@ -1422,14 +1422,8 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
                   <p className="text-sm mb-2">{selectedReport.attachments?.location || selectedReport.location}</p>
                   {selectedReport.attachments?.latitude && selectedReport.attachments?.longitude && (
                     <div className="rounded-lg overflow-hidden border border-slate-200 h-48">
-                      <iframe
-                        width="100%"
-                        height="100%"
-                        frameBorder="0"
-                        scrolling="no"
-                        marginHeight="0"
-                        marginWidth="0"
-                        src={`https://www.openstreetmap.org/export/embed.html?bbox=${selectedReport.attachments.longitude - 0.01}%2C${selectedReport.attachments.latitude - 0.01}%2C${selectedReport.attachments.longitude + 0.01}%2C${selectedReport.attachments.latitude + 0.01}&layer=mapnik&marker=${selectedReport.attachments.latitude}%2C${selectedReport.attachments.longitude}`}
+                      <BoundaryMap
+                        marker={[selectedReport.attachments.latitude, selectedReport.attachments.longitude]}
                       />
                     </div>
                   )}
@@ -1559,27 +1553,17 @@ export default function Dashboard({ section = 'command' }) {
   const [activeSection, setActiveSection] = useState(section);
   const [currentDate, setCurrentDate] = useState('');
   const [departments, setDepartments] = useState([]);
-  const [boundaryPoints, setBoundaryPoints] = useState([]);
   const [isBoundaryModalOpen, setIsBoundaryModalOpen] = useState(false);
 
-  // Load saved boundary on mount
-  useEffect(() => {
-    const saved = localStorage.getItem('service_boundary');
-    if (saved) {
-      try {
-        const data = JSON.parse(saved);
-        if (data.points && Array.isArray(data.points)) {
-          setBoundaryPoints(data.points.map(p => ({ lat: p.latitude, lng: p.longitude })));
-        }
-      } catch (e) {
-        console.error('Failed to parse saved boundary:', e);
-      }
-    }
-  }, []);
+  // Active service boundary: Supabase geofence_boundaries first,
+  // legacy localStorage copy as the mock/offline fallback.
+  const { points: boundaryPoints, setPoints: setBoundaryPoints, save: saveServiceBoundary } = useServiceBoundary();
 
-  const handleSaveBoundary = () => {
-    const points = boundaryPoints.map(p => ({ latitude: p.lat, longitude: p.lng }));
-    localStorage.setItem('service_boundary', JSON.stringify({ points }));
+  const handleSaveBoundary = async () => {
+    const result = await saveServiceBoundary(boundaryPoints);
+    if (!result.ok) {
+      console.warn('Boundary saved locally; Supabase write failed:', result.error);
+    }
     setIsBoundaryModalOpen(false);
   };
 
@@ -1683,22 +1667,7 @@ export default function Dashboard({ section = 'command' }) {
 
   return <div className="min-h-screen bg-slate-50 text-slate-900">
     <div className="flex min-h-screen">
-      <aside className="sticky top-0 hidden h-screen w-20 shrink-0 flex-col overflow-x-hidden bg-[#f9fbfc] text-slate-600 sm:flex sm:w-72">
-        <div className="flex h-20 items-center justify-center gap-3 border-b border-slate-200 px-3 sm:justify-start sm:px-7">
-          <div className="grid h-10 w-10 place-items-center rounded-xl bg-red-600 text-white "><Icon name="Siren" size={22}/></div>
-          <div className="hidden sm:block"><p className="font-semibold tracking-tight text-slate-900">Kalubihan</p><p className="text-xs text-slate-500">Emergency Command</p></div>
-        </div>
-        <div className="flex-1 px-3 py-7 sm:px-4">
-          <p className="mb-3 hidden px-3 text-[13px] font-medium text-slate-500 sm:block">Operations</p>
-          <nav className="space-y-1">{sidebarLinks.map(link => <button key={link.label} title={link.label} onClick={() => navigate(link.path)} className={`flex w-full items-center justify-center gap-3 rounded-xl px-3 py-3 text-left text-sm transition sm:justify-start ${link.path === '/' ? 'bg-[#ebedee] font-medium text-slate-900' : 'text-slate-600 hover:bg-[#ebedee] hover:text-slate-900'}`}>
-            <Icon name={link.icon} size={18}/><span className="hidden flex-1 sm:block">{link.label}</span>{link.badge ? <span className="hidden rounded-full bg-red-600 px-2 py-0.5 text-xs font-bold text-white sm:block">{link.badge}</span> : null}
-          </button>)}</nav>
-        </div>
-        <div className="m-3 rounded-lg border border-slate-200 bg-white p-3 sm:m-4 sm:p-4">
-          <SidebarProfile profile={profile} signOut={signOut}/>
-        </div>
-      </aside>
-      <nav className="fixed bottom-0 inset-x-0 z-40 flex overflow-x-auto border-t border-slate-200 bg-[#f9fbfc] py-1 sm:hidden">{sidebarLinks.map(link => <button key={link.label} onClick={() => navigate(link.path)} className={`flex shrink-0 flex-col items-center gap-0.5 px-4 py-1.5 text-[10px] ${link.path === '/' ? 'text-slate-900 font-medium' : 'text-slate-500'}`}><Icon name={link.icon} size={20}/><span>{link.label}</span></button>)}<button aria-label="Sign out" onClick={signOut} className="flex shrink-0 flex-col items-center gap-0.5 px-4 py-1.5 text-[10px] text-slate-500"><Icon name="LogOut" size={20}/><span>Sign out</span></button></nav>
+      <AppSidebar links={sidebarLinks} profile={profile} signOut={signOut} />
       <main className="min-w-0 flex-1 pb-24 sm:pb-0">
         <header className="sticky top-0 z-30 flex h-20 items-center justify-between border-b border-slate-200/70 bg-white px-5  sm:px-8">
           <div><p className="text-xs font-medium  text-slate-400">{currentDate}</p><h1 className="text-lg font-bold tracking-tight">{getGreeting()}, {profile?.full_name?.split(' ')[0] || 'User'}</h1></div>
@@ -1812,6 +1781,7 @@ export default function Dashboard({ section = 'command' }) {
                   boundaryPoints={boundaryPoints}
                   setBoundaryPoints={setBoundaryPoints}
                 />
+                <FitToBoundary positions={boundaryPoints.length > 2 ? boundaryPoints.map(p => [p.lat, p.lng]) : []} />
                 {boundaryPoints.length > 2 && (
                   <Polygon
                     positions={boundaryPoints.map(p => [p.lat, p.lng])}

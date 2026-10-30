@@ -25,21 +25,21 @@ WHERE is_active = true;
 DELETE FROM public.geofence_boundaries
 WHERE name = 'Barangay Kalubihan';
 
--- Single fresh active row — polygon traced from the public Google/OSM
--- barangay outline (Colon St / Sanciangko St / Parian Estero / Magallanes St).
+-- Single fresh active row — polygon hand-traced from the Google Maps
+-- Kalubihan barangay outline (9 vertices, entered via the boundary editor).
 INSERT INTO public.geofence_boundaries (name, points, is_active)
 VALUES (
     'Barangay Kalubihan',
     '[
-        {"latitude": 10.3002, "longitude": 123.8952},
-        {"latitude": 10.3003, "longitude": 123.8978},
-        {"latitude": 10.2992, "longitude": 123.9006},
-        {"latitude": 10.2960, "longitude": 123.9008},
-        {"latitude": 10.2938, "longitude": 123.8995},
-        {"latitude": 10.2937, "longitude": 123.8970},
-        {"latitude": 10.2942, "longitude": 123.8950},
-        {"latitude": 10.2975, "longitude": 123.8947},
-        {"latitude": 10.3002, "longitude": 123.8952}
+        {"latitude": 10.298938, "longitude": 123.895590},
+        {"latitude": 10.299587, "longitude": 123.896851},
+        {"latitude": 10.297719, "longitude": 123.897473},
+        {"latitude": 10.298869, "longitude": 123.899952},
+        {"latitude": 10.297613, "longitude": 123.900633},
+        {"latitude": 10.296214, "longitude": 123.898262},
+        {"latitude": 10.294826, "longitude": 123.897704},
+        {"latitude": 10.294267, "longitude": 123.899083},
+        {"latitude": 10.293470, "longitude": 123.897033}
     ]'::jsonb,
     true
 );

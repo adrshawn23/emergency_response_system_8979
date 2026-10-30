@@ -6,6 +6,14 @@ import { useMockData } from '../../contexts/MockDataContext';
 import { supabase } from '../../lib/supabase';
 import NotificationBell from '../../components/NotificationBell';
 import SidebarProfile from '../../components/SidebarProfile';
+import BoundaryMap from '../../components/BoundaryMap';
+import AppSidebar from '../../components/AppSidebar';
+
+const RESPONDER_LINKS = [
+  { label: 'Response board', icon: 'Ambulance', path: '/' },
+  { label: 'New incident', icon: 'PlusCircle', path: '/emergency-report' },
+  { label: 'Profile', icon: 'User', path: '/profile' }
+];
 
 export default function ResponderView() {
   const navigate = useNavigate();
@@ -105,7 +113,9 @@ export default function ResponderView() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="flex min-h-screen bg-slate-50">
+      <AppSidebar links={RESPONDER_LINKS} profile={profile} signOut={signOut} />
+      <div className="min-w-0 flex-1 pb-24 sm:pb-0">
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4">
           <div className="flex items-center gap-3">
@@ -226,12 +236,8 @@ export default function ResponderView() {
                 {selectedReport.attachments?.latitude && selectedReport.attachments?.longitude ? (
                   <>
                     <div className="mt-2 h-56 overflow-hidden rounded-lg border border-slate-200">
-                      <iframe
-                        width="100%"
-                        height="100%"
-                        loading="lazy"
-                        title="Incident location map"
-                        src={`https://www.openstreetmap.org/export/embed.html?bbox=${selectedReport.attachments.longitude - 0.008}%2C${selectedReport.attachments.latitude - 0.008}%2C${selectedReport.attachments.longitude + 0.008}%2C${selectedReport.attachments.latitude + 0.008}&layer=mapnik&marker=${selectedReport.attachments.latitude}%2C${selectedReport.attachments.longitude}`}
+                      <BoundaryMap
+                        marker={[selectedReport.attachments.latitude, selectedReport.attachments.longitude]}
                       />
                     </div>
                     <a
@@ -317,6 +323,7 @@ export default function ResponderView() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

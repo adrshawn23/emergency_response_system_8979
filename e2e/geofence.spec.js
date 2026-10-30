@@ -8,7 +8,7 @@ import { deleteReportsByContent, getReportServiceArea } from './helpers.js';
  *   admin      -> bypasses geofence (no warning, service_area_status 'staff')
  *
  * Active boundary: the real Barangay Kalubihan polygon
- *   lat 10.2937-10.3003, lng 123.8947-123.9008 — see
+ *   lat 10.2935-10.2996, lng 123.8955-123.9006 — see
  *   supabase/set_kalubihan_boundary.sql / migration 20261028162000.
  * INSIDE must sit inside that polygon (barangay center used).
  */

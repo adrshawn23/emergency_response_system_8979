@@ -86,27 +86,24 @@ CREATE TRIGGER geofence_boundaries_updated_at
 
 -- Seed polygon for Barangay Kalubihan (Pob.), Cebu City — PSGC 0730600033
 -- (formerly 072217033), official center ~10.2968 N, 123.8979 E.
--- Vertices are traced from the public Google/OpenStreetMap barangay outline:
---   Colon St (west), Sanciangko St (north), Parian Estero (east),
---   Magallanes St (south), covering Elizabeth Mall, Cebu City Medical Center,
---   and the Gaisano Main / USJ-R area. Replace with the official GIS
---   boundary file when the barangay provides it — the client only needs an
---   ordered ring.
+-- Vertices hand-traced from the Google Maps barangay outline
+-- (9 points, entered via the boundary editor) — keep in sync with
+-- supabase/set_kalubihan_boundary.sql.
 -- Skip the seed when a boundary already exists (the single-active index
 -- would reject a second is_active=true row, and name has no unique key).
 INSERT INTO public.geofence_boundaries (name, points, is_active)
 SELECT
     'Barangay Kalubihan',
     '[
-        {"latitude": 10.3002, "longitude": 123.8952},
-        {"latitude": 10.3003, "longitude": 123.8978},
-        {"latitude": 10.2992, "longitude": 123.9006},
-        {"latitude": 10.2960, "longitude": 123.9008},
-        {"latitude": 10.2938, "longitude": 123.8995},
-        {"latitude": 10.2937, "longitude": 123.8970},
-        {"latitude": 10.2942, "longitude": 123.8950},
-        {"latitude": 10.2975, "longitude": 123.8947},
-        {"latitude": 10.3002, "longitude": 123.8952}
+        {"latitude": 10.298938, "longitude": 123.895590},
+        {"latitude": 10.299587, "longitude": 123.896851},
+        {"latitude": 10.297719, "longitude": 123.897473},
+        {"latitude": 10.298869, "longitude": 123.899952},
+        {"latitude": 10.297613, "longitude": 123.900633},
+        {"latitude": 10.296214, "longitude": 123.898262},
+        {"latitude": 10.294826, "longitude": 123.897704},
+        {"latitude": 10.294267, "longitude": 123.899083},
+        {"latitude": 10.293470, "longitude": 123.897033}
     ]'::jsonb,
     true
 WHERE NOT EXISTS (

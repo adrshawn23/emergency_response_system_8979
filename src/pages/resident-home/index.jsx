@@ -5,6 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useMockData } from '../../contexts/MockDataContext';
 import NotificationBell from '../../components/NotificationBell';
 import SidebarProfile from '../../components/SidebarProfile';
+import AppSidebar from '../../components/AppSidebar';
 import { supabase } from '../../lib/supabase';
 import { submitIdForVerification } from '../../utils/verifyId';
 
@@ -15,6 +16,12 @@ const VERIFICATION_COPY = {
   needs_clarity: { tone: 'amber', label: 'Clearer photo needed', text: 'The reviewer could not read your ID clearly. Please upload a sharper, well-lit photo.' },
   rejected: { tone: 'red', label: 'Not approved', text: 'Your registration could not be approved. You may resubmit a different document or contact the barangay office to appeal.' },
 };
+
+const RESIDENT_LINKS = [
+  { label: 'Home', icon: 'Home', path: '/' },
+  { label: 'Report emergency', icon: 'Siren', path: '/emergency-report' },
+  { label: 'Profile', icon: 'User', path: '/profile' }
+];
 
 export default function ResidentHome() {
   const navigate = useNavigate();
@@ -79,7 +86,9 @@ export default function ResidentHome() {
   const needsResubmit = ['correction_required', 'needs_clarity', 'rejected'].includes(vStatus);
   const showVerificationCard = profile?.role === 'resident' && verificationLoaded
     && (verification == null || !isActiveResident);
-  return <div className="min-h-screen bg-slate-50 text-slate-900">
+  return <div className="flex min-h-screen bg-slate-50 text-slate-900">
+    <AppSidebar links={RESIDENT_LINKS} profile={profile} signOut={signOut} />
+    <div className="min-w-0 flex-1 pb-24 sm:pb-0">
     <header className="border-b border-slate-200 bg-white"><div className="mx-auto flex max-w-5xl items-center justify-between px-5 py-4"><div className="flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-xl bg-red-500 text-white"><Icon name="Siren" size={21}/></div><div><p className="font-bold">Kalubihan Emergency</p><p className="text-xs text-slate-500">Resident safety portal</p></div></div><div className="flex items-center gap-3"><NotificationBell userId={profile?.id} onOpenIncident={(id) => { const r = reports.find(x => x.id === id); if (r) setSelectedReport(r); }}/><SidebarProfile profile={profile} signOut={signOut} compact/></div></div></header>
     <main className="mx-auto max-w-5xl space-y-6 px-5 py-8">
       <section className="overflow-hidden rounded-2xl bg-slate-900 p-7 text-white sm:p-10"><p className="text-sm text-slate-300">Hello, {profile?.first_name || 'neighbor'}</p><h1 className="mt-1 text-3xl font-bold tracking-tight">Help is one report away.</h1><p className="mt-3 max-w-xl text-sm leading-6 text-slate-300">Send an emergency report with a location, details, and optional evidence. You can always place a local emergency call if it is safe to do so.</p><button onClick={() => navigate('/emergency-report')} disabled={!isActiveResident} title={isActiveResident ? '' : 'Your account must be verified before filing reports'} className="mt-6 inline-flex items-center gap-2 rounded-xl bg-red-500 px-5 py-3 text-sm font-bold  hover:bg-red-400 disabled:cursor-not-allowed disabled:opacity-50"><Icon name="Siren" size={18}/>{isActiveResident ? 'Report an emergency' : 'Verification required to report'}</button></section>
@@ -170,5 +179,6 @@ export default function ResidentHome() {
         </div>
       </div>
     )}
+    </div>
   </div>;
 }
