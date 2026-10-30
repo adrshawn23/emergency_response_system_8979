@@ -16,6 +16,13 @@ const EDITABLE_PAGES = [
 // 'admin' is excluded — it always has full access and is shown as locked.
 const EDITABLE_ROLES = ['resident', 'dispatcher', 'responder'];
 
+// Fixed pages — shown for completeness but intentionally not editable.
+const LOCKED_PAGES = [
+  { key: 'command', label: 'Command center / Home', note: 'Every role needs a landing page' },
+  { key: 'profile', label: 'Profile', note: 'All signed-in users' },
+  { key: 'access', label: 'Access control', note: 'Admin only — the permission editor itself' },
+];
+
 export default function PageAccessMatrix() {
   const { pageRoles } = useAuth();
   const [busyKey, setBusyKey] = useState('');
@@ -75,7 +82,7 @@ export default function PageAccessMatrix() {
                       checked={allowed}
                       disabled={busy}
                       onChange={() => toggle(p.key, role)}
-                      aria-label={`${p.label} — ${role}`}
+                      aria-label={`${p.label} � ${role}`}
                       className="h-4 w-4 cursor-pointer accent-red-600 disabled:opacity-50"
                     />
                   </td>
@@ -86,11 +93,29 @@ export default function PageAccessMatrix() {
               </td>
             </tr>
           ))}
+          {LOCKED_PAGES.map(p => (
+            <tr key={p.key} className="border-t border-slate-100 bg-slate-50/60">
+              <td className="py-2.5 font-medium text-slate-400">
+                {p.label}
+                <span className="ml-2 text-[10px] font-normal text-slate-400">({p.note})</span>
+              </td>
+              {EDITABLE_ROLES.map(role => (
+                <td key={role} className="py-2.5">
+                  <Icon name="Lock" size={14} className="text-slate-300" />
+                </td>
+              ))}
+              <td className="py-2.5">
+                <Icon name="Lock" size={14} className="text-slate-400" />
+              </td>
+            </tr>
+          ))}
         </tbody>
       </table>
 
       <p className="mt-3 text-xs text-slate-400">
-        Access control is admin-only and cannot be widened here.
+        Locked rows are fixed by design � Command center is every role's landing
+        page, Profile is needed by all users, and Access control must stay
+        admin-only.
       </p>
     </div>
   );
