@@ -104,7 +104,7 @@ const Routes = () => {
               } />
               <Route path="/settings" element={
                 <ProtectedRoute>
-                  <RoleRoute roles={['admin', 'dispatcher', 'responder', 'resident']}><Dashboard section="settings" /></RoleRoute>
+                  <RoleRoute roles={['admin']}><Dashboard section="settings" /></RoleRoute>
                 </ProtectedRoute>
               } />
               <Route path="*" element={<NotFound />} />

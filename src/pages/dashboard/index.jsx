@@ -1646,6 +1646,11 @@ export default function Dashboard({ section = 'command' }) {
 
   if (profile?.role === 'resident' && activeSection === 'command') return <ResidentHome />;
   if (profile?.role === 'responder' && activeSection === 'command') return <ResponderView />;
+  // RBAC: role-restricted sections must not render for other roles even if a
+  // route guard is bypassed (direct URL, role change mid-session).
+  const sectionRoles = { residents: ['admin'], departments: ['admin'], settings: ['admin'], queue: ['admin', 'dispatcher'] };
+  const allowedRoles = sectionRoles[activeSection];
+  if (allowedRoles && profile?.role && !allowedRoles.includes(profile.role)) return <Navigate to="/" replace />;
   if (activeSection !== 'command') return <WorkspacePage section={activeSection} profile={profile} signOut={signOut} onSectionChange={setActiveSection} />;
 
   const pendingCount = reports.filter(r => r.status === 'pending').length;
