@@ -63,6 +63,19 @@ export default {
           DEFAULT: "var(--color-error)", // red-500
           foreground: "var(--color-error-foreground)", // white
         },
+        // Dealt accent (design-taste-frontend · framed-sheet): teal on white.
+        taste: {
+          50: '#eef5f7',
+          100: '#d9ebf0',
+          200: '#b5d7e1',
+          300: '#7fb8c9',
+          400: '#3f8ba0',
+          500: '#1b6c80',
+          600: '#155e71',
+          700: '#134e5e',
+          800: '#123f4b',
+          900: '#0f313a',
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -70,8 +83,10 @@ export default {
         sm: "calc(var(--radius) - 4px)",
       },
       fontFamily: {
-        sans: ['Inter', 'sans-serif'],
-        mono: ['JetBrains Mono', 'monospace'],
+        // Dealt faces (design-taste-frontend · framed-sheet): Plex Sans for
+        // chrome and body, Plex Mono for IDs/keys only.
+        sans: ['"IBM Plex Sans"', 'Inter', 'system-ui', 'sans-serif'],
+        mono: ['"IBM Plex Mono"', 'ui-monospace', 'monospace'],
       },
       fontSize: {
         'xs': ['0.75rem', { lineHeight: '1rem' }],

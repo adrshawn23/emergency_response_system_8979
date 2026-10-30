@@ -12,7 +12,8 @@ import TrustIndicators from './components/TrustIndicators';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { isAddressInServiceArea } from '../../utils/geofence';
-import { ocrIdDocument, fileToDataUrl } from '../../utils/ocr';
+import { fileToDataUrl } from '../../utils/ocr';
+import { submitIdForVerification } from '../../utils/verifyId';
 
 const Register = () => {
   const navigate = useNavigate();
@@ -187,31 +188,11 @@ const Register = () => {
         throw new Error('A user with this name already exists. Please contact support if this is an error.');
       }
 
-      // Read the uploaded ID with real OCR (tesseract.js, in-browser). The
-      // extracted name/birthdate are matched against the declared values so
-      // the admin auto-check and review chips use genuine ID data.
-      setSubmitPhase('Reading your ID…');
-      let idDocumentUrl = null;
-      let ocrData = null;
-      let ocrConfidence = null;
-      try {
-        const result = await ocrIdDocument(formData.idDocument, {
-          fullName,
-          birthdate: formData.dateOfBirth
-        });
-        idDocumentUrl = result.docDataUrl;
-        ocrData = result.ocrData;
-        ocrConfidence = result.confidence;
-      } catch (ocrError) {
-        // OCR failure must not block registration — the document is still
-        // stored and the verification stays pending for manual review.
-        console.error('ID OCR failed:', ocrError);
-        idDocumentUrl = await fileToDataUrl(formData.idDocument).catch(() => null);
-        ocrData = { extracted_name: null, extracted_dob: null, name_match: false, dob_match: false };
-        ocrConfidence = 0;
-      }
       setSubmitPhase('Creating your account…');
 
+      // Signup metadata carries only the declared profile fields. The ID image
+      // and any OCR results are NEVER placed in auth metadata — the document
+      // goes to private storage and server-controlled OCR afterwards.
       const { data, error: signUpError } = await signUp(
         formData.email.trim(),
         formData.password,
@@ -228,23 +209,35 @@ const Register = () => {
             phone: contact.phone,
             relationship: contact.relationship
           })),
-          role: formData.role,
-          id_document_url: idDocumentUrl,
-          ocr_data: ocrData,
-          ocr_confidence: ocrConfidence
+          role: formData.role
         }
       );
 
       if (signUpError) throw signUpError;
       if (!data?.user) throw new Error('Registration failed. Please try again.');
 
-      // handle_new_user creates the complete pending profile, ID verification,
-      // and emergency contacts from signup metadata in every mode (with or
-      // without email confirmation). Nothing to write client-side — re-inserting
-      // here would duplicate the trigger's rows.
+      // handle_new_user creates the pending profile + a bare verification row.
+      // Now submit the ID for SERVER-SIDE extraction — only possible when the
+      // signup returned a live session (i.e., email confirmation is off).
+      // Without a session the user confirms email first, then resubmits the ID
+      // from their account page.
+      let verificationNote = null;
+      if (data.session && formData.idDocument) {
+        setSubmitPhase('Verifying your ID…');
+        verificationNote = await submitIdForVerification({
+          file: formData.idDocument,
+          declared: {
+            fullName,
+            birthdate: formData.dateOfBirth,
+            address: formData.address,
+          },
+          userId: data.user.id,
+        });
+      }
+
       navigate('/login', { 
         state: { 
-          message: 'Registration received. An administrator will review your account and ID before activation.',
+          message: verificationNote || 'Registration received. An administrator will review your account and ID before activation.',
           type: 'success'
         }
       });
@@ -353,11 +346,11 @@ const Register = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="sticky top-0 z-30 border-b border-slate-200/70 bg-white/80 shadow-sm backdrop-blur-md">
+      <div className="sticky top-0 z-30 border-b border-slate-200/70 bg-white/95">
         <div className="w-full px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-600 via-violet-600 to-rose-500 shadow-glow-primary">
+              <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-red-600 ">
                 <Icon name="Siren" size={20} color="white" />
               </div>
               <div>
@@ -383,7 +376,7 @@ const Register = () => {
             <aside className="hidden lg:block lg:w-72 lg:shrink-0">
               <div className="sticky top-8 space-y-6">
                 {/* Progress Steps */}
-                <div className="bg-card rounded-2xl border border-slate-200/70 p-5 shadow-sm">
+                <div className="bg-card rounded-2xl border border-slate-200/70 p-5">
                   <h3 className="text-sm font-semibold text-foreground mb-4">Registration progress</h3>
                   <div className="space-y-3">
                     {Array.from({ length: totalSteps }, (_, index) => {
@@ -424,7 +417,7 @@ const Register = () => {
             <main className="flex-1 min-w-0 w-full">
               <form onSubmit={handleSubmit} className="space-y-8">
               {/* Step Header */}
-              <div className="bg-card rounded-2xl border border-slate-200/70 p-6 shadow-sm">
+              <div className="bg-card rounded-2xl border border-slate-200/70 p-6">
                 <div className="flex items-center justify-between mb-4">
                   <div>
                     <h2 className="text-xl font-semibold tracking-tight text-foreground">
@@ -449,19 +442,19 @@ const Register = () => {
                 {/* Progress Bar */}
                 <div className="w-full bg-slate-100 rounded-full h-2">
                   <div 
-                    className="h-2 rounded-full bg-gradient-to-r from-indigo-600 to-violet-500 transition-all duration-300"
+                    className="h-2 rounded-full bg-taste-500 transition-[width] duration-300"
                     style={{ width: `${(currentStep / totalSteps) * 100}%` }}
                   />
                 </div>
               </div>
 
               {/* Step Content */}
-              <div className="bg-card rounded-2xl border border-slate-200/70 p-6 shadow-sm">
+              <div className="bg-card rounded-2xl border border-slate-200/70 p-6">
                 {renderStepContent()}
               </div>
 
               {/* Navigation Buttons */}
-              <div className="flex items-center justify-between bg-card rounded-2xl border border-slate-200/70 p-6 shadow-sm">
+              <div className="flex items-center justify-between bg-card rounded-2xl border border-slate-200/70 p-6">
                 <div>
                   {currentStep > 1 && (
                     <Button
@@ -515,7 +508,7 @@ const Register = () => {
         </div>
       </div>
       {/* Footer */}
-      <div className="border-t border-slate-200/70 bg-white/70 backdrop-blur mt-12">
+      <div className="border-t border-slate-200/70 bg-white mt-12">
         <div className="max-w-4xl mx-auto px-4 py-6">
           <div className="flex items-center justify-between text-sm text-muted-foreground">
             <div>

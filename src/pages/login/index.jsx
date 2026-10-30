@@ -61,15 +61,9 @@ const Login = () => {
   };
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-slate-900 p-4">
-      {/* Ambient gradient backdrop */}
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute -top-40 -left-40 h-[480px] w-[480px] rounded-full bg-indigo-600/30 blur-[120px]" />
-        <div className="absolute -bottom-40 -right-40 h-[480px] w-[480px] rounded-full bg-rose-500/20 blur-[120px]" />
-        <div className="absolute top-1/3 right-1/4 h-64 w-64 rounded-full bg-violet-600/20 blur-[100px]" />
-      </div>
+    <div className="relative min-h-screen flex items-center justify-center bg-taste-50 p-4">
       <div className="relative w-full max-w-md">
-        <div className="rounded-3xl border border-white/10 bg-white/95 p-8 shadow-2xl backdrop-blur-xl">
+        <div className="rounded-2xl border border-slate-200 bg-white p-8">
           <LoginHeader />
           <LoginForm 
             onLogin={handleLogin}
@@ -82,11 +76,8 @@ const Login = () => {
         </div>
         
         <div className="mt-6 text-center">
-          <p className="text-xs text-slate-300">
+          <p className="text-xs text-slate-600">
             Kalubihan Emergency Response &copy; {new Date()?.getFullYear()}
-          </p>
-          <p className="text-xs text-slate-400 mt-1">
-            Secure • Reliable • Always Ready
           </p>
         </div>
       </div>

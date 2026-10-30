@@ -15,6 +15,7 @@ import ForgotPassword from './pages/forgot-password';
 import ResetPassword from './pages/reset-password';
 import Profile from './pages/profile';
 import Settings from './pages/settings';
+import NotificationsPage from './pages/notifications';
 import Dashboard from './pages/dashboard';
 
 const ProtectedRoute = ({ children }) => {
@@ -96,9 +97,14 @@ const Routes = () => {
                   <Dashboard section="profile" />
                 </ProtectedRoute>
               } />
+              <Route path="/notifications" element={
+                <ProtectedRoute>
+                  <NotificationsPage />
+                </ProtectedRoute>
+              } />
               <Route path="/settings" element={
                 <ProtectedRoute>
-                  <RoleRoute roles={['admin']}><Dashboard section="settings" /></RoleRoute>
+                  <RoleRoute roles={['admin', 'dispatcher', 'responder', 'resident']}><Dashboard section="settings" /></RoleRoute>
                 </ProtectedRoute>
               } />
               <Route path="*" element={<NotFound />} />

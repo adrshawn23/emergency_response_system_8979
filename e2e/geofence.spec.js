@@ -7,13 +7,14 @@ import { deleteReportsByContent, getReportServiceArea } from './helpers.js';
  *   dispatcher -> bypasses geofence (no warning, service_area_status 'staff')
  *   admin      -> bypasses geofence (no warning, service_area_status 'staff')
  *
- * Default demo polygon: lat 10.3172-10.3192, lng 123.8951-123.8981
- * (localStorage 'service_boundary' is empty in a fresh context, so the
- * built-in default applies.)
+ * Active boundary: the real Barangay Kalubihan polygon
+ *   lat 10.2937-10.3003, lng 123.8947-123.9008 — see
+ *   supabase/set_kalubihan_boundary.sql / migration 20261028162000.
+ * INSIDE must sit inside that polygon (barangay center used).
  */
 
 const OUTSIDE = { latitude: 10.45, longitude: 124.0 };
-const INSIDE = { latitude: 10.318, longitude: 123.8965 };
+const INSIDE = { latitude: 10.2968, longitude: 123.8979 };
 
 async function login(page, email, password) {
   await page.goto('/');

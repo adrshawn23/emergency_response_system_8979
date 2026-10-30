@@ -50,9 +50,9 @@ const ForgotPassword = () => {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-100 px-4">
-      <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+      <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8">
         <div className="mb-6 flex justify-center">
-          <div className="grid h-14 w-14 place-items-center rounded-xl bg-indigo-600 text-white">
+          <div className="grid h-14 w-14 place-items-center rounded-xl bg-taste-500 text-white">
             <Icon name="ShieldCheck" size={28} />
           </div>
         </div>
@@ -74,7 +74,7 @@ const ForgotPassword = () => {
             <button
               type="button"
               onClick={() => navigate('/login')}
-              className="mt-6 w-full rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white hover:bg-indigo-700"
+              className="mt-6 w-full rounded-xl bg-taste-500 px-4 py-3 text-sm font-semibold text-white hover:bg-taste-600"
             >
               Back to sign in
             </button>
@@ -96,18 +96,18 @@ const ForgotPassword = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Enter your email address"
-                className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-taste-500 focus:ring-2 focus:ring-taste-100"
               />
             </div>
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+              className="w-full rounded-xl bg-taste-500 px-4 py-3 text-sm font-semibold text-white hover:bg-taste-600 disabled:opacity-60"
             >
               {isLoading ? 'Sending reset link…' : 'Send reset link'}
             </button>
             <p className="text-center text-sm">
-              <Link to="/login" className="font-semibold text-indigo-700 hover:underline">
+              <Link to="/login" className="font-semibold text-taste-700 hover:underline">
                 Back to sign in
               </Link>
             </p>

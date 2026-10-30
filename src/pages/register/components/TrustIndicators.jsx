@@ -81,7 +81,7 @@ const TrustIndicators = () => {
           </div>
           <div>
             <h4 className="text-sm font-medium text-foreground">Official Emergency Services Partner</h4>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-slate-600">
               Integrated with local police, fire, and medical emergency services for rapid response coordination
             </p>
           </div>

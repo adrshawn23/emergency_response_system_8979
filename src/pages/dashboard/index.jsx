@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import Icon from '../../components/AppIcon';
 import { useAuth } from '../../contexts/AuthContext';
 import { useMockData } from '../../contexts/MockDataContext';
+import NotificationBell from '../../components/NotificationBell';
+import SidebarProfile from '../../components/SidebarProfile';
 import { supabase } from '../../lib/supabase';
 import DepartmentManagementSection from './components/DepartmentManagementSection';
 import PendingRegistrations from '../user-management/components/PendingRegistrations';
@@ -16,13 +18,13 @@ const priorityStyles = {
   critical: 'bg-rose-100 text-rose-700 ring-1 ring-inset ring-rose-600/25',
   high: 'bg-orange-100 text-orange-700 ring-1 ring-inset ring-orange-600/25',
   medium: 'bg-amber-100 text-amber-700 ring-1 ring-inset ring-amber-600/25',
-  low: 'bg-sky-100 text-sky-700 ring-1 ring-inset ring-sky-600/25'
+  low: 'bg-sky-100 text-taste-600 ring-1 ring-inset ring-sky-600/25'
 };
 
 const statusStyles = {
   pending: 'bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-600/20',
-  assigned: 'bg-indigo-50 text-indigo-700 ring-1 ring-inset ring-indigo-600/20',
-  'in-progress': 'bg-violet-50 text-violet-700 ring-1 ring-inset ring-violet-600/20',
+  assigned: 'bg-taste-50 text-taste-600 ring-1 ring-inset ring-taste-500/20',
+  'in-progress': 'bg-taste-50 text-taste-600 ring-1 ring-inset ring-sky-600/20',
   resolved: 'bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20'
 };
 
@@ -44,8 +46,8 @@ const CommandCenterMap = ({ boundaryPoints, activeReport }) => {
       {boundaryPoints.length > 2 && (
         <Polygon 
           positions={boundaryPoints.map(p => [p.lat, p.lng])} 
-          color="#3b82f6" 
-          fillColor="#3b82f6" 
+          color="#1b6c80" 
+          fillColor="#1b6c80" 
           fillOpacity={0.2}
         />
       )}
@@ -72,8 +74,6 @@ const formatTimeAgo = (dateString) => {
 // Normalizes free-text comparisons (case/whitespace-insensitive) for the
 // OCR-vs-registration auto-check and the review modal's match chips.
 const normText = s => (s ?? '').toString().toLowerCase().replace(/\s+/g, ' ').trim();
-const AUTO_APPROVE_MIN_OCR_CONFIDENCE = 80;
-
 const sectionCopy = {
   queue: { eyebrow: 'Live operations', title: 'Incident queue', description: 'Review, prioritize, and assign incoming emergency reports.' },
   new: { eyebrow: 'Live operations', title: 'New incident report', description: 'Create a report now. Dispatch sees urgent reports immediately, even while verification is pending.' },
@@ -84,6 +84,7 @@ const sectionCopy = {
 };
 
 function WorkspacePage({ section, profile, signOut, onSectionChange }) {
+  const { refreshProfile } = useAuth();
   const navigate = useNavigate();
   const { reports, setReports } = useMockData();
   const [status, setStatus] = useState('all');
@@ -169,12 +170,17 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
   const [selectedAssistanceReport, setSelectedAssistanceReport] = useState(null);
   const [selectedAssistanceDepts, setSelectedAssistanceDepts] = useState([]);
   const [imageFiles, setImageFiles] = useState([]);
-  const [isNotificationPanelOpen, setIsNotificationPanelOpen] = useState(false);
-  const [notifications, setNotifications] = useState([]);
   const [idVerifications, setIdVerifications] = useState([]);
   const [selectedVerification, setSelectedVerification] = useState(null);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [idDocSignedUrl, setIdDocSignedUrl] = useState(null);
   const [profileTab, setProfileTab] = useState('info');
+  const [profileForm, setProfileForm] = useState({ first_name: '', last_name: '', phone: '' });
+  const [profileFormInit, setProfileFormInit] = useState(false);
+  const [profileMsg, setProfileMsg] = useState('');
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [notifPrefs, setNotifPrefs] = useState(null);
+  const [prefsMsg, setPrefsMsg] = useState('');
   const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
   const [passwordErrors, setPasswordErrors] = useState({});
   const [passwordSuccess, setPasswordSuccess] = useState('');
@@ -222,44 +228,8 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'emergency_reports' }, (payload) => {
         if (payload.eventType === 'INSERT') {
           setReports(prev => prev.some(r => r.id === payload.new.id) ? prev : [payload.new, ...prev]);
-          // Add notification for new incident
-          const newNotif = {
-            id: `new-${payload.new.id}`,
-            type: 'new_incident',
-            title: 'New incident reported',
-            message: `${payload.new.emergency_type || 'Emergency'} at ${payload.new.attachments?.location || payload.new.location || 'Unknown location'}`,
-            reportId: payload.new.id,
-            timestamp: new Date().toISOString(),
-            read: false
-          };
-          setNotifications(prev => [newNotif, ...prev]);
         } else if (payload.eventType === 'UPDATE') {
           setReports(prev => prev.map(r => r.id === payload.new.id ? payload.new : r));
-          // Add notification for status changes
-          if (payload.old.status !== payload.new.status) {
-            const statusNotif = {
-              id: `status-${payload.new.id}-${Date.now()}`,
-              type: 'status_change',
-              title: 'Incident status updated',
-              message: `Incident ${payload.new.report_id || payload.new.id?.slice(0, 8)} is now ${payload.new.status}`,
-              reportId: payload.new.id,
-              timestamp: new Date().toISOString(),
-              read: false
-            };
-            setNotifications(prev => [statusNotif, ...prev]);
-          }
-          if (payload.old.assigned_to !== payload.new.assigned_to) {
-            const assignNotif = {
-              id: `assign-${payload.new.id}-${Date.now()}`,
-              type: 'assignment',
-              title: 'Incident assigned',
-              message: `Incident ${payload.new.report_id || payload.new.id?.slice(0, 8)} has been assigned`,
-              reportId: payload.new.id,
-              timestamp: new Date().toISOString(),
-              read: false
-            };
-            setNotifications(prev => [assignNotif, ...prev]);
-          }
         } else if (payload.eventType === 'DELETE') {
           setReports(prev => prev.filter(r => r.id !== payload.old.id));
         }
@@ -328,46 +298,9 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
 
       if (!data) return;
 
-      // Auto-approve when OCR read the same name and birthdate the resident
-      // declared. Anything without both matches stays in the manual queue.
-      // New rows carry name_match/dob_match flags computed from the OCR text;
-      // older rows fall back to comparing the extracted strings.
-      const fieldsMatch = v => {
-        const ocr = v.ocr_data ?? {};
-        const nameOk = ocr.name_match ?? (!!normText(ocr.extracted_name)
-          && normText(ocr.extracted_name) === normText(v.user_profiles?.full_name));
-        const dobOk = ocr.dob_match ?? (!!normText(ocr.extracted_dob)
-          && normText(ocr.extracted_dob) === normText(v.user_profiles?.birthdate));
-        return nameOk && dobOk;
-      };
-      const matched = data.filter(v =>
-        v.verification_status === 'pending'
-        && (v.ocr_confidence ?? 0) >= AUTO_APPROVE_MIN_OCR_CONFIDENCE
-        && fieldsMatch(v));
-
-      if (matched.length > 0) {
-        const notes = 'Auto-approved: OCR-extracted name and birthdate match the registered profile.';
-        const { error } = await supabase
-          .from('id_verifications')
-          .update({ verification_status: 'approved', reviewed_by: profile?.id, review_notes: notes })
-          .in('id', matched.map(v => v.id));
-
-        if (!error) {
-          const userIds = matched.map(v => v.user_id);
-          const { error: activationError } = await supabase
-            .from('user_profiles')
-            .update({ status: 'active', account_status: 'active' })
-            .in('id', userIds);
-          if (activationError) console.error('Auto-activation failed:', activationError);
-          else setPendingUsers(prev => prev.filter(u => !userIds.includes(u?.id)));
-          setIdVerifications(data.map(v => matched.some(m => m.id === v.id)
-            ? { ...v, verification_status: 'approved', reviewed_by: profile?.id, review_notes: notes }
-            : v));
-          return;
-        }
-        console.error('Auto-approve failed:', error);
-      }
-
+      // Verifications are NEVER auto-approved — an OCR match is advisory for
+      // the reviewer only. Every row waits for an explicit administrator
+      // decision via review_verification().
       setIdVerifications(data);
     };
 
@@ -392,17 +325,43 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
     fetchPendingUsers();
   }, [profile?.role, section]);
 
+  // review_verification() (migration 20261030101000) is the atomic server
+  // path: decision + activation + audit in one transaction, with stale-
+  // submission protection. Until it's applied remotely, fall back to the
+  // direct updates so the admin UI keeps working.
+  const callReviewVerification = async (verificationId, decision, reason) => {
+    const { error } = await supabase.rpc('review_verification', {
+      p_verification_id: verificationId,
+      p_decision: decision,
+      p_reason: reason,
+    });
+    if (error && (error.code === 'PGRST202' || /schema cache|could not find|does not exist/i.test(error.message || ''))) {
+      return { unsupported: true };
+    }
+    return { error };
+  };
+
+  const findOpenVerification = (userId) =>
+    idVerifications.find(v => v.user_id === userId && v.verification_status !== 'superseded');
+
   const handlePendingApprove = async (userId) => {
-    // approved_at/approved_by are NOT in the live user_profiles schema —
-    // referencing them makes the UPDATE fail and the card never clears.
+    const verification = findOpenVerification(userId);
+    if (verification) {
+      const { error, unsupported } = await callReviewVerification(verification.id, 'approved', 'Approved by administrator');
+      if (error) { console.error('Approve user failed:', error); return; }
+      if (!unsupported) {
+        setPendingUsers(prev => prev.filter(u => u?.id !== userId));
+        setIdVerifications(prev => prev.map(v =>
+          v.id === verification.id ? { ...v, verification_status: 'approved', reviewed_by: profile?.id } : v));
+        return;
+      }
+    }
+
+    // Fallback (RPC absent or no verification row): direct activation.
     const { error } = await supabase
       .from('user_profiles')
-      .update({
-        status: 'active',
-        account_status: 'active'
-      })
+      .update({ status: 'active', account_status: 'active' })
       .eq('id', userId);
-
     if (error) {
       console.error('Approve user failed:', error);
       return;
@@ -410,14 +369,32 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
     setPendingUsers(prev => prev.filter(u => u?.id !== userId));
   };
 
-  const handlePendingReject = async (userId) => {
-    const { error } = await supabase
-      .from('user_profiles')
-      .delete()
-      .eq('id', userId);
+  const handlePendingReject = async (userId, reason) => {
+    const rejectionReason = reason || 'Registration rejected by administrator';
+    const verification = findOpenVerification(userId);
+    if (!verification) {
+      // Nothing to decide on — never delete the applicant's profile.
+      console.warn('Reject skipped: no verification submission exists for', userId);
+      return;
+    }
 
-    if (error) {
-      console.error('Reject user failed:', error);
+    const { error, unsupported } = await callReviewVerification(verification.id, 'rejected', rejectionReason);
+    if (error) { console.error('Reject user failed:', error); return; }
+    if (!unsupported) {
+      setPendingUsers(prev => prev.filter(u => u?.id !== userId));
+      setIdVerifications(prev => prev.map(v =>
+        v.id === verification.id ? { ...v, verification_status: 'rejected', reviewed_by: profile?.id, review_notes: rejectionReason } : v));
+      return;
+    }
+
+    // Fallback: mark the submission rejected; the account stays pending so
+    // the applicant can resubmit or appeal. No profile is ever deleted.
+    const { error: rejectError } = await supabase
+      .from('id_verifications')
+      .update({ verification_status: 'rejected', reviewed_by: profile?.id, review_notes: rejectionReason })
+      .eq('id', verification.id);
+    if (rejectError) {
+      console.error('Reject user failed:', rejectError);
       return;
     }
     setPendingUsers(prev => prev.filter(u => u?.id !== userId));
@@ -515,7 +492,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
     // profile loads async — without profile.id the insert ships no user_id
     // and RLS rejects it. Guard + surface errors instead of failing silently.
     if (!profile?.id) {
-      setContactError('Profile is still loading — try again in a moment.');
+      setContactError('Profile is still loading. Try again in a moment.');
       return;
     }
 
@@ -607,65 +584,144 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
     setIsReviewModalOpen(true);
   };
 
+  // ---- Profile editing (all roles) ----------------------------------------
+  // Seed the form once the real profile row arrives.
+  useEffect(() => {
+    if (profile && !profileFormInit) {
+      setProfileForm({
+        first_name: profile.first_name || '',
+        last_name: profile.last_name || '',
+        phone: profile.phone || '',
+      });
+      setProfileFormInit(true);
+      setNotifPrefs({
+        incident_updates: true,
+        assignment_updates: true,
+        verification_updates: true,
+        registration_reviews: true,
+        ...(profile.notification_prefs || {}),
+      });
+    }
+  }, [profile, profileFormInit]);
+
+  const handleProfileSave = async () => {
+    if (!profile?.id) return;
+    setProfileMsg('');
+    const full_name = `${profileForm.first_name} ${profileForm.last_name}`.trim();
+    const { error } = await supabase
+      .from('user_profiles')
+      .update({
+        first_name: profileForm.first_name,
+        last_name: profileForm.last_name,
+        full_name,
+        phone: profileForm.phone,
+      })
+      .eq('id', profile.id);
+    if (error) { setProfileMsg('Could not save: ' + error.message); return; }
+    await refreshProfile?.();
+    setProfileMsg('Profile saved.');
+  };
+
+  const handleAvatarUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !profile?.id) return;
+    setAvatarUploading(true);
+    const ext = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg';
+    const path = `${profile.id}/avatar.${ext}`;
+    const { error: upError } = await supabase.storage.from('avatars').upload(path, file, { upsert: true });
+    if (upError) {
+      setProfileMsg('Avatar upload failed. Storage may need the avatars bucket.');
+      setAvatarUploading(false);
+      return;
+    }
+    const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(path);
+    const avatar_url = `${urlData?.publicUrl}?v=${Date.now()}`;
+    const { error } = await supabase.from('user_profiles').update({ avatar_url }).eq('id', profile.id);
+    if (!error) await refreshProfile?.();
+    setProfileMsg(error ? 'Avatar saved to storage but profile update failed.' : 'Profile picture updated.');
+    setAvatarUploading(false);
+  };
+
+  const toggleNotifPref = async (key) => {
+    const next = { ...notifPrefs, [key]: !notifPrefs[key] };
+    setNotifPrefs(next);
+    setPrefsMsg('');
+    const { error } = await supabase
+      .from('user_profiles')
+      .update({ notification_prefs: next })
+      .eq('id', profile?.id);
+    if (error) {
+      // Column not applied yet — remember locally so the choice persists.
+      try { localStorage.setItem(`notif_prefs_${profile?.id}`, JSON.stringify(next)); } catch {}
+      setPrefsMsg('Saved on this device (server preferences need migration 20261030102000).');
+    } else {
+      setPrefsMsg('Preferences saved.');
+    }
+  };
+
+  // Private storage paths need a short-lived signed URL before the browser
+  // can render them; legacy rows stored data URLs that render directly.
+  useEffect(() => {
+    setIdDocSignedUrl(null);
+    const raw = selectedVerification?.id_document_url;
+    const path = selectedVerification?.document_storage_path
+      || (raw && !/^(https?:|data:|blob:)/.test(raw) ? raw : null);
+    if (!path) return;
+    supabase.storage.from('id-documents').createSignedUrl(path, 300)
+      .then(({ data }) => { if (data?.signedUrl) setIdDocSignedUrl(data.signedUrl); })
+      .catch(() => {});
+  }, [selectedVerification?.id]);
+
+  const closeReviewWith = (status, extra = {}) => {
+    setIdVerifications(prev => prev.map(v =>
+      v.id === selectedVerification.id
+        ? { ...v, verification_status: status, reviewed_by: profile?.id, ...extra }
+        : v
+    ));
+    if (status === 'approved') {
+      setPendingUsers(prev => prev.filter(u => u?.id !== selectedVerification.user_id));
+    }
+    setIsReviewModalOpen(false);
+    setSelectedVerification(null);
+  };
+
   const handleApproveVerification = async () => {
     if (!selectedVerification) return;
 
-    const { error } = await supabase
-      .from('id_verifications')
-      .update({
-        verification_status: 'approved',
-        reviewed_by: profile?.id,
-        review_notes: 'Approved by administrator'
-      })
-      .eq('id', selectedVerification.id);
+    const { error, unsupported } = await callReviewVerification(
+      selectedVerification.id, 'approved', 'Approved by administrator');
+    if (error) { console.error('Review approve failed:', error); return; }
 
-    if (error) {
-      console.error('Review approve failed:', error);
-      return;
-    }
-    {
-      // Activate user account
-      const { error: activationError } = await supabase
+    if (unsupported) {
+      const { error: e1 } = await supabase
+        .from('id_verifications')
+        .update({ verification_status: 'approved', reviewed_by: profile?.id, review_notes: 'Approved by administrator' })
+        .eq('id', selectedVerification.id);
+      if (e1) { console.error('Review approve failed:', e1); return; }
+      const { error: e2 } = await supabase
         .from('user_profiles')
         .update({ status: 'active', account_status: 'active' })
         .eq('id', selectedVerification.user_id);
-      if (activationError) console.error('Account activation failed:', activationError);
-
-      setIdVerifications(prev => prev.map(v => 
-        v.id === selectedVerification.id 
-          ? { ...v, verification_status: 'approved', reviewed_by: profile?.id }
-          : v
-      ));
-      setIsReviewModalOpen(false);
-      setSelectedVerification(null);
+      if (e2) console.error('Account activation failed:', e2);
     }
+    closeReviewWith('approved');
   };
 
   const handleRejectVerification = async (reason) => {
     if (!selectedVerification) return;
 
-    const { error } = await supabase
-      .from('id_verifications')
-      .update({
-        verification_status: 'rejected',
-        reviewed_by: profile?.id,
-        review_notes: reason
-      })
-      .eq('id', selectedVerification.id);
+    const { error, unsupported } = await callReviewVerification(
+      selectedVerification.id, 'rejected', reason);
+    if (error) { console.error('Review reject failed:', error); return; }
 
-    if (error) {
-      console.error('Review reject failed:', error);
-      return;
+    if (unsupported) {
+      const { error: e1 } = await supabase
+        .from('id_verifications')
+        .update({ verification_status: 'rejected', reviewed_by: profile?.id, review_notes: reason })
+        .eq('id', selectedVerification.id);
+      if (e1) { console.error('Review reject failed:', e1); return; }
     }
-    {
-      setIdVerifications(prev => prev.map(v => 
-        v.id === selectedVerification.id 
-          ? { ...v, verification_status: 'rejected', reviewed_by: profile?.id, review_notes: reason }
-          : v
-      ));
-      setIsReviewModalOpen(false);
-      setSelectedVerification(null);
-    }
+    closeReviewWith('rejected', { review_notes: reason });
   };
 
   const handlePasswordChange = async (e) => {
@@ -716,29 +772,20 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
 
   const handleRequestClarity = async () => {
     if (!selectedVerification) return;
+    const reason = 'Please upload a clearer image of your ID document';
 
-    const { error } = await supabase
-      .from('id_verifications')
-      .update({
-        verification_status: 'needs_clarity',
-        reviewed_by: profile?.id,
-        review_notes: 'Please upload a clearer image of your ID document'
-      })
-      .eq('id', selectedVerification.id);
+    const { error, unsupported } = await callReviewVerification(
+      selectedVerification.id, 'needs_clarity', reason);
+    if (error) { console.error('Request-clarity failed:', error); return; }
 
-    if (error) {
-      console.error('Request-clarity failed:', error);
-      return;
+    if (unsupported) {
+      const { error: e1 } = await supabase
+        .from('id_verifications')
+        .update({ verification_status: 'needs_clarity', reviewed_by: profile?.id, review_notes: reason })
+        .eq('id', selectedVerification.id);
+      if (e1) { console.error('Request-clarity failed:', e1); return; }
     }
-    {
-      setIdVerifications(prev => prev.map(v => 
-        v.id === selectedVerification.id 
-          ? { ...v, verification_status: 'needs_clarity', reviewed_by: profile?.id }
-          : v
-      ));
-      setIsReviewModalOpen(false);
-      setSelectedVerification(null);
-    }
+    closeReviewWith('needs_clarity');
   };
 
   useEffect(() => {
@@ -800,7 +847,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
     event.preventDefault();
     if (!draft.location.trim() || !draft.description.trim()) return;
     if (!profile?.id) {
-      setSubmitError('Profile is still loading — try again in a moment.');
+      setSubmitError('Profile is still loading. Try again in a moment.');
       return;
     }
     setSubmitError('');
@@ -865,16 +912,19 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
     ?? (!!ocrName && ocrName === normText(selectedVerification?.user_profiles?.full_name));
   const ocrDobMatch = selectedVerification?.ocr_data?.dob_match
     ?? (!!ocrDob && ocrDob === normText(selectedVerification?.user_profiles?.birthdate));
-  const idDocUrl = selectedVerification?.id_document_url;
-  const idDocIsReal = typeof idDocUrl === 'string' && /^(https?:|data:|blob:)/.test(idDocUrl);
+  // Private storage paths resolve to short-lived signed URLs; legacy rows
+  // hold data URLs that render directly.
+  const idDocRaw = selectedVerification?.id_document_url;
+  const idDocIsDirect = typeof idDocRaw === 'string' && /^(https?:|data:|blob:)/.test(idDocRaw);
+  const idDocUrl = idDocIsDirect ? idDocRaw : idDocSignedUrl;
 
   return <div className="min-h-screen bg-slate-50 text-slate-900"><div className="flex min-h-screen">
-    <aside className="sticky top-0 hidden h-screen w-20 shrink-0 flex-col overflow-x-hidden bg-slate-900 text-slate-300 sm:flex sm:w-72"><div className="flex h-20 items-center justify-center gap-3 border-b border-slate-800 px-3 sm:justify-start sm:px-7"><div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-rose-500 to-red-600 text-white"><Icon name="Siren" size={22}/></div><div className="hidden sm:block"><p className="font-semibold text-white">Kalubihan</p><p className="text-xs text-slate-400">Emergency Command</p></div></div><div className="flex-1 px-3 py-7 sm:px-4"><p className="mb-3 hidden px-3 text-[10px] font-bold uppercase tracking-[.16em] text-slate-400 sm:block">Operations</p><nav className="space-y-1">{links.map(link => <button key={link.key} onClick={() => handleNavigation(link)} title={link.label} className={`flex w-full items-center justify-center gap-3 rounded-xl px-3 py-3 text-left text-sm transition sm:justify-start ${link.key === section ? 'bg-gradient-to-r from-indigo-600 to-violet-600 font-medium shadow-glow-primary text-white' : 'hover:bg-white/5 hover:text-white'}`}><Icon name={link.icon} size={18}/><span className="hidden flex-1 sm:block">{link.label}</span>{link.key === 'queue' && <span className="hidden rounded-full bg-gradient-to-br from-rose-500 to-red-600 px-2 py-0.5 text-xs font-bold text-white sm:block">{pendingCount}</span>}</button>)}</nav></div><div className="m-3 rounded-2xl bg-slate-800 p-3 sm:m-4 sm:p-4"><div className="flex items-center justify-center gap-3 sm:justify-start"><div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-indigo-600 text-sm font-bold text-white">{profile?.first_name?.[0] || 'A'}</div><div className="hidden min-w-0 flex-1 sm:block"><p className="truncate text-sm font-medium text-white">{profile?.full_name || 'Administrator'}</p><p className="text-xs capitalize text-slate-500">{profile?.role}</p></div><button aria-label="Sign out" onClick={signOut} className="hidden text-slate-500 hover:text-white sm:block"><Icon name="LogOut" size={17}/></button></div></div></aside>
-    <nav className="fixed bottom-0 inset-x-0 z-40 flex overflow-x-auto border-t border-slate-800 bg-slate-900 py-1 sm:hidden">{links.map(link => <button key={link.key} onClick={() => handleNavigation(link)} className={`flex shrink-0 flex-col items-center gap-0.5 px-4 py-1.5 text-[10px] ${link.key === section ? 'text-white' : 'text-slate-400'}`}><Icon name={link.icon} size={20}/><span>{link.label}</span></button>)}<button aria-label="Sign out" onClick={signOut} className="flex shrink-0 flex-col items-center gap-0.5 px-4 py-1.5 text-[10px] text-slate-400"><Icon name="LogOut" size={20}/><span>Sign out</span></button></nav>
-    <main className="min-w-0 flex-1 pb-24 sm:pb-0"><header className="sticky top-0 z-30 flex h-20 items-center justify-between border-b border-slate-200/70 bg-white/80 px-5 backdrop-blur-md sm:px-8"><div><p className="text-xs font-medium uppercase tracking-wider text-slate-400">Kalubihan emergency command</p><h1 className="text-lg font-bold">{current.title}</h1></div><div className="flex items-center gap-3"><div className="hidden rounded-full bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700 sm:block"><span className="mr-2 inline-block h-2 w-2 rounded-full bg-emerald-500"/>All systems operational</div><button aria-label="Notifications" onClick={() => setIsNotificationPanelOpen(!isNotificationPanelOpen)} className="relative rounded-xl border border-slate-200 p-2 text-slate-500 hover:bg-slate-50"><Icon name="Bell" size={18}/>{notifications.length > 0 && <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-gradient-to-br from-rose-500 to-red-600 text-[10px] font-bold text-white">{notifications.length}</span>}</button></div></header><div className="mx-auto max-w-[1400px] p-5 sm:p-8"><p className="text-xs font-bold uppercase tracking-wider text-indigo-700">{current.eyebrow}</p><h2 className="mt-1 text-3xl font-bold tracking-tight">{current.title}</h2><p className="mt-2 text-sm text-slate-500">{current.description}</p>
+    <aside className="sticky top-0 hidden h-screen w-20 shrink-0 flex-col overflow-x-hidden bg-[#f9fbfc] text-slate-600 sm:flex sm:w-72"><div className="flex h-20 items-center justify-center gap-3 border-b border-slate-200 px-3 sm:justify-start sm:px-7"><div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-red-600 text-white"><Icon name="Siren" size={22}/></div><div className="hidden sm:block"><p className="font-semibold text-slate-900">Kalubihan</p><p className="text-xs text-slate-500">Emergency Command</p></div></div><div className="flex-1 px-3 py-7 sm:px-4"><p className="mb-3 hidden px-3 text-[13px] font-medium text-slate-500 sm:block">Operations</p><nav className="space-y-1">{links.map(link => <button key={link.key} onClick={() => handleNavigation(link)} title={link.label} className={`flex w-full items-center justify-center gap-3 rounded-xl px-3 py-3 text-left text-sm transition sm:justify-start ${link.key === section ? 'bg-[#ebedee] font-medium text-slate-900' : 'text-slate-600 hover:bg-[#ebedee] hover:text-slate-900'}`}><Icon name={link.icon} size={18}/><span className="hidden flex-1 sm:block">{link.label}</span>{link.key === 'queue' && <span className="hidden rounded-full bg-red-600 px-2 py-0.5 text-xs font-bold text-white sm:block">{pendingCount}</span>}</button>)}</nav></div><div className="m-3 rounded-lg border border-slate-200 bg-white p-3 sm:m-4 sm:p-4"><SidebarProfile profile={profile} signOut={signOut}/></div></aside>
+    <nav className="fixed bottom-0 inset-x-0 z-40 flex overflow-x-auto border-t border-slate-200 bg-[#f9fbfc] py-1 sm:hidden">{links.map(link => <button key={link.key} onClick={() => handleNavigation(link)} className={`flex shrink-0 flex-col items-center gap-0.5 px-4 py-1.5 text-[10px] ${link.key === section ? 'text-slate-900 font-medium' : 'text-slate-500'}`}><Icon name={link.icon} size={20}/><span>{link.label}</span></button>)}<button aria-label="Sign out" onClick={signOut} className="flex shrink-0 flex-col items-center gap-0.5 px-4 py-1.5 text-[10px] text-slate-500"><Icon name="LogOut" size={20}/><span>Sign out</span></button></nav>
+    <main className="min-w-0 flex-1 pb-24 sm:pb-0"><header className="sticky top-0 z-30 flex h-20 items-center justify-between border-b border-slate-200/70 bg-white px-5  sm:px-8"><div><p className="text-xs font-medium  text-slate-400">Kalubihan emergency command</p><h1 className="text-lg font-bold">{current.title}</h1></div><div className="flex items-center gap-3"><NotificationBell userId={profile?.id} onOpenIncident={(id) => { const report = reports.find(r => r.id === id); if (report) handleReportClick(report); }}/></div></header><div className="mx-auto max-w-[1400px] p-5 sm:p-8"><p className="text-xs font-bold  text-taste-600">{current.eyebrow}</p><h2 className="mt-1 text-3xl font-bold tracking-tight">{current.title}</h2><p className="mt-2 text-sm text-slate-500">{current.description}</p>
       {section === 'queue' && <>
         <div className="mt-7 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex gap-2">{['all','pending','assigned','in-progress','resolved'].map(item => <button key={item} onClick={() => setStatus(item)} className={`rounded-lg px-3 py-2 text-sm font-medium capitalize ${status === item ? 'bg-indigo-600 text-white' : 'border border-slate-200/70 bg-white text-slate-600'}`}>{item === 'in-progress' ? 'in progress' : item}</button>)}</div>
+          <div className="flex gap-2">{['all','pending','assigned','in-progress','resolved'].map(item => <button key={item} onClick={() => setStatus(item)} className={`rounded-lg px-3 py-2 text-sm font-medium capitalize ${status === item ? 'bg-taste-500 text-white' : 'border border-slate-200/70 bg-white text-slate-600'}`}>{item === 'in-progress' ? 'in progress' : item}</button>)}</div>
           <div className="flex items-center gap-3">
             <div className="relative">
               <input
@@ -882,27 +932,27 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
                 placeholder="Search incidents..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-64 rounded-lg border border-slate-200 px-3 py-2 pl-9 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-64 rounded-lg border border-slate-200 px-3 py-2 pl-9 text-sm focus:outline-none focus:ring-2 focus:ring-taste-500"
               />
               <Icon name="Search" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             </div>
-            <button onClick={() => navigate('/emergency-report')} className="rounded-xl bg-gradient-to-br from-rose-500 to-red-600 px-4 py-2.5 text-sm font-semibold text-white shadow-glow-danger transition hover:brightness-110"><Icon name="Plus" size={16} className="mr-1 inline"/>New incident</button>
+            <button onClick={() => navigate('/emergency-report')} className="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white  transition hover:brightness-110"><Icon name="Plus" size={16} className="mr-1 inline"/>New incident</button>
           </div>
         </div>
-        <div className="mt-5 overflow-x-auto rounded-2xl border border-slate-200/70 bg-white shadow-emergency">
-          <div className="grid min-w-[640px] grid-cols-[minmax(0,1.2fr)_minmax(0,1.3fr)_minmax(110px,.7fr)_minmax(170px,.8fr)] gap-4 border-b border-slate-100 bg-slate-50 px-5 py-3 text-xs font-bold uppercase tracking-wider text-slate-400"><span>Incident</span><span>Location</span><span>Priority</span><span>Status / action</span></div>
+        <div className="mt-5 overflow-x-auto rounded-lg border border-slate-200/70 bg-white">
+          <div className="grid min-w-[640px] grid-cols-[minmax(0,1.2fr)_minmax(0,1.3fr)_minmax(110px,.7fr)_minmax(170px,.8fr)] gap-4 border-b border-slate-100 bg-slate-50 px-5 py-3 text-xs font-bold  text-slate-400"><span>Incident</span><span>Location</span><span>Priority</span><span>Status / action</span></div>
           {visibleReports.map(report => <div key={report.id || report.report_id} onClick={() => handleReportClick(report)} className="grid min-w-[640px] grid-cols-[minmax(0,1.2fr)_minmax(0,1.3fr)_minmax(110px,.7fr)_minmax(170px,.8fr)] items-center gap-4 border-b border-slate-100 px-5 py-4 last:border-0 cursor-pointer hover:bg-slate-50 transition">
             <div className="min-w-0"><p className="font-semibold capitalize">{report.report_type || report.incident_type} <span className="font-mono text-xs text-slate-400">{report.report_id || report.id?.slice(0, 8)}</span></p><p className="mt-1 truncate text-xs text-slate-500">{report.content || report.description}</p></div>
             <p className="truncate text-sm text-slate-600">{report.attachments?.location || report.location}</p>
             <span className={`w-fit rounded-full px-2 py-1 text-[10px] font-bold uppercase ${priorityStyles[report.priority]}`}>{report.priority}</span>
             <div className="flex min-w-0 items-center gap-2">
               <span className={`inline-flex h-8 min-w-[84px] items-center justify-center rounded-full px-2 text-xs font-medium capitalize ${statusStyles[report.status] || 'bg-slate-100 text-slate-700'}`}>{formatStatus(report.status)}</span>
-              {(profile?.role === 'dispatcher' || profile?.role === 'admin') && (report.status) !== 'resolved' && <div className="flex gap-1"><button onClick={(e) => { e.stopPropagation(); (report.status) === 'pending' ? handleAssignClick(report) : setReportStatus(report.report_id || report.id, 'resolved'); }} className="inline-flex h-8 min-w-[72px] items-center justify-center rounded-lg border border-indigo-200 bg-indigo-50 px-3 text-xs font-bold text-indigo-700 transition hover:border-indigo-300 hover:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">{(report.status) === 'pending' ? 'Assign' : 'Resolve'}</button><button onClick={(e) => { e.stopPropagation(); handleAssistanceClick(report); }} className="inline-flex h-8 items-center justify-center rounded-lg border border-amber-200 bg-amber-50 px-3 text-xs font-bold text-amber-700 transition hover:border-amber-300 hover:bg-amber-100" title="Request cross-department assistance"><Icon name="Users" size={14}/></button></div>}
+              {(profile?.role === 'dispatcher' || profile?.role === 'admin') && (report.status) !== 'resolved' && <div className="flex gap-1"><button onClick={(e) => { e.stopPropagation(); (report.status) === 'pending' ? handleAssignClick(report) : setReportStatus(report.report_id || report.id, 'resolved'); }} className="inline-flex h-8 min-w-[72px] items-center justify-center rounded-lg border border-taste-200 bg-taste-50 px-3 text-xs font-bold text-taste-600 transition hover:border-taste-300 hover:bg-taste-100 focus:outline-none focus:ring-2 focus:ring-taste-500 focus:ring-offset-2">{(report.status) === 'pending' ? 'Assign' : 'Resolve'}</button><button onClick={(e) => { e.stopPropagation(); handleAssistanceClick(report); }} className="inline-flex h-8 items-center justify-center rounded-lg border border-amber-200 bg-amber-50 px-3 text-xs font-bold text-amber-700 transition hover:border-amber-300 hover:bg-amber-100" title="Request cross-department assistance"><Icon name="Users" size={14}/></button></div>}
             </div>
           </div>)}
         </div>
       </>}
-      {section === 'new' && <form onSubmit={submitIncident} className="mt-7 grid gap-5 lg:grid-cols-[1.4fr_.6fr]"><div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm"><div className="grid gap-5 sm:grid-cols-2"><label className="text-sm font-semibold">Emergency type<select value={draft.type} onChange={e => setDraft(value => ({...value, type: e.target.value}))} className="mt-2 w-full rounded-xl border-slate-200/70 bg-white text-sm"><option value="fire">Fire</option><option value="medical">Medical</option><option value="accident">Accident</option><option value="police">Public safety</option><option value="natural">Natural hazard</option></select></label><label className="text-sm font-semibold">Priority<select value={draft.priority} onChange={e => setDraft(value => ({...value, priority: e.target.value}))} className="mt-2 w-full rounded-xl border-slate-200/70 bg-white text-sm"><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="critical">Critical</option></select></label></div><label className="mt-5 block text-sm font-semibold">Incident location<input required value={draft.location} onChange={e => setDraft(value => ({...value, location: e.target.value}))} placeholder="Address, landmark, or selected map pin" className="mt-2 w-full rounded-xl border-slate-200 px-3 py-3 text-sm"/></label><div className="mt-3 flex items-center gap-2 rounded-xl bg-indigo-50 p-3 text-xs text-indigo-700"><Icon name="MapPin" size={15}/>GPS and map provider are optional. A manual location is always accepted; outside-boundary reports go to dispatch for triage.</div>{gpsStatus && <div className={`mt-2 rounded-xl p-3 text-xs ${gpsStatus.includes('outside') ? 'bg-amber-50 text-amber-800' : 'bg-emerald-50 text-emerald-800'}`}>{gpsStatus}</div>}<label className="mt-5 block text-sm font-semibold">What is happening?<textarea required value={draft.description} onChange={e => setDraft(value => ({...value, description: e.target.value}))} placeholder="Describe hazards, people involved, and immediate risks." rows="6" className="mt-2 w-full rounded-xl border-slate-200 px-3 py-3 text-sm"/></label>
+      {section === 'new' && <form onSubmit={submitIncident} className="mt-7 grid gap-5 lg:grid-cols-[1.4fr_.6fr]"><div className="rounded-lg border border-slate-200/70 bg-white p-6 "><div className="grid gap-5 sm:grid-cols-2"><label className="text-sm font-semibold">Emergency type<select value={draft.type} onChange={e => setDraft(value => ({...value, type: e.target.value}))} className="mt-2 w-full rounded-xl border-slate-200/70 bg-white text-sm"><option value="fire">Fire</option><option value="medical">Medical</option><option value="accident">Accident</option><option value="police">Public safety</option><option value="natural">Natural hazard</option></select></label><label className="text-sm font-semibold">Priority<select value={draft.priority} onChange={e => setDraft(value => ({...value, priority: e.target.value}))} className="mt-2 w-full rounded-xl border-slate-200/70 bg-white text-sm"><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="critical">Critical</option></select></label></div><label className="mt-5 block text-sm font-semibold">Incident location<input required value={draft.location} onChange={e => setDraft(value => ({...value, location: e.target.value}))} placeholder="Address, landmark, or selected map pin" className="mt-2 w-full rounded-xl border-slate-200 px-3 py-3 text-sm"/></label><div className="mt-3 flex items-center gap-2 rounded-xl bg-taste-50 p-3 text-xs text-taste-600"><Icon name="MapPin" size={15}/>GPS and map provider are optional. A manual location is always accepted; outside-boundary reports go to dispatch for triage.</div>{gpsStatus && <div className={`mt-2 rounded-xl p-3 text-xs ${gpsStatus.includes('outside') ? 'bg-amber-50 text-amber-800' : 'bg-emerald-50 text-emerald-800'}`}>{gpsStatus}</div>}<label className="mt-5 block text-sm font-semibold">What is happening?<textarea required value={draft.description} onChange={e => setDraft(value => ({...value, description: e.target.value}))} placeholder="Describe hazards, people involved, and immediate risks." rows="6" className="mt-2 w-full rounded-xl border-slate-200 px-3 py-3 text-sm"/></label>
         <div className="mt-5">
           <label className="block text-sm font-semibold mb-2">Upload evidence (optional)</label>
           <input 
@@ -920,7 +970,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
                   <button 
                     type="button"
                     onClick={() => handleRemoveImage(index)}
-                    className="absolute -top-2 -right-2 rounded-full bg-gradient-to-br from-rose-500 to-red-600 p-1 text-white hover:bg-red-600"
+                    className="absolute -top-2 -right-2 rounded-full bg-red-600 p-1 text-white hover:bg-red-600"
                   >
                     <Icon name="X" size={12}/>
                   </button>
@@ -929,11 +979,15 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
             </div>
           )}
         </div>
-      </div><div className="space-y-5"><div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm"><h3 className="font-bold">Report summary</h3><p className="mt-3 text-sm text-slate-600">Your report will be immediately visible to dispatch. Verification happens in parallel, so even unverified reports are triaged for response.</p></div>{submitError && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{submitError}</div>}<button type="submit" disabled={loading || submitted || !profile?.id} className="w-full rounded-xl bg-gradient-to-br from-rose-500 to-red-600 px-4 py-3.5 text-sm font-semibold text-white hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed">{loading ? 'Submitting...' : submitted ? 'Report submitted' : 'Submit report'}</button>{submitted && <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-center"><Icon name="CheckCircle" size={32} className="text-emerald-600 mx-auto mb-2"/><h3 className="font-semibold text-emerald-900">Report submitted</h3><p className="mt-1 text-sm text-emerald-700">Report ID: {submittedReportId?.slice(0, 8)}<br/>Dispatch is reviewing your report now.</p></div>}</div></form>}
-      {section === 'residents' && <><PendingRegistrations pendingUsers={pendingUsers} onApproveUser={handlePendingApprove} onRejectUser={handlePendingReject} /><div className="mt-7 grid gap-5 lg:grid-cols-2"><div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm"><div className="flex items-center justify-between mb-4"><div className="flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-xl bg-amber-50 text-amber-700"><Icon name="FileSearch" size={20}/></div><div><h3 className="font-bold">ID verification queue</h3><p className="text-sm text-slate-500">{idVerifications.filter(v => v.verification_status === 'pending').length} awaiting review</p></div></div></div><p className="mt-5 text-xs leading-5 text-slate-500">OCR is assistive only. Approval, clearer-upload requests, and rejection decisions are made by an authorized administrator.</p>{idVerifications.length === 0 ? <p className="mt-4 text-sm text-slate-500">No ID verifications to review.</p> : <div className="mt-4 space-y-3 max-h-64 overflow-y-auto">{idVerifications.map(verification => (<div key={verification.id} className="flex items-center justify-between rounded-lg border border-slate-200 p-3 hover:bg-slate-50 cursor-pointer" onClick={() => handleReviewClick(verification)}><div><p className="text-sm font-medium">{verification.user_profiles?.full_name || 'Unknown'}</p><p className="text-xs text-slate-500">{verification.user_profiles?.email}</p><p className="text-[10px] text-slate-400 mt-1">OCR Confidence: {verification.ocr_confidence}%</p></div><span className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase ${verification.verification_status === 'pending' ? 'bg-amber-100 text-amber-700' : verification.verification_status === 'approved' ? 'bg-emerald-100 text-emerald-700' : verification.verification_status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-700'}`}>{verification.verification_status}</span></div>))}</div>}</div><div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm"><h3 className="font-bold">Account access</h3><p className="mt-1 text-sm text-slate-500">Department access cannot be self-granted.</p><div className="mt-5 text-sm text-slate-500">Manage departments via the Department Management page.</div></div><div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm"><div className="flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-xl bg-indigo-50 text-indigo-700"><Icon name="ShieldCheck" size={20}/></div><div><h3 className="font-bold">Community verification</h3><p className="text-sm text-slate-500">Duplicate prevention enabled</p></div></div><p className="mt-5 text-sm leading-6 text-slate-500">System automatically detects duplicate reports from the same location within a 5-minute window. Admins can merge or dismiss duplicates manually.</p><button className="mt-5 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold hover:bg-slate-50">View duplicates</button></div></div></>}
+      </div><div className="space-y-5"><div className="rounded-lg border border-slate-200/70 bg-white p-6"><h3 className="font-bold">Report summary</h3><p className="mt-3 text-sm text-slate-600">Your report will be immediately visible to dispatch. Verification happens in parallel, so even unverified reports are triaged for response.</p></div>{submitError && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{submitError}</div>}<button type="submit" disabled={loading || submitted || !profile?.id} className="w-full rounded-xl bg-red-600 px-4 py-3.5 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed">{loading ? 'Submitting...' : submitted ? 'Report submitted' : 'Submit report'}</button>{submitted && <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-center"><Icon name="CheckCircle" size={32} className="text-emerald-600 mx-auto mb-2"/><h3 className="font-semibold text-emerald-900">Report submitted</h3><p className="mt-1 text-sm text-emerald-700">Report ID: {submittedReportId?.slice(0, 8)}<br/>Dispatch is reviewing your report now.</p></div>}</div></form>}
+      {section === 'residents' && <><PendingRegistrations pendingUsers={pendingUsers} onApproveUser={handlePendingApprove} onRejectUser={handlePendingReject} /><div className="mt-7 grid gap-5 lg:grid-cols-2"><div className="rounded-lg border border-slate-200/70 bg-white p-6"><div className="mb-4"><h3 className="font-bold">ID verification queue</h3><p className="text-sm text-slate-500">{idVerifications.filter(v => v.verification_status === 'pending').length} awaiting review</p></div><p className="mt-5 text-xs leading-5 text-slate-500">OCR is assistive only. Approval, clearer-upload requests, and rejection decisions are made by an authorized administrator.</p>{idVerifications.length === 0 ? <p className="mt-4 text-sm text-slate-500">No ID verifications to review.</p> : <div className="mt-4 space-y-3 max-h-64 overflow-y-auto">{idVerifications.map(verification => (<div key={verification.id} className="flex items-center justify-between rounded-lg border border-slate-200 p-3 hover:bg-slate-50 cursor-pointer" onClick={() => handleReviewClick(verification)}><div><p className="text-sm font-medium">{verification.user_profiles?.full_name || 'Unknown'}</p><p className="text-xs text-slate-500">{verification.user_profiles?.email}</p><p className="text-[10px] text-slate-400 mt-1">OCR Confidence: {verification.ocr_confidence}%</p></div><span className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase ${verification.verification_status === 'pending' ? 'bg-amber-100 text-amber-700' : verification.verification_status === 'approved' ? 'bg-emerald-100 text-emerald-700' : verification.verification_status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-700'}`}>{verification.verification_status}</span></div>))}</div>}</div><div className="rounded-lg border border-slate-200/70 bg-white p-6"><h3 className="font-bold">Account access</h3><p className="mt-1 text-sm text-slate-500">Department access cannot be self-granted.</p><div className="mt-5 text-sm text-slate-500">Manage departments via the Department Management page.</div></div><div className="rounded-lg border border-slate-200/70 bg-white p-6"><div><h3 className="font-bold">Community verification</h3><p className="text-sm text-slate-500">Duplicate prevention enabled</p></div><p className="mt-5 text-sm leading-6 text-slate-500">System automatically detects duplicate reports from the same location within a 5-minute window. Admins can merge or dismiss duplicates manually.</p><button className="mt-5 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold hover:bg-slate-50">View duplicates</button></div></div></>}
       {section === 'departments' && <DepartmentManagementSection />}
-      {section === 'settings' && <div className="mt-7 grid gap-5 lg:grid-cols-2"><div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm"><div className="flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-xl bg-indigo-50 text-indigo-700"><Icon name="Map" size={20}/></div><div><h3 className="font-bold">Service boundary</h3><p className="text-sm text-slate-500">Kalubihan demo boundary · version 1</p></div></div><p className="mt-5 text-sm leading-6 text-slate-500">Changes are versioned and never rewrite historical incident locations or statuses.</p><button onClick={() => setIsBoundaryModalOpen(true)} className="mt-5 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold hover:bg-slate-50">Configure boundary</button></div><div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm"><h3 className="font-bold">Delivery providers</h3><p className="mt-2 text-sm text-slate-500">In-app notifications are available in mock mode. SMS, email, push, map GIS, and OCR require provider credentials.</p><button onClick={() => setShowProviderModal(true)} className="mt-5 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold hover:bg-slate-50">Provider settings</button></div></div>}
-      {section === 'profile' && <div className="mt-7 max-w-3xl"><div className="mb-6 border-b border-slate-200"><nav className="-mb-px flex space-x-8" aria-label="Tabs"><button onClick={() => setProfileTab('info')} className={`py-2 px-1 border-b-2 font-medium text-sm transition ${profileTab === 'info' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-indigo-500'}`}>Profile Information</button><button onClick={() => setProfileTab('security')} className={`py-2 px-1 border-b-2 font-medium text-sm transition ${profileTab === 'security' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-indigo-500'}`}>Security</button></nav></div>{profileTab === 'info' && <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm"><div className="flex items-center gap-4"><div className="grid h-14 w-14 place-items-center rounded-full bg-indigo-600 text-lg font-bold text-white">{profile?.first_name?.[0] || 'A'}</div><div><h3 className="text-lg font-bold">{profile?.full_name || 'Administrator'}</h3><p className="text-sm capitalize text-slate-500">{profile?.role || 'Administrator'} account</p></div></div><div className="mt-7 grid gap-4 border-t border-slate-100 pt-5 sm:grid-cols-2"><div><p className="text-xs font-bold uppercase tracking-wider text-slate-400">Email</p><p className="mt-1 text-sm">{profile?.email}</p></div><div><p className="text-xs font-bold uppercase tracking-wider text-slate-400">Phone Number</p><p className="mt-1 text-sm">{profile?.phone || 'Not provided'}</p></div><div><p className="text-xs font-bold uppercase tracking-wider text-slate-400">Status</p><p className="mt-1 text-sm text-emerald-700">Active / on duty</p></div></div><div className="mt-7 border-t border-slate-100 pt-5"><div className="flex items-center justify-between mb-4"><h4 className="font-bold">Emergency Contacts</h4><button onClick={() => setIsContactModalOpen(true)} className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold hover:bg-slate-50">Add Contact</button></div>{contactError && !isContactModalOpen && <div className="mb-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{contactError}</div>}{emergencyContacts.length === 0 ? <p className="text-sm text-slate-500">No emergency contacts added.</p> : <div className="space-y-3">{emergencyContacts.map(contact => <div key={contact.id} className="flex items-center justify-between rounded-lg border border-slate-200 p-3"><div><p className="font-medium text-sm">{contact.name} {contact.is_primary && <span className="ml-2 rounded-full bg-indigo-100 px-2 py-0.5 text-xs text-indigo-700">Primary</span>}</p><p className="text-xs text-slate-500">{contact.relationship} · {contact.phone_number}</p></div><button onClick={() => handleDeleteContact(contact.id)} className="text-slate-400 hover:text-red-600"><Icon name="Trash2" size={16}/></button></div>)}</div>}</div></div>}{profileTab === 'security' && <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm"><div className="flex items-center gap-3 mb-6"><div className="grid h-10 w-10 place-items-center rounded-xl bg-slate-100 text-slate-600"><Icon name="Shield" size={20}/></div><div><h3 className="font-bold">Change Password</h3><p className="text-sm text-slate-500">Update your account password</p></div></div>{passwordSuccess && <div className="mb-4 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">{passwordSuccess}</div>}{Object.keys(passwordErrors).length > 0 && <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{Object.values(passwordErrors).join('. ')}</div>}<form onSubmit={handlePasswordChange} className="space-y-4"><div><label className="block text-sm font-medium mb-2">Current Password</label><input type="password" value={passwordForm.currentPassword} onChange={e => setPasswordForm({...passwordForm, currentPassword: e.target.value})} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"/></div><div><label className="block text-sm font-medium mb-2">New Password</label><input type="password" value={passwordForm.newPassword} onChange={e => setPasswordForm({...passwordForm, newPassword: e.target.value})} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"/></div><div><label className="block text-sm font-medium mb-2">Confirm New Password</label><input type="password" value={passwordForm.confirmPassword} onChange={e => setPasswordForm({...passwordForm, confirmPassword: e.target.value})} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"/></div><div className="flex gap-2"><button type="submit" disabled={isSubmitting} className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50">Change Password</button><button type="button" onClick={() => {setPasswordForm({currentPassword: '', newPassword: '', confirmPassword: ''}); setPasswordErrors({}); setPasswordSuccess('');}} className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold hover:bg-slate-50">Cancel</button></div></form></div>}</div>}
+      {section === 'settings' && <div className="mt-7 grid gap-5 lg:grid-cols-2"><div className="rounded-lg border border-slate-200/70 bg-white p-6"><h3 className="font-bold">Notification preferences</h3><p className="mt-2 text-sm text-slate-500">Choose which updates reach your notification bell. Security and verification decisions are always delivered.</p><div className="mt-5 space-y-3">{notifPrefs && [
+              ['incident_updates', 'Incident updates', 'New reports and status changes'],
+              ['assignment_updates', 'Assignments', 'Incidents assigned to you'],
+              ['registration_reviews', 'Registration reviews', 'Pending residents awaiting review'],
+            ].map(([key, label, desc]) => <div key={key} className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2"><div><span className="text-sm font-medium">{label}</span><p className="text-xs text-slate-500">{desc}</p></div><button role="switch" aria-checked={!!notifPrefs[key]} aria-label={`Toggle ${label}`} onClick={() => toggleNotifPref(key)} className={`relative h-6 w-11 cursor-pointer rounded-full transition ${notifPrefs[key] ? 'bg-taste-500' : 'bg-slate-300'}`}><span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition ${notifPrefs[key] ? 'left-[22px]' : 'left-0.5'}`}/></button></div>)}<div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-2"><div><span className="text-sm font-medium">Verification & security notices</span><p className="text-xs text-slate-500">Required: cannot be turned off</p></div><span className="rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-bold uppercase text-emerald-700 ring-1 ring-emerald-200">Always on</span></div>{prefsMsg && <p className="text-xs text-slate-500">{prefsMsg}</p>}</div></div>{profile?.role === 'admin' && <div className="rounded-lg border border-slate-200/70 bg-white p-6 "><div><h3 className="font-bold">Service boundary</h3><p className="text-sm text-slate-500">Kalubihan traced boundary</p></div><p className="mt-5 text-sm leading-6 text-slate-500">Changes are versioned and never rewrite historical incident locations or statuses.</p><button onClick={() => setIsBoundaryModalOpen(true)} className="mt-5 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold hover:bg-slate-50">Configure boundary</button></div>}{profile?.role === 'admin' && <div className="rounded-lg border border-slate-200/70 bg-white p-6 "><h3 className="font-bold">Delivery providers</h3><p className="mt-2 text-sm text-slate-500">In-app notifications are always on. SMS, email, push, map GIS, and OCR require provider credentials.</p><button onClick={() => setShowProviderModal(true)} className="mt-5 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold hover:bg-slate-50">Provider settings</button></div>}</div>}
+      {section === 'profile' && <div className="mt-7 max-w-3xl"><div className="mb-6 border-b border-slate-200"><nav className="-mb-px flex space-x-8" aria-label="Tabs"><button onClick={() => setProfileTab('info')} className={`py-2 px-1 border-b-2 font-medium text-sm transition ${profileTab === 'info' ? 'border-taste-500 text-taste-500' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-taste-500'}`}>Profile Information</button><button onClick={() => setProfileTab('security')} className={`py-2 px-1 border-b-2 font-medium text-sm transition ${profileTab === 'security' ? 'border-taste-500 text-taste-500' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-taste-500'}`}>Security</button></nav></div>{profileTab === 'info' && <div className="rounded-lg border border-slate-200/70 bg-white p-6 "><div className="flex items-center gap-4">{profile?.avatar_url ? <img src={profile.avatar_url} alt="" className="h-14 w-14 rounded-full object-cover"/> : <div className="grid h-14 w-14 place-items-center rounded-full bg-taste-500 text-lg font-bold text-white">{profile?.first_name?.[0] || 'U'}</div>}<div><h3 className="text-lg font-bold">{profile?.full_name || 'User'}</h3><p className="text-sm capitalize text-slate-500">{profile?.role || 'user'} account</p><label className="mt-1 inline-flex cursor-pointer items-center gap-1 text-xs font-semibold text-taste-500 hover:underline"><Icon name="Camera" size={13}/>{avatarUploading ? 'Uploading…' : 'Change picture'}<input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleAvatarUpload} disabled={avatarUploading}/></label></div></div><div className="mt-7 grid gap-4 border-t border-slate-100 pt-5 sm:grid-cols-2"><div><label className="text-xs font-bold  text-slate-400">First name</label><input value={profileForm.first_name} onChange={e => setProfileForm({...profileForm, first_name: e.target.value})} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"/></div><div><label className="text-xs font-bold  text-slate-400">Last name</label><input value={profileForm.last_name} onChange={e => setProfileForm({...profileForm, last_name: e.target.value})} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"/></div><div><label className="text-xs font-bold  text-slate-400">Phone number</label><input value={profileForm.phone} onChange={e => setProfileForm({...profileForm, phone: e.target.value})} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"/></div><div><p className="text-xs font-bold  text-slate-400">Email</p><p className="mt-2.5 text-sm">{profile?.email}</p></div><div><p className="text-xs font-bold  text-slate-400">Account status</p><p className="mt-2.5 text-sm capitalize">{(profile?.account_status || 'active')}{profile?.status === 'active' ? ' · on duty' : ''}</p></div></div>{profileMsg && <p className="mt-3 text-sm text-taste-600">{profileMsg}</p>}<button onClick={handleProfileSave} className="mt-4 rounded-lg bg-taste-500 px-4 py-2 text-sm font-semibold text-white hover:bg-taste-600">Save profile</button><div className="mt-7 border-t border-slate-100 pt-5"><div className="flex items-center justify-between mb-4"><h4 className="font-bold">Emergency Contacts</h4><button onClick={() => setIsContactModalOpen(true)} className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold hover:bg-slate-50">Add Contact</button></div>{contactError && !isContactModalOpen && <div className="mb-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{contactError}</div>}{emergencyContacts.length === 0 ? <p className="text-sm text-slate-500">No emergency contacts added.</p> : <div className="space-y-3">{emergencyContacts.map(contact => <div key={contact.id} className="flex items-center justify-between rounded-lg border border-slate-200 p-3"><div><p className="font-medium text-sm">{contact.name} {contact.is_primary && <span className="ml-2 rounded-full bg-taste-100 px-2 py-0.5 text-xs text-taste-600">Primary</span>}</p><p className="text-xs text-slate-500">{contact.relationship} · {contact.phone_number}</p></div><button onClick={() => handleDeleteContact(contact.id)} className="text-slate-400 hover:text-red-600"><Icon name="Trash2" size={16}/></button></div>)}</div>}</div></div>}{profileTab === 'security' && <div className="rounded-lg border border-slate-200/70 bg-white p-6 "><div className="mb-6"><h3 className="font-bold">Change password</h3><p className="text-sm text-slate-500">Update your account password</p></div>{passwordSuccess && <div className="mb-4 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">{passwordSuccess}</div>}{Object.keys(passwordErrors).length > 0 && <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{Object.values(passwordErrors).join('. ')}</div>}<form onSubmit={handlePasswordChange} className="space-y-4"><div><label className="block text-sm font-medium mb-2">Current Password</label><input type="password" value={passwordForm.currentPassword} onChange={e => setPasswordForm({...passwordForm, currentPassword: e.target.value})} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"/></div><div><label className="block text-sm font-medium mb-2">New Password</label><input type="password" value={passwordForm.newPassword} onChange={e => setPasswordForm({...passwordForm, newPassword: e.target.value})} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"/></div><div><label className="block text-sm font-medium mb-2">Confirm New Password</label><input type="password" value={passwordForm.confirmPassword} onChange={e => setPasswordForm({...passwordForm, confirmPassword: e.target.value})} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"/></div><div className="flex gap-2"><button type="submit" disabled={isSubmitting} className="rounded-lg bg-taste-500 px-4 py-2 text-sm font-semibold text-white hover:bg-taste-600 disabled:opacity-50">Change Password</button><button type="button" onClick={() => {setPasswordForm({currentPassword: '', newPassword: '', confirmPassword: ''}); setPasswordErrors({}); setPasswordSuccess('');}} className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold hover:bg-slate-50">Cancel</button></div></form></div>}</div>}
       
       {/* Emergency Contact Modal */}
       {isContactModalOpen && (
@@ -1004,7 +1058,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
                 <button 
                   onClick={handleAddContact}
                   disabled={!profile?.id}
-                  className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="rounded-lg bg-taste-500 px-4 py-2 text-sm font-semibold text-white hover:bg-taste-600 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Add Contact
                 </button>
@@ -1049,9 +1103,9 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
                         aria-checked={enabled}
                         aria-label={`Toggle ${p.name}`}
                         onClick={() => toggleProvider(p.key)}
-                        className={`relative h-6 w-11 cursor-pointer rounded-full transition ${enabled ? 'bg-indigo-600' : 'bg-slate-300'}`}
+                        className={`relative h-6 w-11 cursor-pointer rounded-full transition ${enabled ? 'bg-taste-500' : 'bg-slate-300'}`}
                       >
-                        <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition ${enabled ? 'left-[22px]' : 'left-0.5'}`} />
+                        <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition ${enabled ? 'left-[22px]' : 'left-0.5'}`} />
                       </button>
                     )}
                   </div>
@@ -1096,8 +1150,8 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
                   {boundaryPoints.length > 2 && (
                     <Polygon
                       positions={boundaryPoints.map(p => [p.lat, p.lng])}
-                      color="#3b82f6"
-                      fillColor="#3b82f6"
+                      color="#1b6c80"
+                      fillColor="#1b6c80"
                       fillOpacity={0.2}
                     />
                   )}
@@ -1127,7 +1181,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
                   <button 
                     onClick={handleSaveBoundary}
                     disabled={boundaryPoints.length < 3}
-                    className="px-4 py-2 text-sm font-semibold bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-4 py-2 text-sm font-semibold bg-taste-500 text-white rounded-lg hover:bg-taste-600 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Save Boundary
                   </button>
@@ -1204,7 +1258,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
             <div className="p-4 space-y-4">
               <div className="grid gap-4 lg:grid-cols-2">
                 <div className="rounded-xl border border-slate-200/70 bg-slate-50/70 p-4">
-                  <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Declared at registration</p>
+                  <p className="text-xs font-bold  text-slate-400">Declared at registration</p>
                   <dl className="mt-3 space-y-2.5 text-sm">
                     <div className="flex gap-3"><dt className="w-24 shrink-0 text-slate-500">Name</dt><dd className="min-w-0 font-medium">{selectedVerification.user_profiles?.full_name || '—'}</dd></div>
                     <div className="flex gap-3"><dt className="w-24 shrink-0 text-slate-500">Email</dt><dd className="min-w-0 truncate">{selectedVerification.user_profiles?.email || '—'}</dd></div>
@@ -1213,8 +1267,8 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
                     <div className="flex gap-3"><dt className="w-24 shrink-0 text-slate-500">Birthdate</dt><dd className="min-w-0">{selectedVerification.user_profiles?.birthdate || '—'}</dd></div>
                   </dl>
                 </div>
-                <div className="rounded-xl border border-indigo-100 bg-indigo-50/60 p-4">
-                  <p className="text-xs font-bold uppercase tracking-wider text-indigo-400">Read from ID (OCR)</p>
+                <div className="rounded-xl border border-taste-100 bg-taste-50/60 p-4">
+                  <p className="text-xs font-bold  text-taste-400">Read from ID (OCR)</p>
                   <div className="mt-3 space-y-2.5 text-sm">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0"><span className="text-slate-500">Name</span><p className="truncate font-medium">{selectedVerification.ocr_data?.extracted_name || 'Not extracted'}</p></div>
@@ -1228,7 +1282,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
                         ? <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold uppercase text-emerald-700">Match</span>
                         : <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase text-amber-700">Review</span>)}
                     </div>
-                    <div className="flex items-start justify-between gap-3 border-t border-indigo-100 pt-2.5">
+                    <div className="flex items-start justify-between gap-3 border-t border-taste-100 pt-2.5">
                       <div><span className="text-slate-500">OCR confidence</span><p className="font-medium">{selectedVerification.ocr_confidence}%</p></div>
                       <div><span className="text-slate-500">Status</span><p className="font-medium capitalize">{selectedVerification.verification_status}</p></div>
                     </div>
@@ -1238,10 +1292,10 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
 
               <div>
                 <div className="flex items-center justify-between">
-                  <p className="text-xs font-bold uppercase tracking-wider text-slate-400">ID Document</p>
-                  {idDocIsReal && <p className="text-xs text-indigo-600">Click to enlarge</p>}
+                  <p className="text-xs font-bold  text-slate-400">ID Document</p>
+                  {idDocUrl && <p className="text-xs text-taste-500">Click to enlarge</p>}
                 </div>
-                {idDocIsReal ? (
+                {idDocUrl ? (
                   <button type="button" onClick={() => { setSelectedImage(idDocUrl); setIsImageModalOpen(true); }} className="mt-2 block w-full cursor-pointer overflow-hidden rounded-lg border border-slate-200">
                     <img src={idDocUrl} alt="ID document" className="max-h-72 w-full bg-slate-50 object-contain" />
                   </button>
@@ -1272,53 +1326,6 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
                   Approve & Activate
                 </button>
               </div>
-            </div>
-          </div>
-        </div>
-      )}
-      
-      {/* Notification Panel */}
-      {isNotificationPanelOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-start justify-end z-[9999] p-4">
-          <div className="bg-white rounded-2xl ring-1 ring-slate-900/5 shadow-2xl w-full max-w-sm mt-16 mr-4">
-            <div className="flex items-center justify-between p-4 border-b border-slate-200">
-              <h3 className="font-bold text-lg">Notifications</h3>
-              <button onClick={() => setIsNotificationPanelOpen(false)} className="text-slate-400 hover:text-slate-600" aria-label="Close">
-                <Icon name="X" size={20} />
-              </button>
-            </div>
-            <div className="p-4 max-h-96 overflow-y-auto">
-              {notifications.length === 0 ? (
-                <p className="text-sm text-slate-500 text-center py-8">No new notifications</p>
-              ) : (
-                <div className="space-y-3">
-                  {notifications.map((notif) => (
-                    <div 
-                      key={notif.id} 
-                      onClick={() => {
-                        if (notif.reportId) {
-                          const report = reports.find(r => r.id === notif.reportId);
-                          if (report) setSelectedReport(report);
-                        }
-                        setIsNotificationPanelOpen(false);
-                      }}
-                      className={`rounded-lg border p-3 hover:bg-slate-50 cursor-pointer transition ${!notif.read ? 'bg-indigo-50/30' : 'border-slate-200'}`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className={`mt-0.5 h-2 w-2 rounded-full ${notif.type === 'new_incident' ? 'bg-gradient-to-br from-rose-500 to-red-600' : notif.type === 'status_change' ? 'bg-amber-500' : 'bg-indigo-500'}`}/>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-slate-900">{notif.title}</p>
-                          <p className="text-xs text-slate-600 mt-1">{notif.message}</p>
-                          <p className="text-[10px] text-slate-400 mt-2">{formatTimeAgo(notif.timestamp)}</p>
-                        </div>
-                        {!notif.read && (
-                          <div className="h-2 w-2 rounded-full bg-indigo-500"/>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
           </div>
         </div>
@@ -1374,7 +1381,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
                 <button 
                   onClick={handleAssignmentSubmit}
                   disabled={!selectedDepartment || !selectedResponder}
-                  className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="rounded-lg bg-taste-500 px-4 py-2 text-sm font-semibold text-white hover:bg-taste-600 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Assign
                 </button>
@@ -1397,21 +1404,21 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
             <div className="p-6 space-y-4 overflow-y-auto flex-1">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Incident ID</p>
+                  <p className="text-xs font-bold  text-slate-400">Incident ID</p>
                   <p className="font-mono text-sm">{selectedReport.report_id || selectedReport.id?.slice(0, 8)}</p>
                 </div>
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Type</p>
+                  <p className="text-xs font-bold  text-slate-400">Type</p>
                   <p className="capitalize text-sm">{selectedReport.report_type || selectedReport.incident_type}</p>
                 </div>
               </div>
               <div>
-                <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Description</p>
+                <p className="text-xs font-bold  text-slate-400">Description</p>
                 <p className="text-sm mt-1">{selectedReport.content || selectedReport.description}</p>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
-                  <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Location</p>
+                  <p className="text-xs font-bold  text-slate-400">Location</p>
                   <p className="text-sm mb-2">{selectedReport.attachments?.location || selectedReport.location}</p>
                   {selectedReport.attachments?.latitude && selectedReport.attachments?.longitude && (
                     <div className="rounded-lg overflow-hidden border border-slate-200 h-48">
@@ -1428,30 +1435,30 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
                   )}
                 </div>
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Priority</p>
+                  <p className="text-xs font-bold  text-slate-400">Priority</p>
                   <span className={`inline-block px-2 py-1 text-[10px] font-bold uppercase rounded-full ${priorityStyles[selectedReport.priority]}`}>{selectedReport.priority}</span>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Status</p>
+                  <p className="text-xs font-bold  text-slate-400">Status</p>
                   <span className={`inline-block px-2 py-1 text-xs font-medium capitalize rounded-full ${statusStyles[selectedReport.status] || 'bg-slate-100 text-slate-700'}`}>{formatStatus(selectedReport.status)}</span>
                 </div>
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Contact</p>
+                  <p className="text-xs font-bold  text-slate-400">Contact</p>
                   <p className="text-sm">{selectedReport.attachments?.contact_name || 'N/A'}</p>
                   <p className="text-xs text-slate-500">{selectedReport.attachments?.contact_phone || 'N/A'}</p>
                 </div>
               </div>
               {selectedReport.attachments?.latitude && selectedReport.attachments?.longitude && (
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-wider text-slate-400">GPS Coordinates</p>
+                  <p className="text-xs font-bold  text-slate-400">GPS Coordinates</p>
                   <p className="text-sm font-mono">{selectedReport.attachments.latitude}, {selectedReport.attachments.longitude}</p>
                 </div>
               )}
               {selectedReport.attachments?.service_area_status && (
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Service Area</p>
+                  <p className="text-xs font-bold  text-slate-400">Service Area</p>
                   <p className={`text-sm capitalize ${selectedReport.attachments.service_area_status === 'outside' ? 'text-amber-600' : 'text-emerald-600'}`}>
                     {selectedReport.attachments.service_area_status}
                   </p>
@@ -1459,7 +1466,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
               )}
               {selectedReport.attachments?.images && selectedReport.attachments.images.length > 0 && (
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Evidence Images</p>
+                  <p className="text-xs font-bold  text-slate-400 mb-2">Evidence Images</p>
                   <div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto">
                     {selectedReport.attachments.images.map((image, index) => (
                       <img
@@ -1478,7 +1485,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
               )}
               {selectedReport.attachments?.resolution_proof && (
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Resolution Proof</p>
+                  <p className="text-xs font-bold  text-slate-400 mb-2">Resolution Proof</p>
                   <img
                     src={selectedReport.attachments.resolution_proof}
                     alt="Resolution proof"
@@ -1507,7 +1514,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
                         setReportStatus(selectedReport.report_id || selectedReport.id, 'resolved');
                       }
                     }}
-                    className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+                    className="rounded-lg bg-taste-500 px-4 py-2 text-sm font-semibold text-white hover:bg-taste-600"
                   >
                     {(selectedReport.status) === 'pending' ? 'Assign' : 'Resolve'}
                   </button>
@@ -1530,7 +1537,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
             />
             <button
               onClick={() => setIsImageModalOpen(false)}
-              className="absolute top-4 right-4 rounded-full bg-white/20 hover:bg-white/30 p-2 text-white backdrop-blur-sm" aria-label="Close image"
+              className="absolute top-4 right-4 rounded-full bg-white/20 hover:bg-white/30 p-2 text-white " aria-label="Close image"
             >
               <Icon name="X" size={24} />
             </button>
@@ -1551,9 +1558,7 @@ export default function Dashboard({ section = 'command' }) {
   const [sent, setSent] = useState(false);
   const [activeSection, setActiveSection] = useState(section);
   const [currentDate, setCurrentDate] = useState('');
-  const [showNotifications, setShowNotifications] = useState(false);
   const [departments, setDepartments] = useState([]);
-  const [notifications, setNotifications] = useState([]);
   const [boundaryPoints, setBoundaryPoints] = useState([]);
   const [isBoundaryModalOpen, setIsBoundaryModalOpen] = useState(false);
 
@@ -1624,42 +1629,8 @@ export default function Dashboard({ section = 'command' }) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'emergency_reports' }, (payload) => {
         if (payload.eventType === 'INSERT') {
           setReports(prev => prev.some(r => r.id === payload.new.id) ? prev : [payload.new, ...prev]);
-          const newNotif = {
-            id: `new-${payload.new.id}`,
-            type: 'new_incident',
-            title: 'New incident reported',
-            message: `${payload.new.emergency_type || payload.new.incident_type || 'Emergency'} at ${payload.new.attachments?.location || payload.new.location || 'Unknown location'}`,
-            reportId: payload.new.id,
-            timestamp: new Date().toISOString(),
-            read: false
-          };
-          setNotifications(prev => [newNotif, ...prev]);
         } else if (payload.eventType === 'UPDATE') {
           setReports(prev => prev.map(r => r.id === payload.new.id ? payload.new : r));
-          if (payload.old.status !== payload.new.status) {
-            const statusNotif = {
-              id: `status-${payload.new.id}-${Date.now()}`,
-              type: 'status_change',
-              title: 'Incident status updated',
-              message: `Incident ${payload.new.report_id || payload.new.id?.slice(0, 8)} is now ${payload.new.status}`,
-              reportId: payload.new.id,
-              timestamp: new Date().toISOString(),
-              read: false
-            };
-            setNotifications(prev => [statusNotif, ...prev]);
-          }
-          if (payload.old.assigned_to !== payload.new.assigned_to) {
-            const assignNotif = {
-              id: `assign-${payload.new.id}-${Date.now()}`,
-              type: 'assignment',
-              title: 'Incident assigned',
-              message: `Incident ${payload.new.report_id || payload.new.id?.slice(0, 8)} has been assigned`,
-              reportId: payload.new.id,
-              timestamp: new Date().toISOString(),
-              read: false
-            };
-            setNotifications(prev => [assignNotif, ...prev]);
-          }
         } else if (payload.eventType === 'DELETE') {
           setReports(prev => prev.filter(r => r.id !== payload.old.id));
         }
@@ -1712,92 +1683,43 @@ export default function Dashboard({ section = 'command' }) {
 
   return <div className="min-h-screen bg-slate-50 text-slate-900">
     <div className="flex min-h-screen">
-      <aside className="sticky top-0 hidden h-screen w-20 shrink-0 flex-col overflow-x-hidden bg-slate-900 text-slate-300 sm:flex sm:w-72">
-        <div className="flex h-20 items-center justify-center gap-3 border-b border-slate-800 px-3 sm:justify-start sm:px-7">
-          <div className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-rose-500 to-red-600 text-white shadow-lg shadow-red-950/50"><Icon name="Siren" size={22}/></div>
-          <div className="hidden sm:block"><p className="font-semibold tracking-tight text-white">Kalubihan</p><p className="text-xs text-slate-400">Emergency Command</p></div>
+      <aside className="sticky top-0 hidden h-screen w-20 shrink-0 flex-col overflow-x-hidden bg-[#f9fbfc] text-slate-600 sm:flex sm:w-72">
+        <div className="flex h-20 items-center justify-center gap-3 border-b border-slate-200 px-3 sm:justify-start sm:px-7">
+          <div className="grid h-10 w-10 place-items-center rounded-xl bg-red-600 text-white "><Icon name="Siren" size={22}/></div>
+          <div className="hidden sm:block"><p className="font-semibold tracking-tight text-slate-900">Kalubihan</p><p className="text-xs text-slate-500">Emergency Command</p></div>
         </div>
         <div className="flex-1 px-3 py-7 sm:px-4">
-          <p className="mb-3 hidden px-3 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400 sm:block">Operations</p>
-          <nav className="space-y-1">{sidebarLinks.map(link => <button key={link.label} title={link.label} onClick={() => navigate(link.path)} className={`flex w-full items-center justify-center gap-3 rounded-xl px-3 py-3 text-left text-sm transition sm:justify-start ${link.path === '/' ? 'bg-gradient-to-r from-indigo-600 to-violet-600 font-medium shadow-glow-primary text-white' : 'hover:bg-white/5 hover:text-white'}`}>
-            <Icon name={link.icon} size={18}/><span className="hidden flex-1 sm:block">{link.label}</span>{link.badge ? <span className="hidden rounded-full bg-gradient-to-br from-rose-500 to-red-600 px-2 py-0.5 text-xs font-bold text-white sm:block">{link.badge}</span> : null}
+          <p className="mb-3 hidden px-3 text-[13px] font-medium text-slate-500 sm:block">Operations</p>
+          <nav className="space-y-1">{sidebarLinks.map(link => <button key={link.label} title={link.label} onClick={() => navigate(link.path)} className={`flex w-full items-center justify-center gap-3 rounded-xl px-3 py-3 text-left text-sm transition sm:justify-start ${link.path === '/' ? 'bg-[#ebedee] font-medium text-slate-900' : 'text-slate-600 hover:bg-[#ebedee] hover:text-slate-900'}`}>
+            <Icon name={link.icon} size={18}/><span className="hidden flex-1 sm:block">{link.label}</span>{link.badge ? <span className="hidden rounded-full bg-red-600 px-2 py-0.5 text-xs font-bold text-white sm:block">{link.badge}</span> : null}
           </button>)}</nav>
         </div>
-        <div className="m-3 rounded-2xl bg-slate-800 p-3 sm:m-4 sm:p-4">
-          <div className="flex items-center justify-center gap-3 sm:justify-start"><div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-sky-600 text-sm font-bold text-white">{profile?.first_name?.[0] || 'U'}</div><div className="hidden min-w-0 flex-1 sm:block"><p className="truncate text-sm font-medium text-white">{profile?.full_name || 'User'}</p><p className="text-xs capitalize text-slate-400">{profile?.role || 'Operations'}</p></div><button aria-label="Sign out" onClick={signOut} className="hidden text-slate-500 hover:text-white sm:block"><Icon name="LogOut" size={17}/></button></div>
-          <div className="mt-3 hidden items-center gap-2 text-xs text-emerald-400 sm:flex"><span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400"/> Online</div>
+        <div className="m-3 rounded-lg border border-slate-200 bg-white p-3 sm:m-4 sm:p-4">
+          <SidebarProfile profile={profile} signOut={signOut}/>
         </div>
       </aside>
-      <nav className="fixed bottom-0 inset-x-0 z-40 flex overflow-x-auto border-t border-slate-800 bg-slate-900 py-1 sm:hidden">{sidebarLinks.map(link => <button key={link.label} onClick={() => navigate(link.path)} className="flex shrink-0 flex-col items-center gap-0.5 px-4 py-1.5 text-[10px] text-slate-400"><Icon name={link.icon} size={20}/><span>{link.label}</span></button>)}<button aria-label="Sign out" onClick={signOut} className="flex shrink-0 flex-col items-center gap-0.5 px-4 py-1.5 text-[10px] text-slate-400"><Icon name="LogOut" size={20}/><span>Sign out</span></button></nav>
+      <nav className="fixed bottom-0 inset-x-0 z-40 flex overflow-x-auto border-t border-slate-200 bg-[#f9fbfc] py-1 sm:hidden">{sidebarLinks.map(link => <button key={link.label} onClick={() => navigate(link.path)} className={`flex shrink-0 flex-col items-center gap-0.5 px-4 py-1.5 text-[10px] ${link.path === '/' ? 'text-slate-900 font-medium' : 'text-slate-500'}`}><Icon name={link.icon} size={20}/><span>{link.label}</span></button>)}<button aria-label="Sign out" onClick={signOut} className="flex shrink-0 flex-col items-center gap-0.5 px-4 py-1.5 text-[10px] text-slate-500"><Icon name="LogOut" size={20}/><span>Sign out</span></button></nav>
       <main className="min-w-0 flex-1 pb-24 sm:pb-0">
-        <header className="sticky top-0 z-30 flex h-20 items-center justify-between border-b border-slate-200/70 bg-white/80 px-5 backdrop-blur-md sm:px-8">
-          <div><p className="text-xs font-medium uppercase tracking-wider text-slate-400">{currentDate}</p><h1 className="text-lg font-bold tracking-tight">{getGreeting()}, {profile?.full_name?.split(' ')[0] || 'User'}</h1></div>
-          <div className="flex items-center gap-3"><div className="hidden items-center gap-2 rounded-full bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700 sm:flex"><span className="h-2 w-2 rounded-full bg-emerald-500"/>All systems operational</div><button aria-label="Notifications" onClick={() => setShowNotifications(!showNotifications)} className="relative rounded-xl border border-slate-200 p-2.5 text-slate-500 hover:bg-slate-50"><Icon name="Bell" size={19}/><span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-gradient-to-br from-rose-500 to-red-600"/></button></div>
+        <header className="sticky top-0 z-30 flex h-20 items-center justify-between border-b border-slate-200/70 bg-white px-5  sm:px-8">
+          <div><p className="text-xs font-medium  text-slate-400">{currentDate}</p><h1 className="text-lg font-bold tracking-tight">{getGreeting()}, {profile?.full_name?.split(' ')[0] || 'User'}</h1></div>
+          <div className="flex items-center gap-3"><NotificationBell userId={profile?.id} onOpenIncident={(id) => { const report = reports.find(r => r.id === id); if (report) setActiveReport(report); }}/></div>
         </header>
-        {showNotifications && (
-          <div className="absolute right-0 top-20 z-50 w-80 rounded-xl border border-slate-200/70 bg-white shadow-lg">
-            <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
-              <h3 className="font-semibold">Notifications</h3>
-              <button onClick={() => setShowNotifications(false)} className="text-slate-500 hover:text-slate-700">
-                <Icon name="X"/>
-              </button>
-            </div>
-            <div className="p-4 max-h-96 overflow-y-auto">
-              {notifications.length === 0 ? (
-                <div className="px-4 py-3 text-sm text-slate-500">
-                  <div className="flex items-start gap-3">
-                    <div className="mt-0.5 h-2 w-2 rounded-full bg-gradient-to-br from-rose-500 to-red-600"/>
-                    <p>No new notifications</p>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-1">
-                  {notifications.map((notif) => (
-                    <div 
-                      key={notif.id}
-                      onClick={() => {
-                        if (notif.reportId) {
-                          const report = reports.find(r => r.id === notif.reportId);
-                          if (report) setSelectedReport(report);
-                        }
-                        setShowNotifications(false);
-                      }}
-                      className={`px-4 py-3 cursor-pointer transition hover:bg-slate-50 ${!notif.read ? 'bg-indigo-50/30' : 'border-slate-200'}`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className={`mt-0.5 h-2 w-2 rounded-full ${notif.type === 'new_incident' ? 'bg-gradient-to-br from-rose-500 to-red-600' : notif.type === 'status_change' ? 'bg-amber-500' : 'bg-indigo-500'}`}/>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-slate-900">{notif.title}</p>
-                          <p className="text-xs text-slate-600 mt-1">{notif.message}</p>
-                          <p className="text-[10px] text-slate-400 mt-2">{formatTimeAgo(notif.timestamp)}</p>
-                        </div>
-                        {!notif.read && (
-                          <div className="h-2 w-2 rounded-full bg-indigo-500"/>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
         <div className="mx-auto max-w-[1600px] space-y-6 p-5 sm:p-8">
-          <section className="overflow-hidden rounded-2xl bg-slate-900 px-6 py-6 text-white shadow-xl sm:px-8">
-            <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-center"><div><div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-red-300"><span className="h-2 w-2 animate-pulse rounded-full bg-red-400"/>Live response operations</div><h2 className="text-2xl font-bold tracking-tight sm:text-3xl">Barangay Kalubihan Command Center</h2><p className="mt-2 max-w-xl text-sm leading-6 text-slate-300">Coordinate incidents, monitor the official service boundary, and request only the assistance your response needs.</p></div><div className="flex flex-wrap gap-3"><button onClick={() => navigate('/emergency-report')} className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-br from-rose-500 to-red-600 px-4 py-3 text-sm font-semibold shadow-lg shadow-red-950/30 hover:bg-red-400"><Icon name="Siren" size={18}/>Report emergency</button><button onClick={() => setShowBroadcast(true)} className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm font-semibold hover:bg-indigo-700"><Icon name="Radio" size={18}/>Request assistance</button></div></div>
+          <section className="overflow-hidden rounded-2xl bg-slate-900 px-6 py-6 text-white  sm:px-8">
+            <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-center"><div><div className="mb-3 flex items-center gap-2 text-xs font-semibold  text-red-300"><span className="h-2 w-2  rounded-full bg-red-400"/>Live response operations</div><h2 className="text-2xl font-bold tracking-tight sm:text-3xl">Barangay Kalubihan Command Center</h2><p className="mt-2 max-w-xl text-sm leading-6 text-slate-300">Coordinate incidents, monitor the official service boundary, and request only the assistance your response needs.</p></div><div className="flex flex-wrap gap-3"><button onClick={() => navigate('/emergency-report')} className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-3 text-sm font-semibold hover:bg-red-700"><Icon name="Siren" size={18}/>Report emergency</button><button onClick={() => setShowBroadcast(true)} className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm font-semibold hover:bg-taste-600"><Icon name="Radio" size={18}/>Request assistance</button></div></div>
           </section>
-          <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {[['Active incidents', openCount, 'Siren', 'text-red-600 bg-red-50'], ['Awaiting review', pendingCount, 'ClipboardCheck', 'text-amber-600 bg-amber-50'], ['Responders on duty', '12', 'UsersRound', 'text-indigo-600 bg-indigo-50'], ['Avg. acknowledgement', '2m 18s', 'Timer', 'text-emerald-600 bg-emerald-50']].map(([label, value, icon, style]) => <div key={label} className="rounded-2xl border border-slate-200/70 bg-white p-5 shadow-sm"><div className="flex items-start justify-between"><div><p className="text-sm text-slate-500">{label}</p><p className="mt-2 text-3xl font-bold tracking-tight">{value}</p></div><div className={`rounded-xl p-3 ${style}`}><Icon name={icon} size={20}/></div></div><p className="mt-4 text-xs text-slate-400">Updated just now</p></div>)}
+          <section className="grid gap-4 sm:grid-cols-2">
+            {[['Active incidents', openCount], ['Awaiting verification review', pendingCount]].map(([label, value]) => <div key={label} className="rounded-lg border border-slate-200/70 bg-white p-5"><p className="text-sm font-medium text-slate-500">{label}</p><p className="mt-2 text-3xl tabular-nums">{value}</p></div>)}
           </section>
           <section className="grid gap-6 xl:grid-cols-[1.05fr_1.4fr]">
-            <div className="overflow-hidden rounded-2xl border border-slate-200/70 bg-white shadow-emergency"><div className="flex items-center justify-between border-b border-slate-100 px-5 py-4"><div><h3 className="font-bold">Live incident queue</h3><p className="mt-0.5 text-xs text-slate-500">New reports appear immediately for triage.</p></div><button onClick={() => navigate('/report-management')} className="text-sm font-semibold text-indigo-700 hover:text-indigo-800">View all</button></div><div className="divide-y divide-slate-100">{reports.filter(r => (r.attachments?.status || r.status) !== 'resolved').slice(0, 4).map(report => <button key={report.report_id || report.id} onClick={() => setActiveReport(report)} className={`w-full px-5 py-4 text-left transition hover:bg-slate-50 ${activeReport?.report_id === report.report_id ? 'bg-indigo-50/70' : ''}`}><div className="flex gap-3"><div className={`mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-xl ${(report.report_type || report.emergency_type) === 'fire' ? 'bg-red-100 text-red-600' : 'bg-indigo-100 text-indigo-600'}`}><Icon name={(report.report_type || report.emergency_type) === 'fire' ? 'Flame' : (report.report_type || report.emergency_type) === 'medical' ? 'HeartPulse' : 'Car'} size={18}/></div><div className="min-w-0 flex-1"><div className="flex items-start justify-between gap-2"><p className="font-semibold capitalize">{report.report_type || report.emergency_type || report.incident_type} <span className="font-mono text-xs font-medium text-slate-400">{report.report_id || report.id?.slice(0, 8)}</span></p><span className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase ring-1 ${priorityStyles[report.priority]}`}>{report.priority}</span></div><p className="mt-1 truncate text-sm text-slate-500">{report.attachments?.location || report.location}</p><div className="mt-2 flex items-center gap-2 text-xs text-slate-400"><span className={`rounded-full px-2 py-0.5 font-medium capitalize ${statusStyles[report.status]}`}>{formatStatus(report.status)}</span><span>•</span><span>{formatTimeAgo(report.created_at)}</span></div></div></div></button>)}</div></div>
-            <div className="overflow-hidden rounded-2xl border border-slate-200/70 bg-white shadow-emergency">
+            <div className="overflow-hidden rounded-lg border border-slate-200/70 bg-white"><div className="flex items-center justify-between border-b border-slate-100 px-5 py-4"><div><h3 className="font-bold">Live incident queue</h3><p className="mt-0.5 text-xs text-slate-500">New reports appear immediately for triage.</p></div><button onClick={() => navigate('/report-management')} className="text-sm font-semibold text-taste-600 hover:text-taste-700">View all</button></div><div className="divide-y divide-slate-100">{reports.filter(r => (r.attachments?.status || r.status) !== 'resolved').slice(0, 4).map(report => <button key={report.report_id || report.id} onClick={() => setActiveReport(report)} className={`w-full px-5 py-4 text-left transition hover:bg-slate-50 ${activeReport?.report_id === report.report_id ? 'bg-taste-50/70' : ''}`}><div className="flex gap-3"><div className={`mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-xl ${(report.report_type || report.emergency_type) === 'fire' ? 'bg-red-100 text-red-600' : 'bg-taste-100 text-taste-500'}`}><Icon name={(report.report_type || report.emergency_type) === 'fire' ? 'Flame' : (report.report_type || report.emergency_type) === 'medical' ? 'HeartPulse' : 'Car'} size={18}/></div><div className="min-w-0 flex-1"><div className="flex items-start justify-between gap-2"><p className="font-semibold capitalize">{report.report_type || report.emergency_type || report.incident_type} <span className="font-mono text-xs font-medium text-slate-400">{report.report_id || report.id?.slice(0, 8)}</span></p><span className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase ring-1 ${priorityStyles[report.priority]}`}>{report.priority}</span></div><p className="mt-1 truncate text-sm text-slate-500">{report.attachments?.location || report.location}</p><div className="mt-2 flex items-center gap-2 text-xs text-slate-400"><span className={`rounded-full px-2 py-0.5 font-medium capitalize ${statusStyles[report.status]}`}>{formatStatus(report.status)}</span><span>•</span><span>{formatTimeAgo(report.created_at)}</span></div></div></div></button>)}</div></div>
+            <div className="overflow-hidden rounded-lg border border-slate-200/70 bg-white">
               <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
                 <div>
                   <h3 className="font-bold">Service area & active response</h3>
                   <p className="mt-0.5 text-xs text-slate-500">Configured Barangay Kalubihan boundary</p>
                 </div>
-                {profile?.role === 'admin' && <button onClick={() => setIsBoundaryModalOpen(true)} className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-700 hover:text-indigo-800">
+                {profile?.role === 'admin' && <button onClick={() => setIsBoundaryModalOpen(true)} className="inline-flex items-center gap-1 text-xs font-semibold text-taste-600 hover:text-taste-700">
                   <Icon name="Settings" size={14}/>Configure
                 </button>}
               </div>
@@ -1808,13 +1730,13 @@ export default function Dashboard({ section = 'command' }) {
                   <p className="mt-1 max-w-[185px] text-xs text-slate-500">{activeReport?.attachments?.location || activeReport?.location}</p>
                 </div>
                 <div className="absolute right-5 top-5 rounded-xl bg-white/95 p-3 text-xs shadow-lg">
-                  <div className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-gradient-to-br from-rose-500 to-red-600"/>Active incident</div>
-                  <div className="mt-2 flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full border-2 border-indigo-600"/>Service boundary</div>
+                  <div className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-red-600"/>Active incident</div>
+                  <div className="mt-2 flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full border-2 border-taste-500"/>Service boundary</div>
                 </div>
               </div>
             </div>
           </section>
-          {activeReport && <section className="rounded-2xl border border-slate-200/70 bg-white p-5 shadow-sm"><div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-center"><div className="flex gap-4"><div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-red-50 text-red-600"><Icon name="Flame" size={23}/></div><div><div className="flex flex-wrap items-center gap-2"><h3 className="font-bold capitalize">{activeReport.report_type || activeReport.emergency_type || activeReport.incident_type} response · {activeReport.report_id}</h3><span className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase ring-1 ${priorityStyles[activeReport.priority]}`}>{activeReport.priority}</span></div><p className="mt-1 text-sm text-slate-500">{activeReport.content || activeReport.description}</p><p className="mt-2 flex items-center gap-1 text-xs font-medium text-slate-400"><Icon name="MapPin" size={13}/>{activeReport.attachments?.location || activeReport.location} <span className="mx-1">•</span> GPS location captured</p></div></div><div className="flex flex-wrap gap-2"><button onClick={() => updateStatus(activeReport, 'assigned')} className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold hover:bg-slate-50">Assign team</button><button onClick={() => setShowBroadcast(true)} className="rounded-xl bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-700">Request assistance</button><button onClick={() => navigate('/report-management')} className="rounded-xl border border-slate-200 p-2 text-slate-500 hover:bg-slate-50" aria-label="View incident details"><Icon name="ArrowUpRight" size={18}/></button></div></div></section>}
+          {activeReport && <section className="rounded-lg border border-slate-200/70 bg-white p-5 "><div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-center"><div className="flex gap-4"><div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-red-50 text-red-600"><Icon name="Flame" size={23}/></div><div><div className="flex flex-wrap items-center gap-2"><h3 className="font-bold capitalize">{activeReport.report_type || activeReport.emergency_type || activeReport.incident_type} response · {activeReport.report_id}</h3><span className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase ring-1 ${priorityStyles[activeReport.priority]}`}>{activeReport.priority}</span></div><p className="mt-1 text-sm text-slate-500">{activeReport.content || activeReport.description}</p><p className="mt-2 flex items-center gap-1 text-xs font-medium text-slate-400"><Icon name="MapPin" size={13}/>{activeReport.attachments?.location || activeReport.location} <span className="mx-1">•</span> GPS location captured</p></div></div><div className="flex flex-wrap gap-2"><button onClick={() => updateStatus(activeReport, 'assigned')} className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold hover:bg-slate-50">Assign team</button><button onClick={() => setShowBroadcast(true)} className="rounded-xl bg-taste-500 px-3 py-2 text-sm font-semibold text-white hover:bg-taste-600">Request assistance</button><button onClick={() => navigate('/report-management')} className="rounded-xl border border-slate-200 p-2 text-slate-500 hover:bg-slate-50" aria-label="View incident details"><Icon name="ArrowUpRight" size={18}/></button></div></div></section>}
         </div>
       </main>
     </div>
@@ -1823,7 +1745,7 @@ export default function Dashboard({ section = 'command' }) {
         <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl">
           <div className="flex items-center justify-between border-b border-slate-100 p-6">
             <div>
-              <div className="mb-2 grid h-10 w-10 place-items-center rounded-xl bg-indigo-50 text-indigo-700">
+              <div className="mb-2 grid h-10 w-10 place-items-center rounded-xl bg-taste-50 text-taste-600">
                 <Icon name="Radio" size={20}/>
               </div>
               <h2 className="text-lg font-bold">Request department assistance</h2>
@@ -1850,8 +1772,8 @@ export default function Dashboard({ section = 'command' }) {
                       <p className="text-sm text-slate-500 py-4 text-center">No departments available</p>
                     ) : (
                       (departments || []).map(dept => (
-                        <label key={dept.id} className={`flex items-center gap-3 rounded-lg p-3 cursor-pointer transition ${selectedDepartments.includes(dept.id) ? 'bg-indigo-50 border border-indigo-200' : 'hover:bg-slate-50'}`}>
-                          <input type="checkbox" checked={selectedDepartments.includes(dept.id)} onChange={() => toggleDepartment(dept.id)} className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-100"/>
+                        <label key={dept.id} className={`flex items-center gap-3 rounded-lg p-3 cursor-pointer transition ${selectedDepartments.includes(dept.id) ? 'bg-taste-50 border border-taste-200' : 'hover:bg-slate-50'}`}>
+                          <input type="checkbox" checked={selectedDepartments.includes(dept.id)} onChange={() => toggleDepartment(dept.id)} className="h-4 w-4 rounded border-slate-300 text-taste-500 focus:ring-taste-100"/>
                           <div className="flex-1">
                             <p className="text-sm font-medium">{dept.name}</p>
                             <p className="text-xs text-slate-500">{dept.type}</p>
@@ -1862,7 +1784,7 @@ export default function Dashboard({ section = 'command' }) {
                   </div>
                   <p className="mt-2 text-xs text-slate-500">{selectedDepartments.length} department(s) selected</p>
                 </div>
-                <button onClick={() => setSent(true)} disabled={selectedDepartments.length === 0} className="w-full rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed">Send request</button>
+                <button onClick={() => setSent(true)} disabled={selectedDepartments.length === 0} className="w-full rounded-xl bg-taste-500 px-4 py-3 text-sm font-semibold text-white hover:bg-taste-600 disabled:opacity-50 disabled:cursor-not-allowed">Send request</button>
               </>
             )}
           </div>
@@ -1893,8 +1815,8 @@ export default function Dashboard({ section = 'command' }) {
                 {boundaryPoints.length > 2 && (
                   <Polygon
                     positions={boundaryPoints.map(p => [p.lat, p.lng])}
-                    color="#3b82f6"
-                    fillColor="#3b82f6"
+                    color="#1b6c80"
+                    fillColor="#1b6c80"
                     fillOpacity={0.2}
                   />
                 )}
@@ -1924,7 +1846,7 @@ export default function Dashboard({ section = 'command' }) {
                 <button 
                   onClick={handleSaveBoundary}
                   disabled={boundaryPoints.length < 3}
-                  className="px-4 py-2 text-sm font-semibold bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-slate-300 disabled:cursor-not-allowed"
+                  className="px-4 py-2 text-sm font-semibold bg-taste-500 text-white rounded-lg hover:bg-taste-600 disabled:bg-slate-300 disabled:cursor-not-allowed"
                 >
                   Save Boundary
                 </button>

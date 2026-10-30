@@ -85,6 +85,13 @@ export const AuthProvider = ({ children }) => {
       const { data, error } = await supabase?.from('user_profiles')?.select('*')?.eq('id', user?.id)?.single();
       
       return { data, error };
+    },
+    // Refetch and store the caller's profile row (used after profile edits).
+    refreshProfile: async () => {
+      if (!user) return null;
+      const { data } = await supabase.from('user_profiles').select('*').eq('id', user.id).single();
+      if (data) setProfile(data);
+      return data;
     }
   }
 
