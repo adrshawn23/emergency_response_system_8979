@@ -7,6 +7,7 @@ import NotificationBell from '../../components/NotificationBell';
 import { supabase } from '../../lib/supabase';
 import DepartmentManagementSection from './components/DepartmentManagementSection';
 import UserAccessManager from './components/UserAccessManager';
+import PageAccessMatrix from './components/PageAccessMatrix';
 import PendingRegistrations from '../user-management/components/PendingRegistrations';
 import { isPointInBoundary } from '../../utils/geofence';
 import ResidentHome from '../resident-home';
@@ -104,7 +105,7 @@ const sectionCopy = {
 };
 
 function WorkspacePage({ section, profile, signOut, onSectionChange }) {
-  const { refreshProfile } = useAuth();
+  const { refreshProfile, canAccessPage } = useAuth();
   const navigate = useNavigate();
   const { reports, setReports } = useMockData();
   const [status, setStatus] = useState('all');
@@ -407,7 +408,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
     { key: 'command', label: 'Home', icon: 'Home', path: '/', roles: ['resident'] },
     { key: 'new', label: 'Report emergency', icon: 'Siren', path: '/emergency-report', roles: ['resident'] },
     { key: 'profile', label: 'Profile', icon: 'User', path: '/profile', roles: ['admin', 'dispatcher', 'responder', 'resident'] }
-  ].filter(link => link.roles.includes(profile?.role));
+  ].filter(link => canAccessPage(link.key, profile?.role));
   const current = sectionCopy[section];
   const filteredReports = searchQuery 
     ? reports.filter(report => {
@@ -969,7 +970,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
       </div><div className="space-y-5"><div className="rounded-lg border border-slate-200/70 bg-white p-6"><h3 className="font-bold">Report summary</h3><p className="mt-3 text-sm text-slate-600">Your report will be immediately visible to dispatch. Verification happens in parallel, so even unverified reports are triaged for response.</p></div>{submitError && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{submitError}</div>}<button type="submit" disabled={loading || submitted || !profile?.id} className="w-full rounded-xl bg-red-600 px-4 py-3.5 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed">{loading ? 'Submitting...' : submitted ? 'Report submitted' : 'Submit report'}</button>{submitted && <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-center"><Icon name="CheckCircle" size={32} className="text-emerald-600 mx-auto mb-2"/><h3 className="font-semibold text-emerald-900">Report submitted</h3><p className="mt-1 text-sm text-emerald-700">Report ID: {submittedReportId?.slice(0, 8)}<br/>Dispatch is reviewing your report now.</p></div>}</div></form>}
       {section === 'residents' && <><PendingRegistrations pendingUsers={pendingUsers} onApproveUser={handlePendingApprove} onRejectUser={handlePendingReject} /><div className="mt-7 grid gap-5 lg:grid-cols-2"><div className="rounded-lg border border-slate-200/70 bg-white p-6"><div className="mb-4"><h3 className="font-bold">ID verification queue</h3><p className="text-sm text-slate-500">{idVerifications.filter(v => v.verification_status === 'pending').length} awaiting review</p></div><p className="mt-5 text-xs leading-5 text-slate-500">OCR is assistive only. Approval, clearer-upload requests, and rejection decisions are made by an authorized administrator.</p>{idVerifications.length === 0 ? <p className="mt-4 text-sm text-slate-500">No ID verifications to review.</p> : <div className="mt-4 space-y-3 max-h-64 overflow-y-auto">{idVerifications.map(verification => (<div key={verification.id} className="flex items-center justify-between rounded-lg border border-slate-200 p-3 hover:bg-slate-50 cursor-pointer" onClick={() => handleReviewClick(verification)}><div><p className="text-sm font-medium">{verification.user_profiles?.full_name || 'Unknown'}</p><p className="text-xs text-slate-500">{verification.user_profiles?.email}</p><p className="text-[10px] text-slate-400 mt-1">OCR Confidence: {verification.ocr_confidence}%</p></div><span className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase ${verification.verification_status === 'pending' ? 'bg-amber-100 text-amber-700' : verification.verification_status === 'approved' ? 'bg-emerald-100 text-emerald-700' : verification.verification_status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-700'}`}>{verification.verification_status}</span></div>))}</div>}</div><div className="rounded-lg border border-slate-200/70 bg-white p-6"><h3 className="font-bold">Account access</h3><p className="mt-1 text-sm text-slate-500">Department access cannot be self-granted.</p><div className="mt-5 text-sm text-slate-500">Manage departments via the Department Management page.</div></div><div className="rounded-lg border border-slate-200/70 bg-white p-6"><div><h3 className="font-bold">Community verification</h3><p className="text-sm text-slate-500">Duplicate prevention enabled</p></div><p className="mt-5 text-sm leading-6 text-slate-500">System automatically detects duplicate reports from the same location within a 5-minute window. Admins can merge or dismiss duplicates manually.</p><button className="mt-5 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold hover:bg-slate-50">View duplicates</button></div></div></>}
       {section === 'departments' && <DepartmentManagementSection />}
-      {section === 'access' && <div className="mt-7 max-w-4xl"><UserAccessManager /></div>}
+      {section === 'access' && <div className="mt-7 max-w-4xl space-y-5"><UserAccessManager /><PageAccessMatrix /></div>}
       {section === 'settings' && <div className="mt-7 grid gap-5 lg:grid-cols-2"><div className="rounded-lg border border-slate-200/70 bg-white p-6"><h3 className="font-bold">Notification preferences</h3><p className="mt-2 text-sm text-slate-500">Choose which updates reach your notification bell. Security and verification decisions are always delivered.</p><div className="mt-5 space-y-3">{notifPrefs && [
               ['incident_updates', 'Incident updates', 'New reports and status changes'],
               ['assignment_updates', 'Assignments', 'Incidents assigned to you'],
@@ -1477,7 +1478,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
 
 export default function Dashboard({ section = 'command' }) {
   const navigate = useNavigate();
-  const { profile, signOut } = useAuth();
+  const { profile, signOut, canAccessPage } = useAuth();
   const { reports, setReports } = useMockData();
   const [activeReport, setActiveReport] = useState(null);
   const [showBroadcast, setShowBroadcast] = useState(false);
@@ -1579,11 +1580,10 @@ export default function Dashboard({ section = 'command' }) {
 
   if (profile?.role === 'resident' && activeSection === 'command') return <ResidentHome />;
   if (profile?.role === 'responder' && activeSection === 'command') return <ResponderView />;
-  // RBAC: role-restricted sections must not render for other roles even if a
-  // route guard is bypassed (direct URL, role change mid-session).
-  const sectionRoles = { residents: ['admin'], departments: ['admin'], settings: ['admin'], access: ['admin'], queue: ['admin', 'dispatcher'] };
-  const allowedRoles = sectionRoles[activeSection];
-  if (allowedRoles && profile?.role && !allowedRoles.includes(profile.role)) return <Navigate to="/" replace />;
+  // RBAC: role-gated sections must not render for other roles even if a
+  // route guard is bypassed (direct URL, role change mid-session). The
+  // editable page_permissions matrix overrides the built-in defaults.
+  if (profile?.role && !canAccessPage(activeSection, profile.role)) return <Navigate to="/" replace />;
   if (activeSection !== 'command') return <WorkspacePage section={activeSection} profile={profile} signOut={signOut} onSectionChange={setActiveSection} />;
 
   const pendingCount = reports.filter(r => r.status === 'pending').length;
@@ -1594,14 +1594,15 @@ export default function Dashboard({ section = 'command' }) {
   const toggleDepartment = id => setSelectedDepartments(ids => ids.includes(id) ? ids.filter(item => item !== id) : [...ids, id]);
 
   const sidebarLinks = [
-    { label: 'Command center', icon: 'LayoutDashboard', path: '/', roles: ['admin', 'dispatcher'] },
-    { label: 'Incident queue', icon: 'Siren', path: '/report-management', badge: pendingCount, roles: ['admin', 'dispatcher'] },
-    { label: 'New incident', icon: 'PlusCircle', path: '/emergency-report', roles: ['admin', 'dispatcher'] },
-    { label: 'Residents & review', icon: 'Users', path: '/user-management', roles: ['admin'] },
-    { label: 'Departments', icon: 'Building2', path: '/department-management', roles: ['admin'] },
-    { label: 'System settings', icon: 'Settings', path: '/settings', roles: ['admin'] },
-    { label: 'Profile', icon: 'User', path: '/profile', roles: ['admin', 'dispatcher'] }
-  ].filter(link => link.roles.includes(profile?.role));
+    { label: 'Command center', icon: 'LayoutDashboard', path: '/', roles: ['admin', 'dispatcher'], key: 'command' },
+    { label: 'Incident queue', icon: 'Siren', path: '/report-management', badge: pendingCount, roles: ['admin', 'dispatcher'], key: 'queue' },
+    { label: 'New incident', icon: 'PlusCircle', path: '/emergency-report', roles: ['admin', 'dispatcher'], key: 'new' },
+    { label: 'Residents & review', icon: 'Users', path: '/user-management', roles: ['admin'], key: 'residents' },
+    { label: 'Access control', icon: 'ShieldCheck', path: '/access-control', roles: ['admin'], key: 'access' },
+    { label: 'Departments', icon: 'Building2', path: '/department-management', roles: ['admin'], key: 'departments' },
+    { label: 'System settings', icon: 'Settings', path: '/settings', roles: ['admin'], key: 'settings' },
+    { label: 'Profile', icon: 'User', path: '/profile', roles: ['admin', 'dispatcher'], key: 'profile' }
+  ].filter(link => canAccessPage(link.key, profile?.role));
 
   return <div className="min-h-screen bg-slate-50 text-slate-900">
     <div className="flex min-h-screen">

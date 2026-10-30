@@ -3,6 +3,20 @@ import { supabase } from '../lib/supabase';
 
 const AuthContext = createContext({})
 
+// Fallback role matrix — rows in public.page_permissions (edited from the
+// admin Access control page) override these live. Pages missing from both
+// are treated as open, matching the old hardcoded-gate semantics.
+export const DEFAULT_PAGE_ROLES = {
+  command: ['admin', 'dispatcher', 'responder', 'resident'],
+  queue: ['admin', 'dispatcher', 'responder'],
+  new: ['admin', 'dispatcher', 'responder', 'resident'],
+  residents: ['admin'],
+  access: ['admin'],
+  departments: ['admin'],
+  settings: ['admin'],
+  profile: ['admin', 'dispatcher', 'responder', 'resident'],
+};
+
 export const useAuth = () => {
   const context = useContext(AuthContext)
   if (!context) {
@@ -15,6 +29,7 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null)
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [pageRoles, setPageRoles] = useState(DEFAULT_PAGE_ROLES)
 
   // ⚠️ PROTECTED FUNCTION - DO NOT MODIFY OR ADD ASYNC OPERATIONS
   // This is a Supabase auth state change listener that must remain synchronous
@@ -66,10 +81,45 @@ export const AuthProvider = ({ children }) => {
     return () => supabase.removeChannel(channel);
   }, [user])
 
+  // Page-permission matrix: admin edits push to every live session in
+  // realtime so a role's sidebar/route access changes without re-login.
+  useEffect(() => {
+    if (!user) return;
+
+    const loadPageRoles = async () => {
+      const { data } = await supabase.from('page_permissions').select('page_key, allowed_roles');
+      if (data?.length) {
+        setPageRoles(prev => ({
+          ...prev,
+          ...Object.fromEntries(data.map(r => [r.page_key, r.allowed_roles || []])),
+        }));
+      }
+    };
+
+    loadPageRoles();
+
+    const channel = supabase
+      .channel('page_permissions_sync')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'page_permissions' }, loadPageRoles)
+      .subscribe();
+
+    return () => supabase.removeChannel(channel);
+  }, [user])
+
+  // Admin bypasses every gate (prevents self-lockout); unknown pages stay open.
+  const canAccessPage = (pageKey, role) => {
+    if (!role) return false;
+    if (role === 'admin') return true;
+    const allowed = pageRoles[pageKey];
+    return allowed ? allowed.includes(role) : true;
+  };
+
   const value = {
     user,
     profile,
     loading,
+    pageRoles,
+    canAccessPage,
     signUp: async (email, password, userData = {}) => {
       const { data, error } = await supabase?.auth?.signUp({
         email,

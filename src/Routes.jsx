@@ -56,19 +56,19 @@ const ProtectedRoute = ({ children }) => {
   return children;
 };
 
-const RoleRoute = ({ roles, children }) => {
-  const { profile, loading } = useAuth();
+const RoleRoute = ({ pageKey, children }) => {
+  const { profile, loading, canAccessPage } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
     // Only bounce once a role is actually known — a transient role-less
     // profile (e.g. mid-refetch after navigation) must not redirect.
-    if (profile?.role && !roles.includes(profile.role)) navigate('/', { replace: true });
-  }, [profile, roles, navigate]);
+    if (profile?.role && !canAccessPage(pageKey, profile.role)) navigate('/', { replace: true });
+  }, [profile, pageKey, canAccessPage, navigate]);
 
   if (loading || !profile?.role) return <div className="flex items-center justify-center min-h-screen">Loading permissions...</div>;
 
-  return roles.includes(profile.role) ? children : null;
+  return canAccessPage(pageKey, profile.role) ? children : null;
 };
 
 const Routes = () => {
@@ -91,27 +91,27 @@ const Routes = () => {
               } />
               <Route path="/department-management" element={
                 <ProtectedRoute>
-                  <RoleRoute roles={['admin']}><Dashboard section="departments" /></RoleRoute>
+                  <RoleRoute pageKey="departments"><Dashboard section="departments" /></RoleRoute>
                 </ProtectedRoute>
               } />
               <Route path="/user-management" element={
                 <ProtectedRoute>
-                  <RoleRoute roles={['admin']}><Dashboard section="residents" /></RoleRoute>
+                  <RoleRoute pageKey="residents"><Dashboard section="residents" /></RoleRoute>
                 </ProtectedRoute>
               } />
               <Route path="/access-control" element={
                 <ProtectedRoute>
-                  <RoleRoute roles={['admin']}><Dashboard section="access" /></RoleRoute>
+                  <RoleRoute pageKey="access"><Dashboard section="access" /></RoleRoute>
                 </ProtectedRoute>
               } />
               <Route path="/report-management" element={
                 <ProtectedRoute>
-                  <RoleRoute roles={['dispatcher', 'responder', 'admin']}><Dashboard section="queue" /></RoleRoute>
+                  <RoleRoute pageKey="queue"><Dashboard section="queue" /></RoleRoute>
                 </ProtectedRoute>
               } />
               <Route path="/emergency-report" element={
                 <ProtectedRoute>
-                  <RoleRoute roles={['resident', 'dispatcher', 'responder', 'admin']}><Dashboard section="new" /></RoleRoute>
+                  <RoleRoute pageKey="new"><Dashboard section="new" /></RoleRoute>
                 </ProtectedRoute>
               } />
               <Route path="/profile" element={
@@ -126,7 +126,7 @@ const Routes = () => {
               } />
               <Route path="/settings" element={
                 <ProtectedRoute>
-                  <RoleRoute roles={['admin']}><Dashboard section="settings" /></RoleRoute>
+                  <RoleRoute pageKey="settings"><Dashboard section="settings" /></RoleRoute>
                 </ProtectedRoute>
               } />
               <Route path="*" element={<NotFound />} />
