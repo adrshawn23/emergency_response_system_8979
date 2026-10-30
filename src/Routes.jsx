@@ -99,6 +99,11 @@ const Routes = () => {
                   <RoleRoute roles={['admin']}><Dashboard section="residents" /></RoleRoute>
                 </ProtectedRoute>
               } />
+              <Route path="/access-control" element={
+                <ProtectedRoute>
+                  <RoleRoute roles={['admin']}><Dashboard section="access" /></RoleRoute>
+                </ProtectedRoute>
+              } />
               <Route path="/report-management" element={
                 <ProtectedRoute>
                   <RoleRoute roles={['dispatcher', 'responder', 'admin']}><Dashboard section="queue" /></RoleRoute>
