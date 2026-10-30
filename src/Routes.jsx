@@ -18,8 +18,21 @@ import Settings from './pages/settings';
 import NotificationsPage from './pages/notifications';
 import Dashboard from './pages/dashboard';
 
+const SuspendedScreen = () => {
+  const { signOut } = useAuth();
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-slate-50 p-6">
+      <div className="w-full max-w-sm rounded-2xl bg-white p-8 text-center shadow-xl ring-1 ring-slate-900/5">
+        <h1 className="text-lg font-bold text-slate-900">Account suspended</h1>
+        <p className="mt-2 text-sm text-slate-500">Your access has been suspended by an administrator. Contact the barangay office if you believe this is a mistake.</p>
+        <button onClick={signOut} className="mt-6 w-full rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-700">Sign out</button>
+      </div>
+    </div>
+  );
+};
+
 const ProtectedRoute = ({ children }) => {
-  const { user, loading } = useAuth();
+  const { user, profile, loading } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -34,6 +47,10 @@ const ProtectedRoute = ({ children }) => {
 
   if (!user) {
     return null;
+  }
+
+  if (profile?.account_status === 'suspended') {
+    return <SuspendedScreen />;
   }
 
   return children;

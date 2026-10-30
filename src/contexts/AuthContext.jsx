@@ -45,8 +45,25 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     if (!user) return;
 
-    supabase.from('user_profiles').select('*').eq('id', user.id).single()
-      .then(({ data }) => setProfile(data || null));
+    const fetchProfile = () =>
+      supabase.from('user_profiles').select('*').eq('id', user.id).single()
+        .then(({ data }) => setProfile(data || null));
+
+    fetchProfile();
+
+    // Realtime: role / status / account_status edits made by an admin apply
+    // to this live session without requiring a re-login.
+    const channel = supabase
+      .channel(`user_profile:${user.id}`)
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'user_profiles',
+        filter: `id=eq.${user.id}`
+      }, payload => setProfile(payload.new))
+      .subscribe();
+
+    return () => supabase.removeChannel(channel);
   }, [user])
 
   const value = {
