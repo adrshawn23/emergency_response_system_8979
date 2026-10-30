@@ -6,6 +6,7 @@ import { useMockData } from '../../contexts/MockDataContext';
 import NotificationBell from '../../components/NotificationBell';
 import { supabase } from '../../lib/supabase';
 import DepartmentManagementSection from './components/DepartmentManagementSection';
+import UserAccessManager from './components/UserAccessManager';
 import PendingRegistrations from '../user-management/components/PendingRegistrations';
 import { isPointInBoundary } from '../../utils/geofence';
 import ResidentHome from '../resident-home';
@@ -96,6 +97,7 @@ const sectionCopy = {
   queue: { eyebrow: 'Live operations', title: 'Incident queue', description: 'Review, prioritize, and assign incoming emergency reports.' },
   new: { eyebrow: 'Live operations', title: 'New incident report', description: 'Create a report now. Dispatch sees urgent reports immediately, even while verification is pending.' },
   residents: { eyebrow: 'Administration', title: 'Residents & ID review', description: 'Review registrations, account status, and ID review outcomes.' },
+  access: { eyebrow: 'Administration', title: 'Access control', description: 'Change user roles and suspend or reactivate accounts. Changes apply to live sessions immediately.' },
   departments: { eyebrow: 'Administration', title: 'Departments & memberships', description: 'Only administrators can change department access, roles, and memberships.' },
   settings: { eyebrow: 'Administration', title: 'System settings', description: 'Configure service boundaries, data retention, and notification providers.' },
   profile: { eyebrow: 'Account', title: 'Your profile', description: 'Review your command-center account and operational availability.' }
@@ -395,6 +397,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
     { key: 'queue', label: 'Incident queue', icon: 'Siren', path: '/report-management', roles: ['admin', 'dispatcher'] },
     { key: 'new', label: 'New incident', icon: 'PlusCircle', path: '/emergency-report', roles: ['admin', 'dispatcher'] },
     { key: 'residents', label: 'Residents & review', icon: 'Users', path: '/user-management', roles: ['admin'] },
+    { key: 'access', label: 'Access control', icon: 'ShieldCheck', path: '/access-control', roles: ['admin'] },
     { key: 'departments', label: 'Departments', icon: 'Building2', path: '/department-management', roles: ['admin'] },
     { key: 'settings', label: 'System settings', icon: 'Settings', path: '/settings', roles: ['admin'] },
     // Responders/residents land on /profile via headers and need a way back —
