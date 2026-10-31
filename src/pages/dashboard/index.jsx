@@ -393,22 +393,30 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
     setPendingUsers(prev => prev.filter(u => u?.id !== userId));
   };
 
+  // One canonical entry per page — the editable page_permissions matrix is
+  // the single gate (canAccessPage). Responder/resident relabeling is kept
+  // as per-role variants instead of duplicate entries.
+  const linkVariants = {
+    responder: {
+      command: { label: 'Response board', icon: 'Ambulance' },
+    },
+    resident: {
+      command: { label: 'Home', icon: 'Home' },
+      new: { label: 'Report emergency', icon: 'Siren' },
+    },
+  };
   const links = [
-    { key: 'command', label: 'Command center', icon: 'LayoutDashboard', path: '/', roles: ['admin', 'dispatcher'] },
-    { key: 'queue', label: 'Incident queue', icon: 'Siren', path: '/report-management', roles: ['admin', 'dispatcher'] },
-    { key: 'new', label: 'New incident', icon: 'PlusCircle', path: '/emergency-report', roles: ['admin', 'dispatcher'] },
-    { key: 'residents', label: 'Residents & review', icon: 'Users', path: '/user-management', roles: ['admin'] },
-    { key: 'access', label: 'Access control', icon: 'ShieldCheck', path: '/access-control', roles: ['admin'] },
-    { key: 'departments', label: 'Departments', icon: 'Building2', path: '/department-management', roles: ['admin'] },
-    { key: 'settings', label: 'System settings', icon: 'Settings', path: '/settings', roles: ['admin'] },
-    // Responders/residents land on /profile via headers and need a way back —
-    // key 'command' switches activeSection back to their board/home view.
-    { key: 'command', label: 'Response board', icon: 'Ambulance', path: '/', roles: ['responder'] },
-    { key: 'new', label: 'New incident', icon: 'PlusCircle', path: '/emergency-report', roles: ['responder'] },
-    { key: 'command', label: 'Home', icon: 'Home', path: '/', roles: ['resident'] },
-    { key: 'new', label: 'Report emergency', icon: 'Siren', path: '/emergency-report', roles: ['resident'] },
-    { key: 'profile', label: 'Profile', icon: 'User', path: '/profile', roles: ['admin', 'dispatcher', 'responder', 'resident'] }
-  ].filter(link => canAccessPage(link.key, profile?.role));
+    { key: 'command', label: 'Command center', icon: 'LayoutDashboard', path: '/' },
+    { key: 'queue', label: 'Incident queue', icon: 'Siren', path: '/report-management' },
+    { key: 'new', label: 'New incident', icon: 'PlusCircle', path: '/emergency-report' },
+    { key: 'residents', label: 'Residents & review', icon: 'Users', path: '/user-management' },
+    { key: 'access', label: 'Access control', icon: 'ShieldCheck', path: '/access-control' },
+    { key: 'departments', label: 'Departments', icon: 'Building2', path: '/department-management' },
+    { key: 'settings', label: 'System settings', icon: 'Settings', path: '/settings' },
+    { key: 'profile', label: 'Profile', icon: 'User', path: '/profile' }
+  ]
+    .filter(link => canAccessPage(link.key, profile?.role))
+    .map(link => ({ ...link, ...(linkVariants[profile?.role]?.[link.key] || {}) }));
   const current = sectionCopy[section];
   const filteredReports = searchQuery 
     ? reports.filter(report => {
