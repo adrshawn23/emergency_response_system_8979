@@ -9,7 +9,10 @@
 //     confidence, and match flags are never read or trusted.
 //   * Extracted fields are produced from raw OCR text only; declared values
 //     are never copied into extraction results.
-//   * Outcomes are 'pending_admin' or 'correction_required' — NEVER approval.
+//   * Outcomes are 'pending_admin', 'correction_required', or 'auto_approved'.
+//     Auto-approval fires ONLY on server OCR: confidence >= threshold AND
+//     every field verified as a real match (declared-value fallbacks don't
+//     count). Anything less stays pending for a human.
 //   * The ID image goes to the private 'id-documents' bucket at an
 //     unpredictable path; nothing lands in auth metadata or logs.
 //   * Rate-limited per user (default 5 submissions/hour).
@@ -187,12 +190,63 @@ Deno.serve(async (req: Request) => {
 
     // --- extract + compare (server-trusted values only) -------------------
     const extracted = extractFields(ocr.text);
+    const nameCmp = compareNames(declared.fullName ?? '', extracted.fullName);
+    const dobCmp = compareBirthdates(declared.birthdate ?? '', extracted.birthdate);
+    const addrCmp = compareAddressJurisdiction(extracted.address ?? declared.address ?? '');
     const decision = decideVerification({
-      name: compareNames(declared.fullName ?? '', extracted.fullName),
-      birthdate: compareBirthdates(declared.birthdate ?? '', extracted.birthdate),
-      address: compareAddressJurisdiction(extracted.address ?? declared.address ?? ''),
+      name: nameCmp,
+      birthdate: dobCmp,
+      address: addrCmp,
       ocrConfidence: ocr.confidence,
     });
+
+    // --- auto-approve: high-confidence server OCR + every field matched ---
+    // extracted.address must be non-null — without it the jurisdiction check
+    // silently falls back to the applicant's own declared address.
+    const allFieldsMatch =
+      nameCmp.status === 'match' &&
+      dobCmp.status === 'match' &&
+      addrCmp.status === 'match' &&
+      !!extracted.address;
+
+    if (allFieldsMatch && ocr.confidence >= AUTO_APPROVE_CONFIDENCE) {
+      const { data: row, error } = await admin
+        .from('id_verifications')
+        .insert({
+          user_id: user.id,
+          id_document_url: objectPath,
+          document_storage_path: objectPath,
+          verification_status: 'approved',
+          decision_reason: `Auto-approved: OCR confidence ${ocr.confidence}% and all fields matched.`,
+          ocr_data: {
+            extracted_name: extracted.fullName,
+            extracted_birthdate: extracted.birthdate,
+            extracted_address: extracted.address,
+            outcome: 'auto_approved',
+            notes: decision.notes,
+            policy_version: 'verify-1.1',
+          },
+          ocr_confidence: ocr.confidence,
+        })
+        .select('id')
+        .single();
+      if (error) return json({ error: 'insert_failed', message: error.message }, 500);
+
+      await admin
+        .from('user_profiles')
+        .update({ status: 'active', account_status: 'active' })
+        .eq('id', user.id);
+
+      // Close out any earlier open submissions for this user.
+      await admin
+        .from('id_verifications')
+        .update({ verification_status: 'superseded' })
+        .eq('user_id', user.id)
+        .eq('verification_status', 'pending')
+        .neq('id', row?.id ?? '');
+
+      return json({ outcome: 'auto_approved', verification_id: row?.id });
+    }
 
     // Persist only extracted fields + decision notes — never raw OCR text.
     const { data: row, error } = await admin
