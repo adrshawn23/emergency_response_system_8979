@@ -348,6 +348,14 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
     return { error };
   };
 
+  // Fire-and-forget: notify-decision emails the applicant the stored
+  // decision (approve/reject/needs_clarity). No-op until the function and
+  // RESEND_API_KEY are deployed.
+  const notifyDecision = (verificationId) => {
+    if (!verificationId) return;
+    supabase.functions.invoke('notify-decision', { body: { verification_id: verificationId } }).catch(() => {});
+  };
+
   const findOpenVerification = (userId) =>
     idVerifications.find(v => v.user_id === userId && v.verification_status !== 'superseded');
 
@@ -360,6 +368,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
         setPendingUsers(prev => prev.filter(u => u?.id !== userId));
         setIdVerifications(prev => prev.map(v =>
           v.id === verification.id ? { ...v, verification_status: 'approved', reviewed_by: profile?.id } : v));
+        notifyDecision(verification.id);
         return;
       }
     }
@@ -374,6 +383,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
       return;
     }
     setPendingUsers(prev => prev.filter(u => u?.id !== userId));
+    notifyDecision(verification?.id);
   };
 
   const handlePendingReject = async (userId, reason) => {
@@ -391,6 +401,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
       setPendingUsers(prev => prev.filter(u => u?.id !== userId));
       setIdVerifications(prev => prev.map(v =>
         v.id === verification.id ? { ...v, verification_status: 'rejected', reviewed_by: profile?.id, review_notes: rejectionReason } : v));
+      notifyDecision(verification.id);
       return;
     }
 
@@ -405,6 +416,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
       return;
     }
     setPendingUsers(prev => prev.filter(u => u?.id !== userId));
+    notifyDecision(verification.id);
   };
 
   // One canonical entry per page — the editable page_permissions matrix is
@@ -721,6 +733,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
         .eq('id', selectedVerification.user_id);
       if (e2) console.error('Account activation failed:', e2);
     }
+    notifyDecision(selectedVerification.id);
     closeReviewWith('approved');
   };
 
@@ -738,6 +751,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
         .eq('id', selectedVerification.id);
       if (e1) { console.error('Review reject failed:', e1); return; }
     }
+    notifyDecision(selectedVerification.id);
     closeReviewWith('rejected', { review_notes: reason });
   };
 

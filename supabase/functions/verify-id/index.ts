@@ -9,10 +9,14 @@
 //     confidence, and match flags are never read or trusted.
 //   * Extracted fields are produced from raw OCR text only; declared values
 //     are never copied into extraction results.
-//   * Outcomes are 'pending_admin', 'correction_required', or 'auto_approved'.
-//     Auto-approval fires ONLY on server OCR: confidence >= threshold AND
-//     every field verified as a real match (declared-value fallbacks don't
-//     count). Anything less stays pending for a human.
+//   * Outcomes: 'pending_admin', 'correction_required', 'auto_approved',
+//     'auto_rejected'. Auto-approval fires ONLY on server OCR: confidence
+//     >= 90% AND every field verified as a real match (declared-value
+//     fallbacks don't count). Confidence < 30% means the image is
+//     unreadable → auto-rejected with a resubmission email. Anything in
+//     between stays pending for a human.
+//   * Decision emails go through _shared/email.ts (Resend); they no-op
+//     until RESEND_API_KEY is set.
 //   * The ID image goes to the private 'id-documents' bucket at an
 //     unpredictable path; nothing lands in auth metadata or logs.
 //   * Rate-limited per user (default 5 submissions/hour).
@@ -26,9 +30,15 @@ import {
   decideVerification, normalizeText,
   OUTCOME_PENDING, OUTCOME_CORRECTION,
 } from '../_shared/verificationRules.ts';
+import { sendEmail, decisionEmail } from '../_shared/email.ts';
 
 const RATE_LIMIT_PER_HOUR = 5;
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+// Auto-approve only when server OCR is this confident AND all fields match.
+const AUTO_APPROVE_CONFIDENCE = 90;
+// Below this confidence the document is unreadable — auto-reject, the
+// applicant is emailed to resubmit a clearer image.
+const AUTO_REJECT_CONFIDENCE = 30;
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
@@ -200,6 +210,39 @@ Deno.serve(async (req: Request) => {
       ocrConfidence: ocr.confidence,
     });
 
+    // --- auto-reject: document too unreadable for any comparison ----------
+    const rejectReason =
+      `Your ID photo could not be read automatically (scan quality ${ocr.confidence}%). ` +
+      'Please submit a clearer, well-lit image of a valid ID.';
+    if (ocr.confidence < AUTO_REJECT_CONFIDENCE) {
+      const { data: row, error } = await admin
+        .from('id_verifications')
+        .insert({
+          user_id: user.id,
+          id_document_url: objectPath,
+          document_storage_path: objectPath,
+          verification_status: 'rejected',
+          decision_reason: `Auto-rejected: OCR confidence ${ocr.confidence}% below ${AUTO_REJECT_CONFIDENCE}%.`,
+          ocr_data: {
+            extracted_name: extracted.fullName,
+            extracted_birthdate: extracted.birthdate,
+            extracted_address: extracted.address,
+            outcome: 'auto_rejected',
+            notes: decision.notes,
+            policy_version: 'verify-1.1',
+          },
+          ocr_confidence: ocr.confidence,
+        })
+        .select('id')
+        .single();
+      if (error) return json({ error: 'insert_failed', message: error.message }, 500);
+
+      if (user.email) {
+        await sendEmail(user.email, 'Registration not approved — ID unreadable', decisionEmail('rejected', rejectReason));
+      }
+      return json({ outcome: 'auto_rejected', verification_id: row?.id, reasons: [rejectReason] });
+    }
+
     // --- auto-approve: high-confidence server OCR + every field matched ---
     // extracted.address must be non-null — without it the jurisdiction check
     // silently falls back to the applicant's own declared address.
@@ -245,6 +288,9 @@ Deno.serve(async (req: Request) => {
         .eq('verification_status', 'pending')
         .neq('id', row?.id ?? '');
 
+      if (user.email) {
+        await sendEmail(user.email, 'Account approved — Kalubihan Emergency Command', decisionEmail('approved', 'Your ID was verified against your registration details.'));
+      }
       return json({ outcome: 'auto_approved', verification_id: row?.id });
     }
 
@@ -270,6 +316,14 @@ Deno.serve(async (req: Request) => {
       .select('id')
       .single();
     if (error) return json({ error: 'insert_failed', message: error.message }, 500);
+
+    if (decision.outcome === OUTCOME_CORRECTION && user.email) {
+      await sendEmail(
+        user.email,
+        'ID correction required — Kalubihan Emergency Command',
+        decisionEmail('correction_required', decision.reasons.join(' ')),
+      );
+    }
 
     return json({
       outcome: decision.outcome,

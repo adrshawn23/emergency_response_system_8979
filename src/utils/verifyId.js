@@ -42,6 +42,10 @@ export const submitIdForVerification = async ({ file, declared, userId }) => {
     if (!error && data?.outcome === 'auto_approved') {
       return 'Your ID was verified automatically — your account is now active. You can sign in.';
     }
+    if (!error && data?.outcome === 'auto_rejected') {
+      const reasons = (data.reasons || []).join(' ');
+      return `Registration received, but the ID could not be verified: ${reasons} Sign in and resubmit a clearer photo — your account is not locked.`;
+    }
     if (!error && data?.outcome === 'correction_required') {
       const reasons = (data.reasons || []).join(' ');
       return `Registration received, but the ID needs correction: ${reasons} Sign in and resubmit a clearer or matching ID — your account is not locked.`;
