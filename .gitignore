@@ -13,3 +13,5 @@ test-results/
 report.zip
 
 .taste-skill/
+
+supabase/.temp/
