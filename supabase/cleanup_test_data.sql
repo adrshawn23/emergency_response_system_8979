@@ -36,13 +36,16 @@ WHERE email LIKE 'e2e.%';
 DELETE FROM public.id_verifications iv
 USING public.user_profiles p
 WHERE iv.user_id = p.id
-  AND p.email LIKE 'test.%@yopmail.com';
+  AND (p.email LIKE 'test.%@yopmail.com'
+       OR p.email LIKE 'shawnmichaeldagatan+%@gmail.com');
 
 DELETE FROM public.user_profiles
-WHERE email LIKE 'test.%@yopmail.com';
+WHERE email LIKE 'test.%@yopmail.com'
+   OR email LIKE 'shawnmichaeldagatan+%@gmail.com';
 
 DELETE FROM auth.users
-WHERE email LIKE 'test.%@yopmail.com';
+WHERE email LIKE 'test.%@yopmail.com'
+   OR email LIKE 'shawnmichaeldagatan+%@gmail.com';
 
 -- 5. Review what remains (expect only real accounts/reports).
 -- SELECT email, role, account_status FROM public.user_profiles;
