@@ -257,6 +257,14 @@ const Register = () => {
       if (signUpError) throw signUpError;
       if (!data?.user) throw new Error('Registration failed. Please try again.');
 
+      // Already-registered emails get an obfuscated response: a user object,
+      // no session, EMPTY identities — and no confirmation email is sent.
+      // Detect it and fail clearly instead of showing a code screen that
+      // can never be completed.
+      if (!data.session && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+        throw new Error('This email is already registered. Try signing in, or use Forgot Password to recover the account.');
+      }
+
       // Email confirmation ON → no session yet. Show the 6-digit code screen;
       // after verifyOtp produces a session, server-side ID verification runs.
       if (!data.session) {
