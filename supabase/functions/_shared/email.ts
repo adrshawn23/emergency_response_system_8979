@@ -46,23 +46,30 @@ export const sendEmail = async (
 };
 
 // Shared branded-ish layout for decision notices. Text-only friendly.
-export const decisionEmail = (status: 'approved' | 'rejected' | 'correction_required', reason: string) => {
+export const decisionEmail = (
+  status: 'approved' | 'rejected' | 'correction_required' | 'pending',
+  reason: string,
+) => {
   const heading = {
     approved: 'Your account has been approved',
     rejected: 'Your registration was not approved',
     correction_required: 'Your ID needs correction',
+    pending: 'Your ID is under review',
   }[status];
-  const color = { approved: '#059669', rejected: '#dc2626', correction_required: '#d97706' }[status];
+  const color = { approved: '#059669', rejected: '#dc2626', correction_required: '#d97706', pending: '#2563eb' }[status];
+
+  const cta = {
+    approved: 'You can now sign in to Kalubihan Emergency Command.',
+    pending: 'You will receive another email once a decision is made — usually within 24 hours.',
+    rejected: 'Sign in to your account to resubmit a clearer or corrected ID, or contact the barangay office if you believe this was a mistake.',
+    correction_required: 'Sign in to your account to resubmit a clearer or corrected ID, or contact the barangay office if you believe this was a mistake.',
+  }[status];
 
   return `
     <div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;padding:24px">
       <h2 style="color:${color};margin:0 0 12px">${heading}</h2>
       <p style="color:#334155;line-height:1.6;margin:0 0 8px">${reason}</p>
-      ${
-        status === 'approved'
-          ? '<p style="color:#334155;line-height:1.6">You can now sign in to Kalubihan Emergency Command.</p>'
-          : '<p style="color:#334155;line-height:1.6">Sign in to your account to resubmit a clearer or corrected ID, or contact the barangay office if you believe this was a mistake.</p>'
-      }
+      <p style="color:#334155;line-height:1.6">${cta}</p>
       <p style="color:#94a3b8;font-size:12px;margin-top:24px">Kalubihan Emergency Command — automated notice, do not reply.</p>
     </div>`;
 };

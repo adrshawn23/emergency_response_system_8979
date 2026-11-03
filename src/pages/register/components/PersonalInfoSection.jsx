@@ -45,7 +45,7 @@ const PersonalInfoSection = ({
           value={formData?.email}
           onChange={onChange}
           error={errors?.email}
-          description="We'll use this for account verification and notifications"
+          description="Approval or rejection of your account is emailed here — use a real address you can access (Gmail, Yahoo, Outlook, etc.)"
           required
           className="w-full"
         />

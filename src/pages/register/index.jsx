@@ -15,6 +15,43 @@ import { isAddressInServiceArea } from '../../utils/geofence';
 import { fileToDataUrl } from '../../utils/ocr';
 import { submitIdForVerification } from '../../utils/verifyId';
 
+// Emails must be real deliverable addresses — verification decisions are
+// emailed to this address, so a fake address means the applicant never
+// learns the outcome.
+const EMAIL_RE = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+
+const DISPOSABLE_EMAIL_DOMAINS = new Set([
+  'mailinator.com', 'tempmail.com', '10minutemail.com', 'guerrillamail.com',
+  'guerrillamail.net', 'yopmail.com', 'trashmail.com', 'dispostable.com',
+  'example.com', 'test.com', 'maildrop.cc', 'throwawaymail.com',
+]);
+
+// Frequent typos of popular providers → suggest the likely intended domain.
+const EMAIL_TYPO_DOMAINS = {
+  'gmial.com': 'gmail.com', 'gamil.com': 'gmail.com', 'gmal.com': 'gmail.com',
+  'gmaill.com': 'gmail.com', 'gmail.co': 'gmail.com', 'gmal.com.ph': 'gmail.com',
+  'yaho.com': 'yahoo.com', 'yahooo.com': 'yahoo.com', 'yhoo.com': 'yahoo.com',
+  'hotmal.com': 'hotmail.com', 'hotmial.com': 'hotmail.com', 'hotmali.com': 'hotmail.com',
+  'outlok.com': 'outlook.com', 'outloook.com': 'outlook.com', 'outlool.com': 'outlook.com',
+  'iclod.com': 'icloud.com', 'icoud.com': 'icloud.com',
+};
+
+const validateEmail = (raw) => {
+  const email = (raw || '').trim().toLowerCase();
+  if (!email) return 'Email is required';
+  if (email.includes(' ')) return 'Email must not contain spaces';
+  if (!EMAIL_RE.test(email)) {
+    return 'Enter a real email address (e.g., name@gmail.com) — decisions are emailed here';
+  }
+  const domain = email.split('@')[1];
+  if (DISPOSABLE_EMAIL_DOMAINS.has(domain)) {
+    return 'Temporary or disposable email addresses are not allowed — use Gmail, Yahoo, Outlook or another real email';
+  }
+  const suggestion = EMAIL_TYPO_DOMAINS[domain];
+  if (suggestion) return `Did you mean ${email.split('@')[0]}@${suggestion}?`;
+  return null;
+};
+
 const Register = () => {
   const navigate = useNavigate();
   const { signUp } = useAuth();
@@ -76,11 +113,8 @@ const Register = () => {
       case 1: // Personal Information
         if (!formData?.firstName?.trim()) newErrors.firstName = 'First name is required';
         if (!formData?.lastName?.trim()) newErrors.lastName = 'Last name is required';
-        if (!formData?.email?.trim()) {
-          newErrors.email = 'Email is required';
-        } else if (!/\S+@\S+\.\S+/?.test(formData?.email)) {
-          newErrors.email = 'Please enter a valid email address';
-        }
+        const emailError = validateEmail(formData?.email);
+        if (emailError) newErrors.email = emailError;
         if (!formData?.phone?.trim()) {
           newErrors.phone = 'Phone number is required';
         } else if (!/^0\d{10}$/.test(formData?.phone)) {
@@ -194,7 +228,7 @@ const Register = () => {
       // and any OCR results are NEVER placed in auth metadata — the document
       // goes to private storage and server-controlled OCR afterwards.
       const { data, error: signUpError } = await signUp(
-        formData.email.trim(),
+        formData.email.trim().toLowerCase(),
         formData.password,
         {
           first_name: formData.firstName,

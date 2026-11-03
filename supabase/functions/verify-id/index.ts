@@ -195,6 +195,10 @@ Deno.serve(async (req: Request) => {
         .select('id')
         .single();
       if (error) return json({ error: 'insert_failed', message: error.message }, 500);
+
+      if (user.email) {
+        await sendEmail(user.email, 'ID under review — Kalubihan Emergency Command', decisionEmail('pending', 'Your ID was received and is queued for manual verification.'));
+      }
       return json({ outcome: OUTCOME_PENDING, verification_id: row?.id, ocr_unavailable: true });
     }
 
@@ -322,6 +326,12 @@ Deno.serve(async (req: Request) => {
         user.email,
         'ID correction required — Kalubihan Emergency Command',
         decisionEmail('correction_required', decision.reasons.join(' ')),
+      );
+    } else if (decision.outcome === OUTCOME_PENDING && user.email) {
+      await sendEmail(
+        user.email,
+        'ID under review — Kalubihan Emergency Command',
+        decisionEmail('pending', 'Your ID was received and is queued for manual verification.'),
       );
     }
 
