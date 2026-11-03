@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Button from '../../components/ui/Button';
+import Input from '../../components/ui/Input';
 import { Checkbox } from '../../components/ui/Checkbox';
 import Icon from '../../components/AppIcon';
 import PersonalInfoSection from './components/PersonalInfoSection';
@@ -89,6 +90,12 @@ const Register = () => {
   });
 
   const [errors, setErrors] = useState({});
+  // Shown instead of the form once signup succeeds but email confirmation
+  // is enabled — the applicant must enter the code before finishing.
+  const [awaitingOtp, setAwaitingOtp] = useState(false);
+  const [otp, setOtp] = useState('');
+  const [otpResent, setOtpResent] = useState(false);
+  const [pendingUserId, setPendingUserId] = useState(null);
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e?.target;
@@ -250,13 +257,17 @@ const Register = () => {
       if (signUpError) throw signUpError;
       if (!data?.user) throw new Error('Registration failed. Please try again.');
 
-      // handle_new_user creates the pending profile + a bare verification row.
-      // Now submit the ID for SERVER-SIDE extraction — only possible when the
-      // signup returned a live session (i.e., email confirmation is off).
-      // Without a session the user confirms email first, then resubmits the ID
-      // from their account page.
+      // Email confirmation ON → no session yet. Show the 6-digit code screen;
+      // after verifyOtp produces a session, server-side ID verification runs.
+      if (!data.session) {
+        setPendingUserId(data.user.id);
+        setAwaitingOtp(true);
+        return; // finally{} clears loading state
+      }
+
+      // Email confirmation OFF → session already live; verify the ID now.
       let verificationNote = null;
-      if (data.session && formData.idDocument) {
+      if (formData.idDocument) {
         setSubmitPhase('Verifying your ID…');
         verificationNote = await submitIdForVerification({
           file: formData.idDocument,
@@ -281,6 +292,67 @@ const Register = () => {
     } finally {
       setIsLoading(false);
       setSubmitPhase('');
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    const code = otp.trim();
+    if (!/^\d{6}$/.test(code)) {
+      setErrors({ otp: 'Enter the 6-digit code from the email' });
+      return;
+    }
+    setErrors({});
+    setIsLoading(true);
+    setSubmitPhase('Verifying code…');
+    try {
+      const { data, error } = await supabase.auth.verifyOtp({
+        email: formData.email.trim().toLowerCase(),
+        token: code,
+        type: 'signup',
+      });
+      if (error) throw error;
+
+      // Session established — now the server can verify the uploaded ID.
+      let verificationNote = null;
+      if (data?.session && formData.idDocument) {
+        setSubmitPhase('Verifying your ID…');
+        verificationNote = await submitIdForVerification({
+          file: formData.idDocument,
+          declared: {
+            fullName: `${formData.firstName} ${formData.lastName}`,
+            birthdate: formData.dateOfBirth,
+            address: formData.address,
+          },
+          userId: pendingUserId,
+        });
+      }
+
+      navigate('/login', {
+        state: {
+          message: verificationNote || 'Email verified. An administrator will review your account and ID before activation.',
+          type: 'success'
+        }
+      });
+    } catch (error) {
+      console.error('OTP verification error:', error);
+      setErrors({ otp: error?.message || 'Incorrect or expired code — try again or resend.' });
+    } finally {
+      setIsLoading(false);
+      setSubmitPhase('');
+    }
+  };
+
+  const handleResendOtp = async () => {
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: formData.email.trim().toLowerCase(),
+      });
+      if (error) throw error;
+      setOtpResent(true);
+    } catch (error) {
+      console.error('Resend code failed:', error);
+      setErrors({ otp: 'Could not resend the code — wait a moment and try again.' });
     }
   };
 
@@ -447,8 +519,62 @@ const Register = () => {
               </div>
             </aside>
 
-            {/* Main Form */}
+            {/* Main Form — swaps to the OTP screen once the account exists
+                but the email still needs confirming */}
             <main className="flex-1 min-w-0 w-full">
+              {awaitingOtp ? (
+                <div className="bg-card rounded-2xl border border-slate-200/70 p-8 max-w-lg mx-auto space-y-6">
+                  <div className="flex items-center justify-center w-14 h-14 rounded-full bg-primary/10 mx-auto">
+                    <Icon name="MailCheck" size={28} className="text-primary" />
+                  </div>
+                  <div className="text-center space-y-2">
+                    <h2 className="text-xl font-semibold text-foreground">Check your email</h2>
+                    <p className="text-sm text-muted-foreground">
+                      We sent a 6-digit verification code to{' '}
+                      <span className="font-medium text-foreground">{formData?.email}</span>.
+                      Enter it below to finish registering — this confirms the address is yours.
+                    </p>
+                  </div>
+
+                  <div>
+                    <Input
+                      label="Verification code"
+                      type="text"
+                      inputMode="numeric"
+                      name="otp"
+                      placeholder="123456"
+                      value={otp}
+                      onChange={(e) => setOtp(e?.target?.value?.replace(/\D/g, '').slice(0, 6))}
+                      error={errors?.otp}
+                      required
+                      className="w-full text-center tracking-widest text-lg"
+                    />
+                  </div>
+
+                  <Button
+                    type="button"
+                    onClick={handleVerifyOtp}
+                    loading={isLoading}
+                    iconName="ShieldCheck"
+                    iconPosition="left"
+                    className="w-full"
+                  >
+                    {isLoading ? (submitPhase || 'Verifying…') : 'Verify & finish registration'}
+                  </Button>
+
+                  <p className="text-xs text-center text-muted-foreground">
+                    Didn't get the code? Check spam, or{' '}
+                    <button
+                      type="button"
+                      onClick={handleResendOtp}
+                      className="text-primary hover:underline font-medium"
+                    >
+                      resend it
+                    </button>
+                    {otpResent && <span className="text-success"> — sent again.</span>}
+                  </p>
+                </div>
+              ) : (
               <form onSubmit={handleSubmit} className="space-y-8">
               {/* Step Header */}
               <div className="bg-card rounded-2xl border border-slate-200/70 p-6">
@@ -537,6 +663,7 @@ const Register = () => {
                 </div>
               )}
               </form>
+              )}
             </main>
           </div>
         </div>

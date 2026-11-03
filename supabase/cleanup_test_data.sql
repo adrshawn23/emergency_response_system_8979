@@ -32,6 +32,18 @@ WHERE email LIKE 'e2e.%';
 DELETE FROM auth.users
 WHERE email LIKE 'e2e.%';
 
+-- 5. Ad-hoc live test account (manual verify-id / report-gate tests).
+DELETE FROM public.id_verifications iv
+USING public.user_profiles p
+WHERE iv.user_id = p.id
+  AND p.email = 'test.pending.resident@yopmail.com';
+
+DELETE FROM public.user_profiles
+WHERE email = 'test.pending.resident@yopmail.com';
+
+DELETE FROM auth.users
+WHERE email = 'test.pending.resident@yopmail.com';
+
 -- 5. Review what remains (expect only real accounts/reports).
 -- SELECT email, role, account_status FROM public.user_profiles;
 -- SELECT content, status FROM public.emergency_reports;
