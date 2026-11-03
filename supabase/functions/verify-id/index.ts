@@ -10,11 +10,12 @@
 //   * Extracted fields are produced from raw OCR text only; declared values
 //     are never copied into extraction results.
 //   * Outcomes: 'pending_admin', 'correction_required', 'auto_approved',
-//     'auto_rejected'. Auto-approval fires ONLY on server OCR: confidence
-//     >= 90% AND every field verified as a real match (declared-value
-//     fallbacks don't count). Confidence < 30% means the image is
-//     unreadable → auto-rejected with a resubmission email. Anything in
-//     between stays pending for a human.
+//     'auto_rejected'. Auto-approval fires when EVERY field is genuinely
+//     extracted from the ID and matches the declared value (declared-value
+//     fallbacks don't count) — the match itself is the reliability signal,
+//     so no numeric confidence floor is required. Confidence < 30% means
+//     the image is unreadable → auto-rejected with a resubmission email.
+//     Anything in between stays pending for a human.
 //   * Decision emails go through _shared/email.ts (Resend); they no-op
 //     until RESEND_API_KEY is set.
 //   * The ID image goes to the private 'id-documents' bucket at an
@@ -61,10 +62,8 @@ const sniffImage = (bytes: Uint8Array): 'jpeg' | 'png' | 'webp' | null => {
 // ---------------------------------------------------------------------------
 // Free-tier provider (25k req/month, no card): https://ocr.space/ocrapi
 // Caveat: OCR.space returns no per-document confidence, so a fixed mid-band
-// score is used — real field mismatches still reach correction_required, but
-// auto-approve (<90% never reached) is disabled on this provider and every
-// submission lands in manual review. Set GOOGLE billing later to restore
-// true confidence and auto-decisions.
+// score (70) is used. Auto-approve is field-match-based so it still works on
+// this provider; auto-reject (<30) fires on empty extraction only.
 const runOcrSpace = async (
   imageBytes: Uint8Array,
   apiKey: string,
@@ -288,16 +287,20 @@ Deno.serve(async (req: Request) => {
       return json({ outcome: 'auto_rejected', verification_id: row?.id, reasons: [rejectReason] });
     }
 
-    // --- auto-approve: high-confidence server OCR + every field matched ---
-    // extracted.address must be non-null — without it the jurisdiction check
-    // silently falls back to the applicant's own declared address.
+    // --- auto-approve: every field genuinely extracted AND matched -------
+    // The match itself is the reliability signal — no numeric confidence
+    // floor needed (restores auto-decisions on OCR.space's fixed 70; Google
+    // Vision behaves identically). All three extracted values must be
+    // non-null so nothing can match via a declared-value fallback.
     const allFieldsMatch =
       nameCmp.status === 'match' &&
       dobCmp.status === 'match' &&
       addrCmp.status === 'match' &&
+      !!extracted.fullName &&
+      !!extracted.birthdate &&
       !!extracted.address;
 
-    if (allFieldsMatch && ocr.confidence >= AUTO_APPROVE_CONFIDENCE) {
+    if (allFieldsMatch) {
       const { data: row, error } = await admin
         .from('id_verifications')
         .insert({
