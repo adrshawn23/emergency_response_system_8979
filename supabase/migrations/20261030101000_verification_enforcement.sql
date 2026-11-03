@@ -263,15 +263,18 @@ AS $$
   );
 $$;
 
--- Replace every existing INSERT policy on emergency_reports with the gated
--- one. Policies are permissive (OR'd), so the old permissive policy MUST go.
+-- Replace every policy that permits INSERTs on emergency_reports with the
+-- gated one. Policies are permissive (OR'd), so every permissive path MUST
+-- go — including FOR ALL policies, which appear with cmd='ALL' and would
+-- otherwise keep allowing pending residents to insert.
 DO $$
 DECLARE
   p record;
 BEGIN
   FOR p IN
     SELECT policyname FROM pg_policies
-    WHERE schemaname = 'public' AND tablename = 'emergency_reports' AND cmd = 'INSERT'
+    WHERE schemaname = 'public' AND tablename = 'emergency_reports'
+      AND cmd IN ('INSERT', 'ALL')
   LOOP
     EXECUTE format('DROP POLICY %I ON public.emergency_reports', p.policyname);
   END LOOP;
@@ -280,3 +283,18 @@ END $$;
 CREATE POLICY "active_accounts_insert_reports" ON public.emergency_reports
   FOR INSERT TO authenticated
   WITH CHECK (reporter_id = auth.uid() AND public.caller_can_report());
+
+-- The FOR ALL resident policy above was dropped; restore its non-INSERT
+-- halves so residents keep read/update/delete on their own reports.
+CREATE POLICY "residents_view_own_reports" ON public.emergency_reports
+  FOR SELECT TO authenticated
+  USING (reporter_id = auth.uid());
+
+CREATE POLICY "residents_update_own_reports" ON public.emergency_reports
+  FOR UPDATE TO authenticated
+  USING (reporter_id = auth.uid())
+  WITH CHECK (reporter_id = auth.uid());
+
+CREATE POLICY "residents_delete_own_reports" ON public.emergency_reports
+  FOR DELETE TO authenticated
+  USING (reporter_id = auth.uid());

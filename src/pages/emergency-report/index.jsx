@@ -98,6 +98,19 @@ const EmergencyReport = () => {
     }
     console.log('Form validation passed');
 
+    // Server-side caller_can_report blocks this too (RLS); this client check
+    // gives the resident an explanation instead of a generic insert failure.
+    const staffRoles = ['dispatcher', 'responder', 'admin'];
+    const canReport = profile
+      && (staffRoles.includes(profile.role)
+        || (profile.role === 'resident' && (profile.account_status ?? 'pending') === 'active'));
+    if (!canReport) {
+      setSubmissionError(
+        'Your registration is still pending verification. Reporting is enabled once an administrator approves your account — you will receive an email when that happens.'
+      );
+      return;
+    }
+
     setIsSubmitting(true);
     setSubmissionError(null);
 
