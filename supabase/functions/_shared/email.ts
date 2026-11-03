@@ -64,9 +64,48 @@ export const decisionEmail = (
   const cta = {
     approved: 'You can now sign in to Kalubihan Emergency Response.',
     pending: 'You will receive another email once a decision is made — usually within 24 hours.',
-    rejected: 'Sign in to your account to resubmit a clearer or corrected ID, or contact the barangay office if you believe this was a mistake.',
-    correction_required: 'Sign in to your account to resubmit a clearer or corrected ID, or contact the barangay office if you believe this was a mistake.',
+    rejected: 'If you believe this was a mistake, contact the barangay office to appeal.',
+    correction_required: 'Fix the issue above, then submit a corrected or clearer ID photo.',
   }[status];
+
+  // Numbered guide shown when the user must act — mirrors the resident-home flow.
+  const steps = {
+    approved: null,
+    pending: null,
+    rejected: [
+      'Sign in with the email and password you registered.',
+      'Open your Resident Home — the verification card shows what went wrong.',
+      'Upload a different valid ID, or a clearer photo of the same one.',
+      'Tap "Submit ID for verification" — you\'ll get an email with the new result.',
+    ],
+    correction_required: [
+      'Sign in with the email and password you registered.',
+      'Open your Resident Home — the verification card shows what went wrong.',
+      'Upload a corrected or clearer photo of your ID.',
+      'Tap "Submit ID for verification" — you\'ll get an email with the new result.',
+    ],
+  }[status];
+
+  const stepsHtml = steps
+    ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-top:24px;">
+        <tr>
+          <td>
+            <p style="margin:0 0 10px;font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#0f172a;">What to do next</p>
+            ${steps.map((s, i) => `
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:8px;">
+              <tr>
+                <td width="28" valign="top" style="background-color:${color};border-radius:50%;width:24px;height:24px;text-align:center;vertical-align:middle;">
+                  <span style="font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:700;line-height:24px;color:#ffffff;">${i + 1}</span>
+                </td>
+                <td style="padding-left:12px;">
+                  <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:24px;color:#334155;">${s}</p>
+                </td>
+              </tr>
+            </table>`).join('')}
+          </td>
+        </tr>
+      </table>`
+    : '';
 
   return `
 <!DOCTYPE html>
@@ -103,6 +142,7 @@ export const decisionEmail = (
                   </td>
                 </tr>
               </table>
+              ${stepsHtml}
               <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-top:24px;">
                 <tr>
                   <td style="background-color:#f8fafc;border-left:4px solid ${color};border-radius:6px;padding:12px 16px;">
