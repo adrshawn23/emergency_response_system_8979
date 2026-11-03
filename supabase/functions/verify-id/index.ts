@@ -59,7 +59,48 @@ const sniffImage = (bytes: Uint8Array): 'jpeg' | 'png' | 'webp' | null => {
 // OCR provider — Google Cloud Vision DOCUMENT_TEXT_DETECTION.
 // Swap in Textract/Azure by replacing runOcr; the contract is { text, confidence }.
 // ---------------------------------------------------------------------------
-const runOcr = async (imageBytes: Uint8Array): Promise<{ text: string; confidence: number } | null> => {
+// Free-tier provider (25k req/month, no card): https://ocr.space/ocrapi
+// Caveat: OCR.space returns no per-document confidence, so a fixed mid-band
+// score is used — real field mismatches still reach correction_required, but
+// auto-approve (<90% never reached) is disabled on this provider and every
+// submission lands in manual review. Set GOOGLE billing later to restore
+// true confidence and auto-decisions.
+const runOcrSpace = async (
+  imageBytes: Uint8Array,
+  apiKey: string,
+  format: 'jpeg' | 'png' | 'webp',
+): Promise<{ text: string; confidence: number }> => {
+  const ext = format === 'jpeg' ? 'jpg' : format;
+  const form = new FormData();
+  form.append('file', new Blob([imageBytes as unknown as BlobPart]), `id-image.${ext}`);
+  form.append('filetype', ext.toUpperCase());
+  form.append('language', 'eng');
+  form.append('isOverlayRequired', 'false');
+  form.append('scale', 'true');
+  form.append('OCREngine', '2');
+  const res = await fetch('https://api.ocr.space/parse/image', {
+    method: 'POST',
+    headers: { apikey: apiKey },
+    body: form,
+  });
+  if (!res.ok) throw new Error(`OCR provider error ${res.status}`);
+  const data = await res.json();
+  if (data?.IsErroredOnProcessing) {
+    throw new Error(`OCR provider error: ${(data?.ErrorMessage ?? []).join('; ') || 'processing_failed'}`);
+  }
+  const text: string = (data?.ParsedResults ?? [])
+    .map((r: { ParsedText?: string }) => r?.ParsedText ?? '')
+    .join('\n');
+  return { text, confidence: text.trim() ? 70 : 0 };
+};
+
+const runOcr = async (
+  imageBytes: Uint8Array,
+  format: 'jpeg' | 'png' | 'webp',
+): Promise<{ text: string; confidence: number } | null> => {
+  const ocrSpaceKey = Deno.env.get('OCR_SPACE_API_KEY');
+  if (ocrSpaceKey) return runOcrSpace(imageBytes, ocrSpaceKey, format);
+
   const apiKey = Deno.env.get('GOOGLE_VISION_API_KEY');
   if (!apiKey) return null; // provider not configured → caller falls back to manual review
 
@@ -175,7 +216,7 @@ Deno.serve(async (req: Request) => {
     let ocr: { text: string; confidence: number } | null = null;
     let ocrError: string | null = null;
     try {
-      ocr = await runOcr(imageBytes);
+      ocr = await runOcr(imageBytes, format);
     } catch (e) {
       ocrError = e instanceof Error ? e.message : 'ocr_failed';
     }
