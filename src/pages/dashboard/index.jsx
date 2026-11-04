@@ -163,6 +163,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
   const [isAssistanceModalOpen, setIsAssistanceModalOpen] = useState(false);
   const [selectedAssistanceReport, setSelectedAssistanceReport] = useState(null);
   const [selectedAssistanceDepts, setSelectedAssistanceDepts] = useState([]);
+  const [cdaRequests, setCdaRequests] = useState([]);
   const [imageFiles, setImageFiles] = useState([]);
   const [idVerifications, setIdVerifications] = useState([]);
   const [selectedVerification, setSelectedVerification] = useState(null);
@@ -233,6 +234,25 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
     return () => {
       subscription.unsubscribe();
     };
+  }, []);
+
+  // Staff-side visibility for ALL assistance requests — including ones a
+  // responder initiated from their incident modal. Refetches on any cda row
+  // change so requests surface live.
+  useEffect(() => {
+    const fetchAssistance = async () => {
+      const { data } = await supabase
+        .from('cross_department_assistance')
+        .select('*, requester:user_profiles!requested_by(full_name), department:departments!assisting_department_id(name)')
+        .in('status', ['pending', 'accepted'])
+        .order('created_at', { ascending: false });
+      setCdaRequests(data || []);
+    };
+    fetchAssistance();
+    const cdaChannel = supabase.channel('workspace_cda_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cross_department_assistance' }, () => fetchAssistance())
+      .subscribe();
+    return () => { supabase.removeChannel(cdaChannel); };
   }, []);
 
   // Fetch departments and responders for assignment modal
@@ -628,6 +648,13 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
     }
   };
 
+  // Unique assisting departments per report — merges locally-staged requests
+  // with persisted rows so responder-initiated requests count too.
+  const assistCount = (reportId) => new Set([
+    ...(assistingDepartments.find(a => a.reportId === reportId)?.departmentIds || []),
+    ...cdaRequests.filter(c => c.report_id === reportId).map(c => c.assisting_department_id),
+  ]).size;
+
   const handleReviewClick = (verification) => {
     setSelectedVerification(verification);
     setIsReviewModalOpen(true);
@@ -1010,6 +1037,24 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
             <button onClick={() => navigate('/emergency-report')} className="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white  transition hover:brightness-110"><Icon name="Plus" size={16} className="mr-1 inline"/>New incident</button>
           </div>
         </div>
+        {cdaRequests.filter(c => c.status === 'pending').length > 0 && (
+          <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4">
+            <p className="text-xs font-bold uppercase text-amber-700">Pending assistance requests ({cdaRequests.filter(c => c.status === 'pending').length})</p>
+            <ul className="mt-2 space-y-1.5">
+              {cdaRequests.filter(c => c.status === 'pending').map(row => {
+                const rep = reports.find(r => r.id === row.report_id);
+                return (
+                  <li key={row.id} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-700">
+                    <span className="font-mono text-xs text-slate-500">{rep?.report_id || '—'}</span>
+                    <span className="font-semibold capitalize">{rep?.report_type || rep?.incident_type || 'Incident'}</span>
+                    <span>→ {row.department?.name || 'department'}</span>
+                    <span className="text-xs text-slate-500">requested by {row.requester?.full_name || 'staff'}</span>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
         <div className="mt-5 overflow-x-auto rounded-lg border border-slate-200/70 bg-white">
           <div className="grid min-w-[640px] grid-cols-[minmax(0,1.2fr)_minmax(0,1.3fr)_minmax(110px,.7fr)_minmax(170px,.8fr)] gap-4 border-b border-slate-100 bg-slate-50 px-5 py-3 text-xs font-bold  text-slate-400"><span>Incident</span><span>Location</span><span>Priority</span><span>Status / action</span></div>
           {visibleReports.map(report => <div key={report.id || report.report_id} onClick={() => handleReportClick(report)} className="grid min-w-[640px] grid-cols-[minmax(0,1.2fr)_minmax(0,1.3fr)_minmax(110px,.7fr)_minmax(170px,.8fr)] items-center gap-4 border-b border-slate-100 px-5 py-4 last:border-0 cursor-pointer hover:bg-slate-50 transition">
@@ -1018,7 +1063,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
             <span className={`w-fit rounded-full px-2 py-1 text-[10px] font-bold uppercase ${priorityStyles[report.priority]}`}>{report.priority}</span>
             <div className="flex min-w-0 items-center gap-2">
               <span className={`inline-flex h-8 min-w-[84px] items-center justify-center rounded-full px-2 text-xs font-medium capitalize ${statusStyles[report.status] || 'bg-slate-100 text-slate-700'}`}>{formatStatus(report.status)}</span>
-              {(profile?.role === 'dispatcher' || profile?.role === 'admin') && (report.status) !== 'resolved' && <div className="flex gap-1"><button onClick={(e) => { e.stopPropagation(); (report.status) === 'pending' ? handleAssignClick(report) : setReportStatus(report.report_id || report.id, 'resolved'); }} className="inline-flex h-8 min-w-[72px] items-center justify-center rounded-lg border border-taste-200 bg-taste-50 px-3 text-xs font-bold text-taste-600 transition hover:border-taste-300 hover:bg-taste-100 focus:outline-none focus:ring-2 focus:ring-taste-500 focus:ring-offset-2">{(report.status) === 'pending' ? 'Assign' : 'Resolve'}</button><button onClick={(e) => { e.stopPropagation(); handleAssistanceClick(report); }} className="inline-flex h-8 items-center justify-center gap-1 rounded-lg border border-amber-200 bg-amber-50 px-3 text-xs font-bold text-amber-700 transition hover:border-amber-300 hover:bg-amber-100" title="Request cross-department assistance"><Icon name="Users" size={14}/>{(assistingDepartments.find(a => a.reportId === report.id)?.departmentIds?.length || 0) > 0 && <span className="rounded-full bg-amber-200 px-1.5 text-[10px]">{assistingDepartments.find(a => a.reportId === report.id).departmentIds.length}</span>}</button></div>}
+              {(profile?.role === 'dispatcher' || profile?.role === 'admin') && (report.status) !== 'resolved' && <div className="flex gap-1"><button onClick={(e) => { e.stopPropagation(); (report.status) === 'pending' ? handleAssignClick(report) : setReportStatus(report.report_id || report.id, 'resolved'); }} className="inline-flex h-8 min-w-[72px] items-center justify-center rounded-lg border border-taste-200 bg-taste-50 px-3 text-xs font-bold text-taste-600 transition hover:border-taste-300 hover:bg-taste-100 focus:outline-none focus:ring-2 focus:ring-taste-500 focus:ring-offset-2">{(report.status) === 'pending' ? 'Assign' : 'Resolve'}</button><button onClick={(e) => { e.stopPropagation(); handleAssistanceClick(report); }} className="inline-flex h-8 items-center justify-center gap-1 rounded-lg border border-amber-200 bg-amber-50 px-3 text-xs font-bold text-amber-700 transition hover:border-amber-300 hover:bg-amber-100" title="Request cross-department assistance"><Icon name="Users" size={14}/>{assistCount(report.id) > 0 && <span className="rounded-full bg-amber-200 px-1.5 text-[10px]">{assistCount(report.id)}</span>}</button></div>}
             </div>
           </div>)}
         </div>
@@ -1598,6 +1643,7 @@ export default function Dashboard({ section = 'command' }) {
   const [activeSection, setActiveSection] = useState(section);
   const [currentDate, setCurrentDate] = useState('');
   const [departments, setDepartments] = useState([]);
+  const [cdaRequests, setCdaRequests] = useState([]);
   const [isBoundaryModalOpen, setIsBoundaryModalOpen] = useState(false);
 
   // Active service boundary: Supabase geofence_boundaries first,
@@ -1671,6 +1717,25 @@ export default function Dashboard({ section = 'command' }) {
     };
   }, []);
 
+  // Staff-side visibility for ALL assistance requests — including ones a
+  // responder initiated from their incident modal. Refetches on any cda row
+  // change so requests surface live.
+  useEffect(() => {
+    const fetchAssistance = async () => {
+      const { data } = await supabase
+        .from('cross_department_assistance')
+        .select('*, requester:user_profiles!requested_by(full_name), department:departments!assisting_department_id(name)')
+        .in('status', ['pending', 'accepted'])
+        .order('created_at', { ascending: false });
+      setCdaRequests(data || []);
+    };
+    fetchAssistance();
+    const cdaChannel = supabase.channel('dashboard_cda_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cross_department_assistance' }, () => fetchAssistance())
+      .subscribe();
+    return () => { supabase.removeChannel(cdaChannel); };
+  }, []);
+
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return 'Good morning';
@@ -1730,6 +1795,24 @@ export default function Dashboard({ section = 'command' }) {
           <section className="grid gap-4 sm:grid-cols-2">
             {[['Active incidents', openCount], ['Awaiting verification review', pendingCount]].map(([label, value]) => <div key={label} className="rounded-lg border border-slate-200/70 bg-white p-5"><p className="text-sm font-medium text-slate-500">{label}</p><p className="mt-2 text-3xl tabular-nums">{value}</p></div>)}
           </section>
+          {cdaRequests.filter(c => c.status === 'pending').length > 0 && (
+            <section className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+              <p className="text-xs font-bold uppercase text-amber-700">Pending assistance requests ({cdaRequests.filter(c => c.status === 'pending').length})</p>
+              <ul className="mt-2 space-y-1.5">
+                {cdaRequests.filter(c => c.status === 'pending').map(row => {
+                  const rep = reports.find(r => r.id === row.report_id);
+                  return (
+                    <li key={row.id} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-700">
+                      <span className="font-mono text-xs text-slate-500">{rep?.report_id || '—'}</span>
+                      <span className="font-semibold capitalize">{rep?.report_type || rep?.incident_type || 'Incident'}</span>
+                      <span>→ {row.department?.name || 'department'}</span>
+                      <span className="text-xs text-slate-500">requested by {row.requester?.full_name || 'staff'}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          )}
           <section className="grid gap-6 xl:grid-cols-[1.05fr_1.4fr]">
             <div className="overflow-hidden rounded-lg border border-slate-200/70 bg-white"><div className="flex items-center justify-between border-b border-slate-100 px-5 py-4"><div><h3 className="font-bold">Live incident queue</h3><p className="mt-0.5 text-xs text-slate-500">New reports appear immediately for triage.</p></div><button onClick={() => navigate('/report-management')} className="text-sm font-semibold text-taste-600 hover:text-taste-700">View all</button></div><div className="divide-y divide-slate-100">{reports.filter(r => (r.attachments?.status || r.status) !== 'resolved').slice(0, 4).map(report => <button key={report.report_id || report.id} onClick={() => setActiveReport(report)} className={`w-full px-5 py-4 text-left transition hover:bg-slate-50 ${activeReport?.report_id === report.report_id ? 'bg-taste-50/70' : ''}`}><div className="flex gap-3"><div className={`mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-xl ${(report.report_type || report.emergency_type) === 'fire' ? 'bg-red-100 text-red-600' : 'bg-taste-100 text-taste-500'}`}><Icon name={(report.report_type || report.emergency_type) === 'fire' ? 'Flame' : (report.report_type || report.emergency_type) === 'medical' ? 'HeartPulse' : 'Car'} size={18}/></div><div className="min-w-0 flex-1"><div className="flex items-start justify-between gap-2"><p className="font-semibold capitalize">{report.report_type || report.emergency_type || report.incident_type} <span className="font-mono text-xs font-medium text-slate-400">{report.report_id || report.id?.slice(0, 8)}</span></p><span className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase ring-1 ${priorityStyles[report.priority]}`}>{report.priority}</span></div><p className="mt-1 truncate text-sm text-slate-500">{report.attachments?.location || report.location}</p><div className="mt-2 flex items-center gap-2 text-xs text-slate-400"><span className={`rounded-full px-2 py-0.5 font-medium capitalize ${statusStyles[report.status]}`}>{formatStatus(report.status)}</span><span>•</span><span>{formatTimeAgo(report.created_at)}</span></div></div></div></button>)}</div></div>
             <div className="overflow-hidden rounded-lg border border-slate-200/70 bg-white">
