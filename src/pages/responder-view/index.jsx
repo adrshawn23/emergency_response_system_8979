@@ -24,6 +24,7 @@ export default function ResponderView() {
   const [selectedReport, setSelectedReport] = useState(null);
   const [resolutionPhoto, setResolutionPhoto] = useState(null);
   const [resolving, setResolving] = useState(false);
+  const [assistanceRequests, setAssistanceRequests] = useState([]);
 
   // Fresh proof requirement per incident — clear any staged photo when the
   // modal opens, closes, or switches to a different report.
@@ -61,6 +62,41 @@ export default function ResponderView() {
       subscription.unsubscribe();
     };
   }, [profile?.id]);
+
+  // Cross-department assistance requests aimed at this responder's department.
+  useEffect(() => {
+    if (!profile?.id || !profile?.department_id) return;
+    const fetchAssistance = async () => {
+      const { data, error } = await supabase
+        .from('cross_department_assistance')
+        .select('*, report:emergency_reports(*), requester:user_profiles!requested_by(full_name)')
+        .eq('assisting_department_id', profile.department_id)
+        .in('status', ['pending', 'accepted'])
+        .order('created_at', { ascending: false });
+      if (!error && data) setAssistanceRequests(data);
+    };
+
+    fetchAssistance();
+
+    const channel = supabase
+      .channel('assistance_requests_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cross_department_assistance', filter: `assisting_department_id=eq.${profile.department_id}` }, () => fetchAssistance())
+      .subscribe();
+
+    return () => { channel.unsubscribe(); };
+  }, [profile?.id, profile?.department_id]);
+
+  const respondAssistance = async (request, nextStatus) => {
+    const { error } = await supabase
+      .from('cross_department_assistance')
+      .update({ status: nextStatus, responded_by: profile?.id, updated_at: new Date().toISOString() })
+      .eq('id', request.id);
+    if (error) {
+      console.error('Assistance response failed:', error);
+      return;
+    }
+    setAssistanceRequests(prev => prev.map(r => r.id === request.id ? { ...r, status: nextStatus } : r));
+  };
 
   const updateStatus = async (reportId, newStatus) => {
     const { error } = await supabase
@@ -147,6 +183,58 @@ export default function ResponderView() {
           </div>
         </div>
         
+        {assistanceRequests.length > 0 && (
+          <div className="mb-6 rounded-lg border border-amber-200 bg-white p-5">
+            <div className="mb-3 flex items-center gap-2">
+              <Icon name="Users" size={18} className="text-amber-600"/>
+              <h2 className="font-bold">Assistance requested for your department</h2>
+            </div>
+            <div className="space-y-3">
+              {assistanceRequests.map((req) => {
+                const r = req.report || {};
+                return (
+                  <div key={req.id} className="flex flex-col gap-3 rounded-lg border border-slate-200 p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
+                      <p className="font-semibold capitalize">{r.report_type || r.incident_type || 'incident'} <span className="font-mono text-xs text-slate-400">{r.report_id || r.id?.slice(0, 8)}</span></p>
+                      <p className="mt-0.5 truncate text-sm text-slate-600">{r.content || r.description}</p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        {r.attachments?.location || r.location || 'No location'}
+                        {req.requester?.full_name ? ` — requested by ${req.requester.full_name}` : ''}
+                      </p>
+                    </div>
+                    {req.status === 'pending' ? (
+                      <div className="flex shrink-0 gap-2">
+                        <button
+                          onClick={() => respondAssistance(req, 'declined')}
+                          className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-100"
+                        >
+                          Decline
+                        </button>
+                        <button
+                          onClick={() => respondAssistance(req, 'accepted')}
+                          className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700"
+                        >
+                          Accept
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex shrink-0 items-center gap-2">
+                        <span className="rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-bold uppercase text-emerald-700">Accepted</span>
+                        <button
+                          onClick={() => setSelectedReport(r)}
+                          className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                        >
+                          View incident
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {loading ? (
           <div className="text-center text-slate-500">Loading assignments...</div>
         ) : assignedReports.length === 0 ? (

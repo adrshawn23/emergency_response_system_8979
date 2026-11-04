@@ -573,10 +573,29 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
   };
 
   const handleRequestAssistance = async (reportId, departmentIds) => {
-    // This would create assistance requests in a cross_department_assistance table
-    // For now, just log the request
-    console.log('Requesting assistance from departments:', departmentIds, 'for report:', reportId);
-    setAssistingDepartments(prev => [...prev, { reportId, departmentIds }]);
+    if (!reportId || !departmentIds?.length) return;
+
+    // One row per requested department; responders of that department see the
+    // request in their responder view and accept/decline it there.
+    const rows = departmentIds.map(deptId => ({
+      report_id: reportId,
+      assisting_department_id: deptId,
+      requested_by: profile?.id,
+      status: 'pending',
+    }));
+    const { error } = await supabase
+      .from('cross_department_assistance')
+      .upsert(rows, { onConflict: 'report_id,assisting_department_id' });
+    if (error) {
+      console.error('Assistance request failed:', error);
+      alert('Failed to send assistance request. Please try again.');
+      return;
+    }
+
+    setAssistingDepartments(prev => {
+      const rest = prev.filter(a => a.reportId !== reportId);
+      return [...rest, { reportId, departmentIds: [...new Set([...(prev.find(a => a.reportId === reportId)?.departmentIds || []), ...departmentIds])] }];
+    });
     setIsAssistanceModalOpen(false);
     setSelectedAssistanceReport(null);
     setSelectedAssistanceDepts([]);
@@ -998,7 +1017,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
             <span className={`w-fit rounded-full px-2 py-1 text-[10px] font-bold uppercase ${priorityStyles[report.priority]}`}>{report.priority}</span>
             <div className="flex min-w-0 items-center gap-2">
               <span className={`inline-flex h-8 min-w-[84px] items-center justify-center rounded-full px-2 text-xs font-medium capitalize ${statusStyles[report.status] || 'bg-slate-100 text-slate-700'}`}>{formatStatus(report.status)}</span>
-              {(profile?.role === 'dispatcher' || profile?.role === 'admin') && (report.status) !== 'resolved' && <div className="flex gap-1"><button onClick={(e) => { e.stopPropagation(); (report.status) === 'pending' ? handleAssignClick(report) : setReportStatus(report.report_id || report.id, 'resolved'); }} className="inline-flex h-8 min-w-[72px] items-center justify-center rounded-lg border border-taste-200 bg-taste-50 px-3 text-xs font-bold text-taste-600 transition hover:border-taste-300 hover:bg-taste-100 focus:outline-none focus:ring-2 focus:ring-taste-500 focus:ring-offset-2">{(report.status) === 'pending' ? 'Assign' : 'Resolve'}</button><button onClick={(e) => { e.stopPropagation(); handleAssistanceClick(report); }} className="inline-flex h-8 items-center justify-center rounded-lg border border-amber-200 bg-amber-50 px-3 text-xs font-bold text-amber-700 transition hover:border-amber-300 hover:bg-amber-100" title="Request cross-department assistance"><Icon name="Users" size={14}/></button></div>}
+              {(profile?.role === 'dispatcher' || profile?.role === 'admin') && (report.status) !== 'resolved' && <div className="flex gap-1"><button onClick={(e) => { e.stopPropagation(); (report.status) === 'pending' ? handleAssignClick(report) : setReportStatus(report.report_id || report.id, 'resolved'); }} className="inline-flex h-8 min-w-[72px] items-center justify-center rounded-lg border border-taste-200 bg-taste-50 px-3 text-xs font-bold text-taste-600 transition hover:border-taste-300 hover:bg-taste-100 focus:outline-none focus:ring-2 focus:ring-taste-500 focus:ring-offset-2">{(report.status) === 'pending' ? 'Assign' : 'Resolve'}</button><button onClick={(e) => { e.stopPropagation(); handleAssistanceClick(report); }} className="inline-flex h-8 items-center justify-center gap-1 rounded-lg border border-amber-200 bg-amber-50 px-3 text-xs font-bold text-amber-700 transition hover:border-amber-300 hover:bg-amber-100" title="Request cross-department assistance"><Icon name="Users" size={14}/>{(assistingDepartments.find(a => a.reportId === report.id)?.departmentIds?.length || 0) > 0 && <span className="rounded-full bg-amber-200 px-1.5 text-[10px]">{assistingDepartments.find(a => a.reportId === report.id).departmentIds.length}</span>}</button></div>}
             </div>
           </div>)}
         </div>
