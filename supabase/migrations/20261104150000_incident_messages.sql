@@ -37,7 +37,7 @@ USING (
   OR EXISTS (
     SELECT 1 FROM public.emergency_reports r
     WHERE r.id = incident_messages.report_id
-      AND (r.reporter_id = auth.uid() OR r.assigned_to = auth.uid())
+      AND (r.reporter_id::text = auth.uid()::text OR r.assigned_to::text = auth.uid()::text)
   )
 );
 
@@ -53,7 +53,7 @@ WITH CHECK (
     SELECT 1 FROM public.emergency_reports r
     WHERE r.id = report_id
       AND r.assigned_to IS NOT NULL
-      AND (r.reporter_id = auth.uid() OR r.assigned_to = auth.uid())
+      AND (r.reporter_id::text = auth.uid()::text OR r.assigned_to::text = auth.uid()::text)
   )
 );
 
