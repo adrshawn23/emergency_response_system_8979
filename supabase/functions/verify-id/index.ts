@@ -205,6 +205,10 @@ const extractFields = (rawText: string) => {
     /(?:date\s*of\s*birth|birth\s*date|birthday|born|kapanganakan)[:\s]*([^\n;|]{6,30}?)(?=\s*(?:place|address|sex|nationality|age|$))/i,
     /\b(\d{4}-\d{2}-\d{2})\b/,
     /\b(\d{1,2}[/\-.]\d{1,2}[/\-.]\d{4})\b/,
+    // PhilID prints named months ("October 23, 2001") — catch them anywhere in
+    // the text even when the bilingual birthdate label itself is garbled.
+    /\b((?:january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec)\s+\d{1,2},?\s+\d{4})\b/i,
+    /\b(\d{1,2}\s+(?:january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec)\s*,?\s*\d{4})\b/i,
   ]);
 
   const address = labeled.address || pick([
