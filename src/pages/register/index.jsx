@@ -98,6 +98,67 @@ const Register = () => {
   const [otpResent, setOtpResent] = useState(false);
   const [pendingUserId, setPendingUserId] = useState(null);
 
+  // The OTP screen must survive a tab refresh: the auth session does not
+  // exist until the code is entered, so the ID file (an in-memory File
+  // object) and declared fields would otherwise be lost and the account
+  // would land in the admin queue with NO id_verifications row.
+  const PENDING_REG_KEY = 'ers.pendingRegistration';
+
+  const savePendingRegistration = async (userId) => {
+    try {
+      let idImage = null;
+      if (formData.idDocument) {
+        const dataUrl = await fileToDataUrl(formData.idDocument);
+        // verify-id caps images at 5MB; skip stashing larger blobs.
+        if (dataUrl.length < 6_500_000) {
+          idImage = { dataUrl, name: formData.idDocument.name, type: formData.idDocument.type };
+        }
+      }
+      sessionStorage.setItem(PENDING_REG_KEY, JSON.stringify({
+        userId,
+        email: formData.email.trim().toLowerCase(),
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        birthdate: formData.dateOfBirth,
+        address: formData.address,
+        residencyType: formData.residencyType || 'resident',
+        idImage,
+      }));
+    } catch { /* quota exceeded — OTP still works in this tab */ }
+  };
+
+  const readPendingRegistration = () => {
+    try { return JSON.parse(sessionStorage.getItem(PENDING_REG_KEY) || 'null'); }
+    catch { return null; }
+  };
+
+  const dataUrlToFile = (entry) => {
+    if (!entry?.dataUrl) return null;
+    try {
+      const binary = atob(entry.dataUrl.slice(entry.dataUrl.indexOf(',') + 1));
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      return new File([bytes], entry.name || 'id-upload', { type: entry.type || 'image/jpeg' });
+    } catch { return null; }
+  };
+
+  // Restore the pending registration if the tab was refreshed mid-OTP.
+  useEffect(() => {
+    const pending = readPendingRegistration();
+    if (!pending?.userId || !pending?.email) return;
+    setFormData(prev => ({
+      ...prev,
+      email: pending.email,
+      firstName: pending.firstName || '',
+      lastName: pending.lastName || '',
+      dateOfBirth: pending.birthdate || '',
+      address: pending.address || '',
+      residencyType: pending.residencyType || 'resident',
+    }));
+    setPendingUserId(pending.userId);
+    setAwaitingOtp(true);
+  }, []);
+
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e?.target;
     setFormData(prev => ({
@@ -271,6 +332,7 @@ const Register = () => {
       // after verifyOtp produces a session, server-side ID verification runs.
       if (!data.session) {
         setPendingUserId(data.user.id);
+        await savePendingRegistration(data.user.id);
         setAwaitingOtp(true);
         return; // finally{} clears loading state
       }
@@ -324,19 +386,34 @@ const Register = () => {
       if (error) throw error;
 
       // Session established — now the server can verify the uploaded ID.
+      // Prefer the in-memory File; fall back to the stashed copy from
+      // sessionStorage if the tab was refreshed while awaiting the code.
+      const stashed = readPendingRegistration();
+      const stashedEntry = stashed?.userId === pendingUserId ? stashed : null;
+      const idFile = formData.idDocument || dataUrlToFile(stashedEntry?.idImage);
+      const firstName = formData.firstName || stashedEntry?.firstName || '';
+      const lastName = formData.lastName || stashedEntry?.lastName || '';
+      const birthdate = formData.dateOfBirth || stashedEntry?.birthdate || '';
+      const address = formData.address || stashedEntry?.address || '';
+      const residencyType = formData.residencyType || stashedEntry?.residencyType || 'resident';
+      sessionStorage.removeItem(PENDING_REG_KEY);
+
       let verificationNote = null;
-      if (data?.session && formData.idDocument) {
+      if (data?.session && idFile) {
         setSubmitPhase('Verifying your ID…');
         verificationNote = await submitIdForVerification({
-          file: formData.idDocument,
+          file: idFile,
           declared: {
-            fullName: `${formData.firstName} ${formData.lastName}`,
-            birthdate: formData.dateOfBirth,
-            address: formData.address,
-            residencyType: formData.residencyType || 'resident',
+            fullName: `${firstName} ${lastName}`,
+            birthdate,
+            address,
+            residencyType,
           },
           userId: pendingUserId,
         });
+      } else if (data?.session && !idFile) {
+        // Never claim an admin will review an ID that was never sent.
+        verificationNote = 'Email verified — but your ID did not carry over. Sign in and submit it from your account page to finish verification.';
       }
 
       navigate('/login', {
