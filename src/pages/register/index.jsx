@@ -7,14 +7,14 @@ import Icon from '../../components/AppIcon';
 import PersonalInfoSection from './components/PersonalInfoSection';
 import AccountCredentialsSection from './components/AccountCredentialsSection';
 import RoleSelectionSection from './components/RoleSelectionSection';
-import IDUploadSection from './components/IDUploadSection';
 import EmergencyContactSection from './components/EmergencyContactSection';
 import TrustIndicators from './components/TrustIndicators';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { isAddressInServiceArea } from '../../utils/geofence';
-import { fileToDataUrl } from '../../utils/ocr';
-import { submitIdForVerification } from '../../utils/verifyId';
+// IDs are uploaded after sign-in from the resident home verification card —
+// the registration-stage upload was dropped because the file could not
+// survive the email-confirmation step reliably.
 
 // Emails must be real deliverable addresses — verification decisions are
 // emailed to this address, so a fake address means the applicant never
@@ -59,7 +59,7 @@ const Register = () => {
   const [submitPhase, setSubmitPhase] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
-  const totalSteps = 5;
+  const totalSteps = 4;
 
   const [formData, setFormData] = useState({
     // Personal Information
@@ -77,9 +77,6 @@ const Register = () => {
     
     // Role Selection
     role: '',
-    
-    // ID Upload
-    idDocument: null,
     
     // Emergency Contacts
     emergencyContacts: [],
@@ -99,30 +96,15 @@ const Register = () => {
   const [pendingUserId, setPendingUserId] = useState(null);
 
   // The OTP screen must survive a tab refresh: the auth session does not
-  // exist until the code is entered, so the ID file (an in-memory File
-  // object) and declared fields would otherwise be lost and the account
-  // would land in the admin queue with NO id_verifications row.
+  // exist until the code is entered, so the declared fields are stashed in
+  // sessionStorage to restore the code-entry screen after a reload.
   const PENDING_REG_KEY = 'ers.pendingRegistration';
 
   const savePendingRegistration = async (userId) => {
     try {
-      let idImage = null;
-      if (formData.idDocument) {
-        const dataUrl = await fileToDataUrl(formData.idDocument);
-        // verify-id caps images at 5MB; skip stashing larger blobs.
-        if (dataUrl.length < 6_500_000) {
-          idImage = { dataUrl, name: formData.idDocument.name, type: formData.idDocument.type };
-        }
-      }
       sessionStorage.setItem(PENDING_REG_KEY, JSON.stringify({
         userId,
         email: formData.email.trim().toLowerCase(),
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        birthdate: formData.dateOfBirth,
-        address: formData.address,
-        residencyType: formData.residencyType || 'resident',
-        idImage,
       }));
     } catch { /* quota exceeded — OTP still works in this tab */ }
   };
@@ -132,29 +114,11 @@ const Register = () => {
     catch { return null; }
   };
 
-  const dataUrlToFile = (entry) => {
-    if (!entry?.dataUrl) return null;
-    try {
-      const binary = atob(entry.dataUrl.slice(entry.dataUrl.indexOf(',') + 1));
-      const bytes = new Uint8Array(binary.length);
-      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-      return new File([bytes], entry.name || 'id-upload', { type: entry.type || 'image/jpeg' });
-    } catch { return null; }
-  };
-
   // Restore the pending registration if the tab was refreshed mid-OTP.
   useEffect(() => {
     const pending = readPendingRegistration();
     if (!pending?.userId || !pending?.email) return;
-    setFormData(prev => ({
-      ...prev,
-      email: pending.email,
-      firstName: pending.firstName || '',
-      lastName: pending.lastName || '',
-      dateOfBirth: pending.birthdate || '',
-      address: pending.address || '',
-      residencyType: pending.residencyType || 'resident',
-    }));
+    setFormData(prev => ({ ...prev, email: pending.email }));
     setPendingUserId(pending.userId);
     setAwaitingOtp(true);
   }, []);
@@ -222,13 +186,7 @@ const Register = () => {
         if (!formData?.role) newErrors.role = 'Please select your role';
         break;
 
-      case 4: // ID Upload
-        if (!formData?.idDocument) {
-          newErrors.idDocument = 'ID document upload is required for verification';
-        }
-        break;
-
-      case 5: // Emergency Contacts & Terms
+      case 4: // Emergency Contacts & Terms
         // Emergency contacts validation
         formData?.emergencyContacts?.forEach((contact, index) => {
           if (!contact?.name?.trim()) {
@@ -337,25 +295,11 @@ const Register = () => {
         return; // finally{} clears loading state
       }
 
-      // Email confirmation OFF → session already live; verify the ID now.
-      let verificationNote = null;
-      if (formData.idDocument) {
-        setSubmitPhase('Verifying your ID…');
-        verificationNote = await submitIdForVerification({
-          file: formData.idDocument,
-          declared: {
-            fullName,
-            birthdate: formData.dateOfBirth,
-            address: formData.address,
-            residencyType: formData.residencyType || 'resident',
-          },
-          userId: data.user.id,
-        });
-      }
-
+      // Email confirmation OFF → session already live. The ID is uploaded
+      // from the resident home verification card after signing in.
       navigate('/login', { 
         state: { 
-          message: verificationNote || 'Registration received. An administrator will review your account and ID before activation.',
+          message: 'Registration received — sign in and upload a clear photo of your ID from your home page to finish verification.',
           type: 'success'
         }
       });
@@ -385,40 +329,12 @@ const Register = () => {
       });
       if (error) throw error;
 
-      // Session established — now the server can verify the uploaded ID.
-      // Prefer the in-memory File; fall back to the stashed copy from
-      // sessionStorage if the tab was refreshed while awaiting the code.
-      const stashed = readPendingRegistration();
-      const stashedEntry = stashed?.userId === pendingUserId ? stashed : null;
-      const idFile = formData.idDocument || dataUrlToFile(stashedEntry?.idImage);
-      const firstName = formData.firstName || stashedEntry?.firstName || '';
-      const lastName = formData.lastName || stashedEntry?.lastName || '';
-      const birthdate = formData.dateOfBirth || stashedEntry?.birthdate || '';
-      const address = formData.address || stashedEntry?.address || '';
-      const residencyType = formData.residencyType || stashedEntry?.residencyType || 'resident';
+      // Session established. The ID is uploaded from the resident home
+      // verification card after signing in.
       sessionStorage.removeItem(PENDING_REG_KEY);
-
-      let verificationNote = null;
-      if (data?.session && idFile) {
-        setSubmitPhase('Verifying your ID…');
-        verificationNote = await submitIdForVerification({
-          file: idFile,
-          declared: {
-            fullName: `${firstName} ${lastName}`,
-            birthdate,
-            address,
-            residencyType,
-          },
-          userId: pendingUserId,
-        });
-      } else if (data?.session && !idFile) {
-        // Never claim an admin will review an ID that was never sent.
-        verificationNote = 'Email verified — but your ID did not carry over. Sign in and submit it from your account page to finish verification.';
-      }
-
       navigate('/login', {
         state: {
-          message: verificationNote || 'Email verified. An administrator will review your account and ID before activation.',
+          message: 'Email verified — sign in and upload a clear photo of your ID from your home page to finish verification.',
           type: 'success'
         }
       });
@@ -450,8 +366,7 @@ const Register = () => {
       1: 'Personal Information',
       2: 'Account Security',
       3: 'Role Selection',
-      4: 'Identity Verification',
-      5: 'Emergency Contacts & Terms'
+      4: 'Emergency Contacts & Terms'
     };
     return titles?.[step];
   };
@@ -483,14 +398,6 @@ const Register = () => {
           />
         );
       case 4:
-        return (
-          <IDUploadSection
-            formData={formData}
-            errors={errors}
-            onChange={handleInputChange}
-          />
-        );
-      case 5:
         return (
           <div className="space-y-6">
             <EmergencyContactSection
