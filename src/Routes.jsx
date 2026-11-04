@@ -14,7 +14,6 @@ import Register from './pages/register';
 import ForgotPassword from './pages/forgot-password';
 import ResetPassword from './pages/reset-password';
 import Profile from './pages/profile';
-import Settings from './pages/settings';
 import NotificationsPage from './pages/notifications';
 import Dashboard from './pages/dashboard';
 
@@ -122,11 +121,6 @@ const Routes = () => {
               <Route path="/notifications" element={
                 <ProtectedRoute>
                   <NotificationsPage />
-                </ProtectedRoute>
-              } />
-              <Route path="/settings" element={
-                <ProtectedRoute>
-                  <RoleRoute pageKey="settings"><Dashboard section="settings" /></RoleRoute>
                 </ProtectedRoute>
               } />
               <Route path="*" element={<NotFound />} />

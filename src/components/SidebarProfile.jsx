@@ -90,10 +90,6 @@ const SidebarProfile = ({ profile, signOut, dark = false, compact = false }) => 
             className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50">
             <Icon name="User" size={15}/> My Profile
           </button>
-          <button role="menuitem" onClick={() => go('/settings')}
-            className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50">
-            <Icon name="Settings" size={15}/> Account Settings
-          </button>
           <button role="menuitem" onClick={() => { setOpen(false); signOut?.(); }}
             className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-red-600 hover:bg-red-50">
             <Icon name="LogOut" size={15}/> Logout

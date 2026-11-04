@@ -10,7 +10,6 @@ const EDITABLE_PAGES = [
   { key: 'new', label: 'New incident' },
   { key: 'residents', label: 'Residents & review' },
   { key: 'departments', label: 'Departments' },
-  { key: 'settings', label: 'System settings' },
 ];
 
 // 'admin' is excluded â€” it always has full access and is shown as locked.
@@ -82,7 +81,7 @@ export default function PageAccessMatrix() {
                       checked={allowed}
                       disabled={busy}
                       onChange={() => toggle(p.key, role)}
-                      aria-label={`${p.label} — ${role}`}
+                      aria-label={`${p.label} ï¿½ ${role}`}
                       className="h-4 w-4 cursor-pointer accent-red-600 disabled:opacity-50"
                     />
                   </td>
@@ -113,7 +112,7 @@ export default function PageAccessMatrix() {
       </table>
 
       <p className="mt-3 text-xs text-slate-400">
-        Locked rows are fixed by design — Command center is every role's landing
+        Locked rows are fixed by design ï¿½ Command center is every role's landing
         page, Profile is needed by all users, and Access control must stay
         admin-only.
       </p>
