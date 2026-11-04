@@ -18,6 +18,7 @@ import '../../utils/leafletIcon';
 import BoundaryMap from '../../components/BoundaryMap';
 import AppSidebar from '../../components/AppSidebar';
 import useServiceBoundary from '../../hooks/useServiceBoundary';
+import { compareBirthdates } from '../../utils/verificationRules';
 
 const priorityStyles = {
   critical: 'bg-rose-100 text-rose-700 ring-1 ring-inset ring-rose-600/25',
@@ -987,11 +988,11 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
     }
   };
   const ocrName = normText(selectedVerification?.ocr_data?.extracted_name);
-  const ocrDob = normText(selectedVerification?.ocr_data?.extracted_dob);
+  const ocrDob = normText(selectedVerification?.ocr_data?.extracted_dob ?? selectedVerification?.ocr_data?.extracted_birthdate);
   const ocrNameMatch = selectedVerification?.ocr_data?.name_match
     ?? (!!ocrName && ocrName === normText(selectedVerification?.user_profiles?.full_name));
   const ocrDobMatch = selectedVerification?.ocr_data?.dob_match
-    ?? (!!ocrDob && ocrDob === normText(selectedVerification?.user_profiles?.birthdate));
+    ?? (!!ocrDob && compareBirthdates(selectedVerification?.user_profiles?.birthdate, ocrDob).status === 'match');
   // Mirrors report_gate.sql's caller_can_report(): staff always may; a
   // resident must be verified (account_status='active'). The form renders
   // disabled with a lock notice so nothing is clickable while pending.
@@ -1321,8 +1322,8 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
                         : <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase text-amber-700">Review</span>)}
                     </div>
                     <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0"><span className="text-slate-500">Birthdate</span><p className="font-medium">{selectedVerification.ocr_data?.extracted_dob || 'Not extracted'}</p></div>
-                      {selectedVerification.ocr_data?.extracted_dob && (ocrDobMatch
+                      <div className="min-w-0"><span className="text-slate-500">Birthdate</span><p className="font-medium">{selectedVerification.ocr_data?.extracted_dob ?? selectedVerification.ocr_data?.extracted_birthdate ?? 'Not extracted'}</p></div>
+                      {(selectedVerification.ocr_data?.extracted_dob ?? selectedVerification.ocr_data?.extracted_birthdate) && (ocrDobMatch
                         ? <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold uppercase text-emerald-700">Match</span>
                         : <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase text-amber-700">Review</span>)}
                     </div>
