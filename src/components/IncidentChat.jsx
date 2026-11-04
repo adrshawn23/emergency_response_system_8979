@@ -32,8 +32,16 @@ export default function IncidentChat({ reportId, title = 'Messages' }) {
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'incident_messages', filter: `report_id=eq.${reportId}` },
-        (payload) => {
-          setMessages(prev => prev.some(m => m.id === payload.new.id) ? prev : [...prev, payload.new]);
+        async (payload) => {
+          // Realtime payloads have no sender join — fetch the full row so the
+          // sender's name renders instead of the 'Participant' fallback.
+          const { data } = await supabase
+            .from('incident_messages')
+            .select('id, sender_id, body, created_at, sender:user_profiles!sender_id(full_name, role)')
+            .eq('id', payload.new.id)
+            .single();
+          const row = data || payload.new;
+          setMessages(prev => prev.some(m => m.id === row.id) ? prev : [...prev, row]);
         }
       )
       .subscribe();
@@ -58,7 +66,7 @@ export default function IncidentChat({ reportId, title = 'Messages' }) {
   };
 
   const senderName = (m) => {
-    if (m.sender_id === profile?.id) return 'You';
+    if (m.sender_id === profile?.id) return `You (${profile?.full_name || 'me'})`;
     return m.sender?.full_name || (m.sender?.role ? m.sender.role : 'Participant');
   };
 
