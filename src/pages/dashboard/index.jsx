@@ -613,6 +613,25 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
     setIsReviewModalOpen(true);
   };
 
+  // Opened from Pending Registrations: reuse the open verification row when
+  // one exists; otherwise synthesize a minimal pending object so the modal
+  // still renders declared data (id === null routes its action buttons to
+  // the pending approve/reject handlers instead of review_verification).
+  const handleReviewPendingUser = (user) => {
+    const verification = findOpenVerification(user?.id) || {
+      id: null,
+      user_id: user?.id,
+      verification_status: 'pending',
+      user_profiles: user,
+      ocr_data: null,
+      ocr_confidence: null,
+      id_document_url: null,
+      document_storage_path: null,
+    };
+    setSelectedVerification(verification);
+    setIsReviewModalOpen(true);
+  };
+
   // ---- Profile editing (all roles) ----------------------------------------
   // Seed the form once the real profile row arrives.
   useEffect(() => {
@@ -1012,7 +1031,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
           )}
         </div>
       </div><div className="space-y-5"><div className="rounded-lg border border-slate-200/70 bg-white p-6"><h3 className="font-bold">Report summary</h3><p className="mt-3 text-sm text-slate-600">Your report will be immediately visible to dispatch. Verification happens in parallel, so even unverified reports are triaged for response.</p></div>{submitError && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{submitError}</div>}<button type="submit" disabled={loading || submitted || !profile?.id || !canReport} className="w-full rounded-xl bg-red-600 px-4 py-3.5 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed">{loading ? 'Submitting...' : submitted ? 'Report submitted' : !canReport ? 'Verification required to report' : 'Submit report'}</button>{submitted && <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-center"><Icon name="CheckCircle" size={32} className="text-emerald-600 mx-auto mb-2"/><h3 className="font-semibold text-emerald-900">Report submitted</h3><p className="mt-1 text-sm text-emerald-700">Report ID: {submittedReportId?.slice(0, 8)}<br/>Dispatch is reviewing your report now.</p></div>}</div></fieldset></form></>}
-      {section === 'residents' && <><PendingRegistrations pendingUsers={pendingUsers} onApproveUser={handlePendingApprove} onRejectUser={handlePendingReject} /><div className="mt-7 grid gap-5 lg:grid-cols-2"><div className="rounded-lg border border-slate-200/70 bg-white p-6"><div className="mb-4"><h3 className="font-bold">ID verification queue</h3><p className="text-sm text-slate-500">{idVerifications.filter(v => v.verification_status === 'pending').length} awaiting review</p></div><p className="mt-5 text-xs leading-5 text-slate-500">OCR assists review. High-confidence full matches are approved automatically; everything else — approval, clearer-upload requests, rejection — is decided by an authorized administrator.</p>{idVerifications.length === 0 ? <p className="mt-4 text-sm text-slate-500">No ID verifications to review.</p> : <div className="mt-4 space-y-3 max-h-64 overflow-y-auto">{idVerifications.map(verification => (<div key={verification.id} className="flex items-center justify-between rounded-lg border border-slate-200 p-3 hover:bg-slate-50 cursor-pointer" onClick={() => handleReviewClick(verification)}><div><p className="text-sm font-medium">{verification.user_profiles?.full_name || 'Unknown'}</p><p className="text-xs text-slate-500">{verification.user_profiles?.email}</p><p className="text-[10px] text-slate-400 mt-1">OCR Confidence: {verification.ocr_confidence}%</p></div><span className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase ${verification.verification_status === 'pending' ? 'bg-amber-100 text-amber-700' : verification.verification_status === 'approved' ? 'bg-emerald-100 text-emerald-700' : verification.verification_status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-700'}`}>{verification.verification_status}</span></div>))}</div>}</div><div className="rounded-lg border border-slate-200/70 bg-white p-6"><h3 className="font-bold">Account access</h3><p className="mt-1 text-sm text-slate-500">Department access cannot be self-granted.</p><div className="mt-5 text-sm text-slate-500">Manage departments via the Department Management page.</div></div><div className="rounded-lg border border-slate-200/70 bg-white p-6"><div><h3 className="font-bold">Community verification</h3><p className="text-sm text-slate-500">Duplicate prevention enabled</p></div><p className="mt-5 text-sm leading-6 text-slate-500">System automatically detects duplicate reports from the same location within a 5-minute window. Admins can merge or dismiss duplicates manually.</p><button className="mt-5 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold hover:bg-slate-50">View duplicates</button></div></div></>}
+      {section === 'residents' && <><PendingRegistrations pendingUsers={pendingUsers} onApproveUser={handlePendingApprove} onRejectUser={handlePendingReject} onReviewUser={handleReviewPendingUser} /><div className="mt-7 grid gap-5 lg:grid-cols-2"><div className="rounded-lg border border-slate-200/70 bg-white p-6"><div className="mb-4"><h3 className="font-bold">ID verification queue</h3><p className="text-sm text-slate-500">{idVerifications.filter(v => v.verification_status === 'pending').length} awaiting review</p></div><p className="mt-5 text-xs leading-5 text-slate-500">OCR assists review. High-confidence full matches are approved automatically; everything else — approval, clearer-upload requests, rejection — is decided by an authorized administrator.</p>{idVerifications.length === 0 ? <p className="mt-4 text-sm text-slate-500">No ID verifications to review.</p> : <div className="mt-4 space-y-3 max-h-64 overflow-y-auto">{idVerifications.map(verification => (<div key={verification.id} className="flex items-center justify-between rounded-lg border border-slate-200 p-3 hover:bg-slate-50 cursor-pointer" onClick={() => handleReviewClick(verification)}><div><p className="text-sm font-medium">{verification.user_profiles?.full_name || 'Unknown'}</p><p className="text-xs text-slate-500">{verification.user_profiles?.email}</p><p className="text-[10px] text-slate-400 mt-1">OCR Confidence: {verification.ocr_confidence}%</p></div><span className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase ${verification.verification_status === 'pending' ? 'bg-amber-100 text-amber-700' : verification.verification_status === 'approved' ? 'bg-emerald-100 text-emerald-700' : verification.verification_status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-700'}`}>{verification.verification_status}</span></div>))}</div>}</div><div className="rounded-lg border border-slate-200/70 bg-white p-6"><h3 className="font-bold">Account access</h3><p className="mt-1 text-sm text-slate-500">Department access cannot be self-granted.</p><div className="mt-5 text-sm text-slate-500">Manage departments via the Department Management page.</div></div><div className="rounded-lg border border-slate-200/70 bg-white p-6"><div><h3 className="font-bold">Community verification</h3><p className="text-sm text-slate-500">Duplicate prevention enabled</p></div><p className="mt-5 text-sm leading-6 text-slate-500">System automatically detects duplicate reports from the same location within a 5-minute window. Admins can merge or dismiss duplicates manually.</p><button className="mt-5 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold hover:bg-slate-50">View duplicates</button></div></div></>}
       {section === 'departments' && <DepartmentManagementSection />}
       {section === 'access' && <div className="mt-7 max-w-4xl space-y-5"><UserAccessManager /><PageAccessMatrix /></div>}
       {section === 'settings' && <div className="mt-7 grid gap-5 lg:grid-cols-2"><div className="rounded-lg border border-slate-200/70 bg-white p-6"><h3 className="font-bold">Notification preferences</h3><p className="mt-2 text-sm text-slate-500">Choose which updates reach your notification bell. Security and verification decisions are always delivered.</p><div className="mt-5 space-y-3">{notifPrefs && [
@@ -1262,7 +1281,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
                         : <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase text-amber-700">Review</span>)}
                     </div>
                     <div className="flex items-start justify-between gap-3 border-t border-taste-100 pt-2.5">
-                      <div><span className="text-slate-500">OCR confidence</span><p className="font-medium">{selectedVerification.ocr_confidence}%</p></div>
+                      <div><span className="text-slate-500">OCR confidence</span><p className="font-medium">{selectedVerification.ocr_confidence ?? '—'}{selectedVerification.ocr_confidence != null ? '%' : ''}</p></div>
                       <div><span className="text-slate-500">Status</span><p className="font-medium capitalize">{selectedVerification.verification_status}</p></div>
                     </div>
                   </div>
@@ -1292,24 +1311,45 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
               </div>
 
               <div className="flex justify-end gap-2 pt-4 border-t border-slate-200">
-                <button 
-                  onClick={handleRequestClarity}
-                  className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700 hover:bg-amber-100"
-                >
-                  Request Clarity
-                </button>
-                <button 
-                  onClick={() => handleRejectVerification('ID verification rejected by administrator')}
-                  className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-100"
-                >
-                  Reject
-                </button>
-                <button 
-                  onClick={handleApproveVerification}
-                  className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
-                >
-                  Approve & Activate
-                </button>
+                {selectedVerification.id ? (
+                  <>
+                    <button
+                      onClick={handleRequestClarity}
+                      className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700 hover:bg-amber-100"
+                    >
+                      Request Clarity
+                    </button>
+                    <button
+                      onClick={() => handleRejectVerification('ID verification rejected by administrator')}
+                      className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-100"
+                    >
+                      Reject
+                    </button>
+                    <button
+                      onClick={handleApproveVerification}
+                      className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+                    >
+                      Approve & Activate
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    {/* No id_verifications row exists — clarity/review RPCs need
+                        one, so route to the registration-level handlers. */}
+                    <button
+                      onClick={async () => { await handlePendingReject(selectedVerification.user_id, 'Registration rejected by administrator'); setIsReviewModalOpen(false); setSelectedVerification(null); }}
+                      className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-100"
+                    >
+                      Reject
+                    </button>
+                    <button
+                      onClick={async () => { await handlePendingApprove(selectedVerification.user_id); setIsReviewModalOpen(false); setSelectedVerification(null); }}
+                      className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+                    >
+                      Approve & Activate
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           </div>

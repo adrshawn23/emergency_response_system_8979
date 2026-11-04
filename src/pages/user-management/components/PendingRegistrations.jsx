@@ -7,7 +7,8 @@ import Input from '../../../components/ui/Input';
 const PendingRegistrations = ({ 
   pendingUsers = [], 
   onApproveUser = () => {}, 
-  onRejectUser = () => {} 
+  onRejectUser = () => {},
+  onReviewUser = () => {}
 }) => {
   const [selectedUser, setSelectedUser] = useState(null);
   const [rejectionReason, setRejectionReason] = useState('');
@@ -75,7 +76,12 @@ const PendingRegistrations = ({
           </div>
         ) : (
           pendingUsers?.map((user) => (
-            <div key={user?.id} className="p-6 hover:bg-muted/30 transition-emergency">
+            <div
+              key={user?.id}
+              className="p-6 hover:bg-muted/30 transition-emergency cursor-pointer"
+              onClick={() => onReviewUser(user)}
+              title="Open ID verification review"
+            >
               <div className="flex items-start space-x-4">
                 <div className="relative h-12 w-12 shrink-0">
                   <div className="grid h-12 w-12 place-items-center rounded-full bg-indigo-100 text-sm font-bold text-indigo-700">
@@ -133,7 +139,7 @@ const PendingRegistrations = ({
                       )}
                     </div>
 
-                    <div className="flex items-center space-x-2 ml-4">
+                    <div className="flex items-center space-x-2 ml-4" onClick={(e) => e.stopPropagation()}>
                       <Button
                         variant="outline"
                         size="sm"
