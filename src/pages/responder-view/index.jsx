@@ -110,9 +110,11 @@ export default function ResponderView() {
     }));
     const { error } = await supabase
       .from('cross_department_assistance')
-      .upsert(rows, { onConflict: 'report_id,assisting_department_id' });
+      .insert(rows);
     if (error) {
-      setAssistMsg('Could not send the request. The assistance policy may not be applied yet.');
+      setAssistMsg(error.code === '23505'
+        ? 'One or more selected departments were already requested.'
+        : 'Could not send the request. The assistance policy may not be applied yet.');
     } else {
       setRequestedDepts(prev => ({ ...prev, [report.id]: [...(prev[report.id] || []), ...assistDeptIds] }));
       setAssistMsg(assistDeptIds.length === 1
