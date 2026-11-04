@@ -137,9 +137,56 @@ const runOcr = async (
 // layouts; conservative — a field we can't isolate stays null (pending path),
 // it is never filled from the declared registration value.
 // ---------------------------------------------------------------------------
+// PH National ID (PhilID) layouts print bilingual labels on their own line
+// — e.g. "APELYIDO / LAST NAME", "MGA PANGALAN / GIVEN NAMES", "GITNANG
+// APELYIDO / MIDDLE NAME", "PETSA NG KAPANGANAKAN / DATE OF BIRTH", "TIRAHAN /
+// ADDRESS" — with the value on the FOLLOWING line(s). Matching order matters:
+// "GITNANG APELYIDO" also contains "apelyido", so middle-name must win first.
+const LABEL_RULES: { key: string; re: RegExp; notRe?: RegExp }[] = [
+  { key: 'birthdate', re: /(kapanganakan|date\s*of\s*birth|birth\s*date|birthday)/i },
+  { key: 'middleName', re: /(gitnang\s*apelyido|middle\s*name)/i },
+  { key: 'givenNames', re: /(mga\s*pangalan|given\s*name|first\s*name)/i },
+  { key: 'lastName', re: /(apelyido|last\s*name|surname|family\s*name)/i, notRe: /gitnang|middle/i },
+  { key: 'address', re: /(tirahan|address|residence)/i },
+];
+
+const isLabelLine = (line: string): boolean =>
+  LABEL_RULES.some(({ re }) => re.test(line));
+
+const stripSlashes = (s: string): string => s.replace(/[/\\]+/g, ' ').replace(/\s+/g, ' ').trim();
+
+const extractByLabels = (lines: string[]) => {
+  const found: Record<string, string> = {};
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    for (const { key, re, notRe } of LABEL_RULES) {
+      if (found[key]) continue;
+      if (!re.test(line) || (notRe && notRe.test(line))) continue;
+      // Same-line value after a colon ("LAST NAME: DAGATAN").
+      const same = line.split(':')[1]?.trim();
+      if (same && same.length >= 2 && !isLabelLine(same)) { found[key] = stripSlashes(same); break; }
+      // Otherwise the value is on the next non-label line(s).
+      const parts: string[] = [];
+      for (let j = i + 1; j < lines.length && j <= i + (key === 'address' ? 3 : 1); j++) {
+        if (isLabelLine(lines[j])) break;
+        parts.push(lines[j]);
+      }
+      if (parts.length) found[key] = stripSlashes(parts.join(' '));
+      break;
+    }
+  }
+  return found;
+};
+
 const extractFields = (rawText: string) => {
   const lines = rawText.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
   const joined = lines.join(' ');
+
+  // Label-first pass for PhilID-style layouts.
+  const labeled = extractByLabels(lines);
+  const labeledName = [labeled.givenNames, labeled.middleName, labeled.lastName]
+    .filter(Boolean)
+    .join(' ');
 
   const pick = (patterns: RegExp[]): string | null => {
     for (const re of patterns) {
@@ -149,18 +196,18 @@ const extractFields = (rawText: string) => {
     return null;
   };
 
-  const fullName = pick([
+  const fullName = labeledName || pick([
     /(?:last\s*name|surname|family\s*name|name|pangalan)[:\s]*([^\n;|]{3,60}?)(?=\s*(?:first|middle|date|birth|address|sex|nationality|$))/i,
     /\bname[:\s]+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,4})/,
   ]);
 
-  const birthdate = pick([
+  const birthdate = labeled.birthdate || pick([
     /(?:date\s*of\s*birth|birth\s*date|birthday|born|kapanganakan)[:\s]*([^\n;|]{6,30}?)(?=\s*(?:place|address|sex|nationality|age|$))/i,
     /\b(\d{4}-\d{2}-\d{2})\b/,
     /\b(\d{1,2}[/\-.]\d{1,2}[/\-.]\d{4})\b/,
   ]);
 
-  const address = pick([
+  const address = labeled.address || pick([
     /(?:address|tirahan|residence)[:\s]*([^\n;|]{8,120}?)(?=\s*(?:date|birth|sex|nationality|issue|expiry|valid|signature|$))/i,
     /\b((?:brgy|barangay|purok|sitio|blk|block)\s+[^\n;|]{4,90})/i,
   ]);
@@ -298,7 +345,7 @@ Deno.serve(async (req: Request) => {
             extracted_address: extracted.address,
             outcome: 'auto_rejected',
             notes: decision.notes,
-            policy_version: 'verify-1.1',
+            policy_version: 'verify-1.2',
           },
           ocr_confidence: ocr.confidence,
         })
@@ -343,7 +390,7 @@ Deno.serve(async (req: Request) => {
             extracted_address: extracted.address,
             outcome: 'auto_approved',
             notes: decision.notes,
-            policy_version: 'verify-1.1',
+            policy_version: 'verify-1.2',
           },
           ocr_confidence: ocr.confidence,
         })
@@ -386,7 +433,7 @@ Deno.serve(async (req: Request) => {
           residency_type: residencyType,
           outcome: decision.outcome,
           notes: decision.notes,
-          policy_version: 'verify-1.0',
+          policy_version: 'verify-1.2',
         },
         ocr_confidence: ocr.confidence,
       })
