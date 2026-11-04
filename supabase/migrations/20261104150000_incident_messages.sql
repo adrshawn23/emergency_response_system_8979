@@ -3,6 +3,17 @@
 -- dispatch coordinates pre-assignment via the existing workflows.
 -- Apply via the Supabase SQL editor; supabase CLI is not linked here.
 
+-- Role helpers — defined here so this migration is self-contained (the
+-- operational_workflows migration that first introduced them is not applied
+-- on the live project).
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public
+AS $$ SELECT EXISTS (SELECT 1 FROM public.user_profiles WHERE id = auth.uid() AND role = 'admin') $$;
+
+CREATE OR REPLACE FUNCTION public.is_dispatcher()
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public
+AS $$ SELECT EXISTS (SELECT 1 FROM public.user_profiles WHERE id = auth.uid() AND role = 'dispatcher') $$;
+
 CREATE TABLE IF NOT EXISTS public.incident_messages (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   report_id uuid NOT NULL REFERENCES public.emergency_reports(id) ON DELETE CASCADE,
