@@ -26,7 +26,7 @@ export default function ResponderView() {
   const [resolving, setResolving] = useState(false);
   const [assistanceRequests, setAssistanceRequests] = useState([]);
   const [departments, setDepartments] = useState([]);
-  const [assistDeptId, setAssistDeptId] = useState('');
+  const [assistDeptIds, setAssistDeptIds] = useState([]);
   const [assistSending, setAssistSending] = useState(false);
   const [assistMsg, setAssistMsg] = useState('');
   const [requestedDepts, setRequestedDepts] = useState({});
@@ -35,7 +35,7 @@ export default function ResponderView() {
   // modal opens, closes, or switches to a different report.
   useEffect(() => {
     setResolutionPhoto(null);
-    setAssistDeptId('');
+    setAssistDeptIds([]);
     setAssistMsg('');
   }, [selectedReport?.id]);
 
@@ -99,20 +99,26 @@ export default function ResponderView() {
   // responders_request_assistance INSERT policy only on incidents assigned
   // to this responder. Departments already asked are tracked locally.
   const requestAssistance = async (report) => {
-    if (!assistDeptId || !report || assistSending) return;
+    if (!assistDeptIds.length || !report || assistSending) return;
     setAssistSending(true);
     setAssistMsg('');
+    const rows = assistDeptIds.map(deptId => ({
+      report_id: report.id,
+      assisting_department_id: deptId,
+      requested_by: profile.id,
+      status: 'pending',
+    }));
     const { error } = await supabase
       .from('cross_department_assistance')
-      .upsert({ report_id: report.id, assisting_department_id: assistDeptId, requested_by: profile.id, status: 'pending' },
-              { onConflict: 'report_id,assisting_department_id' });
+      .upsert(rows, { onConflict: 'report_id,assisting_department_id' });
     if (error) {
       setAssistMsg('Could not send the request. The assistance policy may not be applied yet.');
     } else {
-      const dept = departments.find(d => d.id === assistDeptId);
-      setRequestedDepts(prev => ({ ...prev, [report.id]: [...(prev[report.id] || []), assistDeptId] }));
-      setAssistMsg(`Request sent to ${dept?.name || 'the department'}.`);
-      setAssistDeptId('');
+      setRequestedDepts(prev => ({ ...prev, [report.id]: [...(prev[report.id] || []), ...assistDeptIds] }));
+      setAssistMsg(assistDeptIds.length === 1
+        ? `Request sent to ${departments.find(d => d.id === assistDeptIds[0])?.name || 'the department'}.`
+        : `Request sent to ${assistDeptIds.length} departments.`);
+      setAssistDeptIds([]);
     }
     setAssistSending(false);
   };
@@ -415,25 +421,31 @@ export default function ResponderView() {
                     <Icon name="Users" size={15} className="text-amber-600"/>
                     <p className="text-xs font-bold text-slate-500">Request assistance</p>
                   </div>
-                  <div className="mt-2 flex items-center gap-2">
-                    <select
-                      value={assistDeptId}
-                      onChange={(e) => setAssistDeptId(e.target.value)}
-                      className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-taste-400"
-                    >
-                      <option value="">Choose a department…</option>
-                      {departments
-                        .filter(d => d.id !== profile?.department_id && !(requestedDepts[selectedReport.id] || []).includes(d.id))
-                        .map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-                    </select>
-                    <button
-                      onClick={() => requestAssistance(selectedReport)}
-                      disabled={!assistDeptId || assistSending}
-                      className="shrink-0 rounded-lg bg-amber-600 px-3 py-2 text-sm font-semibold text-white hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {assistSending ? 'Sending…' : 'Request'}
-                    </button>
+                  <div className="mt-2 max-h-32 space-y-1.5 overflow-y-auto">
+                    {departments
+                      .filter(d => d.id !== profile?.department_id && !(requestedDepts[selectedReport.id] || []).includes(d.id))
+                      .map(d => (
+                        <label key={d.id} className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 hover:bg-slate-50">
+                          <input
+                            type="checkbox"
+                            checked={assistDeptIds.includes(d.id)}
+                            onChange={(e) => setAssistDeptIds(prev => e.target.checked ? [...prev, d.id] : prev.filter(id => id !== d.id))}
+                            className="rounded border-slate-300"
+                          />
+                          <span className="text-sm text-slate-700">{d.name}</span>
+                        </label>
+                      ))}
+                    {departments.filter(d => d.id !== profile?.department_id && !(requestedDepts[selectedReport.id] || []).includes(d.id)).length === 0 && (
+                      <p className="py-1 text-xs text-slate-400">All departments have already been requested.</p>
+                    )}
                   </div>
+                  <button
+                    onClick={() => requestAssistance(selectedReport)}
+                    disabled={!assistDeptIds.length || assistSending}
+                    className="mt-2 w-full rounded-lg bg-amber-600 px-3 py-2 text-sm font-semibold text-white hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {assistSending ? 'Sending…' : `Request assistance${assistDeptIds.length > 1 ? ` (${assistDeptIds.length})` : ''}`}
+                  </button>
                   {assistMsg && <p className="mt-2 text-xs text-slate-500">{assistMsg}</p>}
                 </div>
               )}
@@ -444,7 +456,7 @@ export default function ResponderView() {
             </div>
 
             <div className="flex gap-2 border-t border-slate-100 px-6 py-4">
-              {selectedReport.status === 'assigned' && (
+              {selectedReport.status === 'assigned' && selectedReport.assigned_to === profile?.id && (
                 <button
                   onClick={() => { updateStatus(selectedReport.id, 'in-progress'); setSelectedReport(null); }}
                   className="flex-1 rounded-lg bg-taste-500 px-3 py-2 text-sm font-semibold text-white hover:bg-taste-600"
@@ -452,7 +464,7 @@ export default function ResponderView() {
                   Acknowledge
                 </button>
               )}
-              {selectedReport.status === 'in-progress' && (
+              {selectedReport.status === 'in-progress' && selectedReport.assigned_to === profile?.id && (
                 <div className="flex-1 space-y-2">
                   <label className={`flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed px-3 py-2 text-sm font-semibold transition ${resolutionPhoto ? 'border-emerald-300 bg-emerald-50 text-emerald-700' : 'border-slate-300 text-slate-600 hover:bg-slate-50'}`}>
                     <Icon name="Camera" size={15}/>
