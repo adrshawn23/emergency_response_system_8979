@@ -14,6 +14,7 @@ import ResidentHome from '../resident-home';
 import ResponderView from '../responder-view';
 import { MapContainer, TileLayer, Polygon, Marker, useMapEvents, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
+import '../../utils/leafletIcon';
 import BoundaryMap from '../../components/BoundaryMap';
 import AppSidebar from '../../components/AppSidebar';
 import useServiceBoundary from '../../hooks/useServiceBoundary';

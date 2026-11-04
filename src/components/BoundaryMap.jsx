@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, Polygon, Marker, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
+import '../utils/leafletIcon';
 import useServiceBoundary from '../hooks/useServiceBoundary';
 
 const KALUBIHAN_CENTER = [10.3172, 123.8951];
