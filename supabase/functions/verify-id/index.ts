@@ -41,8 +41,17 @@ const AUTO_APPROVE_CONFIDENCE = 90;
 // applicant is emailed to resubmit a clearer image.
 const AUTO_REJECT_CONFIDENCE = 30;
 
+// Browser supabase-js invokes send an OPTIONS preflight (Authorization is a
+// non-simple header); without these headers the request never reaches the
+// function and the client silently falls back to the no-OCR storage path.
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
+
 const json = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
+  new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
 
 // ---------------------------------------------------------------------------
 // Image validation — magic bytes, not the declared mime type
@@ -161,6 +170,7 @@ const extractFields = (rawText: string) => {
 
 // ---------------------------------------------------------------------------
 Deno.serve(async (req: Request) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') return json({ error: 'method_not_allowed' }, 405);
 
   try {
