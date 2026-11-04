@@ -244,7 +244,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
       const { data } = await supabase
         .from('cross_department_assistance')
         .select('*, requester:user_profiles!requested_by(full_name), department:departments!assisting_department_id(name)')
-        .in('status', ['pending', 'accepted'])
+        .in('status', ['pending', 'accepted', 'declined'])
         .order('created_at', { ascending: false });
       setCdaRequests(data || []);
     };
@@ -652,7 +652,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
   // with persisted rows so responder-initiated requests count too.
   const assistCount = (reportId) => new Set([
     ...(assistingDepartments.find(a => a.reportId === reportId)?.departmentIds || []),
-    ...cdaRequests.filter(c => c.report_id === reportId).map(c => c.assisting_department_id),
+    ...cdaRequests.filter(c => c.report_id === reportId && c.status !== 'declined').map(c => c.assisting_department_id),
   ]).size;
 
   const handleReviewClick = (verification) => {
@@ -1037,11 +1037,11 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
             <button onClick={() => navigate('/emergency-report')} className="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white  transition hover:brightness-110"><Icon name="Plus" size={16} className="mr-1 inline"/>New incident</button>
           </div>
         </div>
-        {cdaRequests.filter(c => c.status === 'pending').length > 0 && (
+        {cdaRequests.length > 0 && (
           <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4">
-            <p className="text-xs font-bold uppercase text-amber-700">Pending assistance requests ({cdaRequests.filter(c => c.status === 'pending').length})</p>
+            <p className="text-xs font-bold uppercase text-amber-700">Assistance requests ({cdaRequests.length})</p>
             <ul className="mt-2 space-y-1.5">
-              {cdaRequests.filter(c => c.status === 'pending').map(row => {
+              {cdaRequests.map(row => {
                 const rep = reports.find(r => r.id === row.report_id);
                 return (
                   <li key={row.id} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-700">
@@ -1049,6 +1049,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
                     <span className="font-semibold capitalize">{rep?.report_type || rep?.incident_type || 'Incident'}</span>
                     <span>→ {row.department?.name || 'department'}</span>
                     <span className="text-xs text-slate-500">requested by {row.requester?.full_name || 'staff'}</span>
+                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${row.status === 'accepted' ? 'bg-emerald-100 text-emerald-700' : row.status === 'declined' ? 'bg-red-100 text-red-700' : 'bg-amber-200 text-amber-800'}`}>{row.status}</span>
                   </li>
                 );
               })}
@@ -1725,7 +1726,7 @@ export default function Dashboard({ section = 'command' }) {
       const { data } = await supabase
         .from('cross_department_assistance')
         .select('*, requester:user_profiles!requested_by(full_name), department:departments!assisting_department_id(name)')
-        .in('status', ['pending', 'accepted'])
+        .in('status', ['pending', 'accepted', 'declined'])
         .order('created_at', { ascending: false });
       setCdaRequests(data || []);
     };
@@ -1795,11 +1796,11 @@ export default function Dashboard({ section = 'command' }) {
           <section className="grid gap-4 sm:grid-cols-2">
             {[['Active incidents', openCount], ['Awaiting verification review', pendingCount]].map(([label, value]) => <div key={label} className="rounded-lg border border-slate-200/70 bg-white p-5"><p className="text-sm font-medium text-slate-500">{label}</p><p className="mt-2 text-3xl tabular-nums">{value}</p></div>)}
           </section>
-          {cdaRequests.filter(c => c.status === 'pending').length > 0 && (
+          {cdaRequests.length > 0 && (
             <section className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-              <p className="text-xs font-bold uppercase text-amber-700">Pending assistance requests ({cdaRequests.filter(c => c.status === 'pending').length})</p>
+              <p className="text-xs font-bold uppercase text-amber-700">Assistance requests ({cdaRequests.length})</p>
               <ul className="mt-2 space-y-1.5">
-                {cdaRequests.filter(c => c.status === 'pending').map(row => {
+                {cdaRequests.map(row => {
                   const rep = reports.find(r => r.id === row.report_id);
                   return (
                     <li key={row.id} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-700">
@@ -1807,6 +1808,7 @@ export default function Dashboard({ section = 'command' }) {
                       <span className="font-semibold capitalize">{rep?.report_type || rep?.incident_type || 'Incident'}</span>
                       <span>→ {row.department?.name || 'department'}</span>
                       <span className="text-xs text-slate-500">requested by {row.requester?.full_name || 'staff'}</span>
+                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${row.status === 'accepted' ? 'bg-emerald-100 text-emerald-700' : row.status === 'declined' ? 'bg-red-100 text-red-700' : 'bg-amber-200 text-amber-800'}`}>{row.status}</span>
                     </li>
                   );
                 })}
