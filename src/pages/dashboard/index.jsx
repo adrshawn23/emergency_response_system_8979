@@ -696,13 +696,13 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
     setAvatarUploading(true);
     const ext = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg';
     const path = `${profile.id}/avatar.${ext}`;
-    const { error: upError } = await supabase.storage.from('avatars').upload(path, file, { upsert: true });
+    const { error: upError } = await supabase.storage.from('user-avatars').upload(path, file, { upsert: true });
     if (upError) {
-      setProfileMsg('Avatar upload failed. Storage may need the avatars bucket.');
+      setProfileMsg('Avatar upload failed. Storage may need the user-avatars bucket.');
       setAvatarUploading(false);
       return;
     }
-    const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(path);
+    const { data: urlData } = supabase.storage.from('user-avatars').getPublicUrl(path);
     const avatar_url = `${urlData?.publicUrl}?v=${Date.now()}`;
     const { error } = await supabase.from('user_profiles').update({ avatar_url }).eq('id', profile.id);
     if (!error) await refreshProfile?.();
