@@ -12,7 +12,6 @@ import AppSidebar from '../../components/AppSidebar';
 
 const RESPONDER_LINKS = [
   { label: 'Response board', icon: 'Ambulance', path: '/' },
-  { label: 'New incident', icon: 'PlusCircle', path: '/emergency-report' },
   { label: 'Profile', icon: 'User', path: '/profile' }
 ];
 
