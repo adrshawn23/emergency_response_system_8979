@@ -86,7 +86,7 @@ export default function ResidentHome() {
   const vCopy = VERIFICATION_COPY[vStatus];
   const needsResubmit = ['correction_required', 'needs_clarity', 'rejected'].includes(vStatus);
   const showVerificationCard = profile?.role === 'resident' && verificationLoaded
-    && (verification == null || !isActiveResident);
+    && !isActiveResident;
   return <div className="flex min-h-screen bg-slate-50 text-slate-900">
     <AppSidebar links={RESIDENT_LINKS} profile={profile} signOut={signOut} />
     <div className="min-w-0 flex-1 pb-24 sm:pb-0">
