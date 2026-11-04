@@ -165,7 +165,10 @@ export default function ResponderView() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <NotificationBell userId={profile?.id} onOpenIncident={(id) => { const r = allReports.find(x => x.id === id); if (r) setSelectedReport(r); }}/>
+            <NotificationBell userId={profile?.id} onOpenIncident={async (id) => {
+              const { data } = await supabase.from('emergency_reports').select('*').eq('id', id).single();
+              if (data) setSelectedReport(data);
+            }}/>
             <button onClick={() => navigate('/report-management')} className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold">Incident queue</button>
             <SidebarProfile profile={profile} signOut={signOut} compact/>
           </div>
