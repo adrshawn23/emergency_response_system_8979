@@ -7,6 +7,7 @@ import { supabase } from '../../lib/supabase';
 import NotificationBell from '../../components/NotificationBell';
 import SidebarProfile from '../../components/SidebarProfile';
 import BoundaryMap from '../../components/BoundaryMap';
+import IncidentChat from '../../components/IncidentChat';
 import AppSidebar from '../../components/AppSidebar';
 
 const RESPONDER_LINKS = [
@@ -374,6 +375,10 @@ export default function ResponderView() {
                   </div>
                 )}
               </div>
+
+              {selectedReport.assigned_to === profile?.id && (
+                <IncidentChat reportId={selectedReport.id} title="Message the reporter"/>
+              )}
             </div>
 
             <div className="flex gap-2 border-t border-slate-100 px-6 py-4">

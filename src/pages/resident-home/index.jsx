@@ -4,6 +4,7 @@ import Icon from '../../components/AppIcon';
 import { useAuth } from '../../contexts/AuthContext';
 import { useMockData } from '../../contexts/MockDataContext';
 import NotificationBell from '../../components/NotificationBell';
+import IncidentChat from '../../components/IncidentChat';
 import SidebarProfile from '../../components/SidebarProfile';
 import AppSidebar from '../../components/AppSidebar';
 import { supabase } from '../../lib/supabase';
@@ -170,6 +171,9 @@ export default function ResidentHome() {
               <p className="text-xs font-bold  text-slate-400">Reported</p>
               <p className="mt-1 text-sm text-slate-700">{selectedReport.created_at ? new Date(selectedReport.created_at).toLocaleString() : 'N/A'}</p>
             </div>
+            {selectedReport.assigned_to && (
+              <IncidentChat reportId={selectedReport.id} title="Message the responder"/>
+            )}
           </div>
           <div className="border-t border-slate-100 px-6 py-4">
             <button onClick={() => setSelectedReport(null)} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50">
