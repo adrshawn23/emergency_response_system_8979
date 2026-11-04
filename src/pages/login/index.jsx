@@ -29,18 +29,19 @@ const Login = () => {
       const { data, error: authError } = await signIn(formData.email.trim(), formData.password);
       if (authError) throw authError;
 
-      // Block unapproved accounts: admin approval flips user_profiles.status
-      // to 'active'. Without this check a pending registrant could sign in
-      // and use the app before review.
+      // Block suspended accounts only. Pending registrants MUST be able to
+      // sign in — their home page hosts the ID-verification card that is the
+      // sole submission/resubmission path. Routes.jsx renders SuspendedScreen
+      // for suspended profiles as well; this is a belt-and-suspenders check.
       if (!useMock && data?.user) {
         const { data: prof } = await supabase
           .from('user_profiles')
-          .select('status')
+          .select('account_status')
           .eq('id', data.user.id)
           .maybeSingle();
-        if (prof && prof.status !== 'active') {
+        if (prof?.account_status === 'suspended') {
           await signOut();
-          throw new Error('Your account is pending administrator approval. You can sign in once it is activated.');
+          throw new Error('Your account has been suspended. Contact the barangay office if you believe this is a mistake.');
         }
       }
 
