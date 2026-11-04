@@ -25,15 +25,24 @@ export default function ResponderView() {
   const [resolutionPhoto, setResolutionPhoto] = useState(null);
   const [resolving, setResolving] = useState(false);
   const [assistanceRequests, setAssistanceRequests] = useState([]);
+  const [departments, setDepartments] = useState([]);
+  const [assistDeptId, setAssistDeptId] = useState('');
+  const [assistSending, setAssistSending] = useState(false);
+  const [assistMsg, setAssistMsg] = useState('');
+  const [requestedDepts, setRequestedDepts] = useState({});
 
   // Fresh proof requirement per incident — clear any staged photo when the
   // modal opens, closes, or switches to a different report.
   useEffect(() => {
     setResolutionPhoto(null);
+    setAssistDeptId('');
+    setAssistMsg('');
   }, [selectedReport?.id]);
 
   useEffect(() => {
     if (!profile?.id) return; // skip the eq.undefined 400 + broken subscription before profile loads
+    supabase.from('departments').select('id, name').order('name')
+      .then(({ data }) => setDepartments(data || []));
     const fetchAssignedReports = async () => {
       setLoading(true);
       const { data, error } = await supabase
@@ -85,6 +94,28 @@ export default function ResponderView() {
 
     return () => { channel.unsubscribe(); };
   }, [profile?.id, profile?.department_id]);
+
+  // Responder-originated assistance request — allowed by the
+  // responders_request_assistance INSERT policy only on incidents assigned
+  // to this responder. Departments already asked are tracked locally.
+  const requestAssistance = async (report) => {
+    if (!assistDeptId || !report || assistSending) return;
+    setAssistSending(true);
+    setAssistMsg('');
+    const { error } = await supabase
+      .from('cross_department_assistance')
+      .upsert({ report_id: report.id, assisting_department_id: assistDeptId, requested_by: profile.id, status: 'pending' },
+              { onConflict: 'report_id,assisting_department_id' });
+    if (error) {
+      setAssistMsg('Could not send the request. The assistance policy may not be applied yet.');
+    } else {
+      const dept = departments.find(d => d.id === assistDeptId);
+      setRequestedDepts(prev => ({ ...prev, [report.id]: [...(prev[report.id] || []), assistDeptId] }));
+      setAssistMsg(`Request sent to ${dept?.name || 'the department'}.`);
+      setAssistDeptId('');
+    }
+    setAssistSending(false);
+  };
 
   const respondAssistance = async (request, nextStatus) => {
     const { error } = await supabase
@@ -377,6 +408,35 @@ export default function ResponderView() {
                   </div>
                 )}
               </div>
+
+              {selectedReport.assigned_to === profile?.id && (
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="flex items-center gap-2">
+                    <Icon name="Users" size={15} className="text-amber-600"/>
+                    <p className="text-xs font-bold text-slate-500">Request assistance</p>
+                  </div>
+                  <div className="mt-2 flex items-center gap-2">
+                    <select
+                      value={assistDeptId}
+                      onChange={(e) => setAssistDeptId(e.target.value)}
+                      className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-taste-400"
+                    >
+                      <option value="">Choose a department…</option>
+                      {departments
+                        .filter(d => d.id !== profile?.department_id && !(requestedDepts[selectedReport.id] || []).includes(d.id))
+                        .map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                    </select>
+                    <button
+                      onClick={() => requestAssistance(selectedReport)}
+                      disabled={!assistDeptId || assistSending}
+                      className="shrink-0 rounded-lg bg-amber-600 px-3 py-2 text-sm font-semibold text-white hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {assistSending ? 'Sending…' : 'Request'}
+                    </button>
+                  </div>
+                  {assistMsg && <p className="mt-2 text-xs text-slate-500">{assistMsg}</p>}
+                </div>
+              )}
 
               {selectedReport.assigned_to === profile?.id && (
                 <IncidentChat reportId={selectedReport.id} title="Message the reporter"/>
