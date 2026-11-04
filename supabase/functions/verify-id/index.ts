@@ -188,6 +188,12 @@ const extractFields = (rawText: string) => {
     .filter(Boolean)
     .join(' ');
 
+  // PhilHealth/UMID-style cards print "SURNAME, GIVEN MIDDLENAME" with no
+  // label — recognize an all-caps comma-name line. First match wins: the name
+  // line sits above the address line on these cards.
+  const commaNameLine = lines.find((l) =>
+    /^[A-ZÑ'’.\-]{2,}\s*,\s*[A-ZÑ'’.\-]{2,}(?:\s+[A-ZÑ'’.\-]{2,}){0,3}\s*$/.test(l));
+
   const pick = (patterns: RegExp[]): string | null => {
     for (const re of patterns) {
       const m = joined.match(re);
@@ -196,7 +202,7 @@ const extractFields = (rawText: string) => {
     return null;
   };
 
-  const fullName = labeledName || pick([
+  const fullName = labeledName || commaNameLine || pick([
     /(?:last\s*name|surname|family\s*name|name|pangalan)[:\s]*([^\n;|]{3,60}?)(?=\s*(?:first|middle|date|birth|address|sex|nationality|$))/i,
     /\bname[:\s]+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,4})/,
   ]);
