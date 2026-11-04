@@ -10,7 +10,7 @@ WITH CHECK (
   requested_by::text = auth.uid()::text
   AND EXISTS (
     SELECT 1 FROM public.emergency_reports r
-    WHERE r.id = report_id
+    WHERE r.id = cross_department_assistance.report_id
       AND r.assigned_to::text = auth.uid()::text
   )
 );
