@@ -27,7 +27,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import {
-  compareNames, compareBirthdates, compareAddressJurisdiction,
+  compareNames, compareBirthdates, compareAddressWithResidency,
   decideVerification, normalizeText,
   OUTCOME_PENDING, OUTCOME_CORRECTION,
 } from '../_shared/verificationRules.ts';
@@ -242,17 +242,32 @@ Deno.serve(async (req: Request) => {
       return json({ outcome: OUTCOME_PENDING, verification_id: row?.id, ocr_unavailable: true });
     }
 
+    // --- residency claim (server-trusted: read from the profile, which was
+    // written by the signup trigger — never from the request body) ----------
+    const { data: callerProfile } = await admin
+      .from('user_profiles')
+      .select('residency_type')
+      .eq('id', user.id)
+      .maybeSingle();
+    const residencyType = callerProfile?.residency_type === 'boarder' ? 'boarder' : 'resident';
+
     // --- extract + compare (server-trusted values only) -------------------
     const extracted = extractFields(ocr.text);
     const nameCmp = compareNames(declared.fullName ?? '', extracted.fullName);
     const dobCmp = compareBirthdates(declared.birthdate ?? '', extracted.birthdate);
-    const addrCmp = compareAddressJurisdiction(extracted.address ?? declared.address ?? '');
+    // Boarders' IDs legitimately show a home address OUTSIDE Kalubihan — the
+    // comparator downgrades that to admin review instead of an automatic
+    // correction demand.
+    const addrCmp = compareAddressWithResidency(extracted.address ?? declared.address ?? '', residencyType);
     const decision = decideVerification({
       name: nameCmp,
       birthdate: dobCmp,
       address: addrCmp,
       ocrConfidence: ocr.confidence,
     });
+    if (residencyType === 'boarder') {
+      decision.notes.push('Boarder: an outside-Kalubihan address on the ID is expected — verify the declared boarding residence instead.');
+    }
 
     // --- auto-reject: document too unreadable for any comparison ----------
     const rejectReason =
@@ -292,7 +307,10 @@ Deno.serve(async (req: Request) => {
     // floor needed (restores auto-decisions on OCR.space's fixed 70; Google
     // Vision behaves identically). All three extracted values must be
     // non-null so nothing can match via a declared-value fallback.
+    // Boarders are NEVER auto-approved: their ID cannot prove presence in
+    // Kalubihan, so the boarding claim always needs an administrator.
     const allFieldsMatch =
+      residencyType !== 'boarder' &&
       nameCmp.status === 'match' &&
       dobCmp.status === 'match' &&
       addrCmp.status === 'match' &&
@@ -355,6 +373,7 @@ Deno.serve(async (req: Request) => {
           extracted_name: extracted.fullName,
           extracted_birthdate: extracted.birthdate,
           extracted_address: extracted.address,
+          residency_type: residencyType,
           outcome: decision.outcome,
           notes: decision.notes,
           policy_version: 'verify-1.0',

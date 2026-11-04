@@ -76,16 +76,42 @@ const PersonalInfoSection = ({
           required
           className="w-full"
         />
-        
+
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-1.5" htmlFor="residencyType">
+            Residency Type <span className="text-destructive">*</span>
+          </label>
+          <select
+            id="residencyType"
+            name="residencyType"
+            value={formData?.residencyType || 'resident'}
+            onChange={onChange}
+            required
+            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+          >
+            <option value="resident">Resident — I live at my Kalubihan home address</option>
+            <option value="boarder">Boarder — I rent/room in Kalubihan; my ID shows my home address</option>
+          </select>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {formData?.residencyType === 'boarder'
+              ? 'Boarders: the address below is your Kalubihan boarding address. Your ID may show a home address outside Kalubihan — an administrator will verify your boarding situation.'
+              : 'Residents: the address below must match the address on your ID.'}
+          </p>
+          {errors?.residencyType && <p className="mt-1 text-xs text-destructive">{errors.residencyType}</p>}
+        </div>
+      </div>
+      <div>
         <Input
-          label="Address"
+          label={formData?.residencyType === 'boarder' ? 'Boarding Address in Kalubihan' : 'Address'}
           type="text"
           name="address"
-          placeholder="Enter your full address"
+          placeholder={formData?.residencyType === 'boarder' ? 'Enter the address where you board/rent in Kalubihan' : 'Enter your full address'}
           value={formData?.address}
           onChange={onChange}
           error={errors?.address}
-          description="Must be within Barangay Kalubihan — required for location-based emergency services"
+          description={formData?.residencyType === 'boarder'
+            ? 'This must be within Barangay Kalubihan — it determines your emergency-service eligibility'
+            : 'Must be within Barangay Kalubihan — required for location-based emergency services'}
           required
           className="w-full"
         />

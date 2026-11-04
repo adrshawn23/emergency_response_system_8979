@@ -69,6 +69,7 @@ const Register = () => {
     phone: '',
     dateOfBirth: '',
     address: '',
+    residencyType: 'resident',
     
     // Account Credentials
     password: '',
@@ -245,6 +246,7 @@ const Register = () => {
           birthdate: formData.dateOfBirth,
           date_of_birth: formData.dateOfBirth,
           address: formData.address,
+          residency_type: formData.residencyType || 'resident',
           emergency_contacts: formData.emergencyContacts?.map(contact => ({
             name: contact.name,
             phone: contact.phone,
@@ -283,6 +285,7 @@ const Register = () => {
             fullName,
             birthdate: formData.dateOfBirth,
             address: formData.address,
+            residencyType: formData.residencyType || 'resident',
           },
           userId: data.user.id,
         });
@@ -330,6 +333,7 @@ const Register = () => {
             fullName: `${formData.firstName} ${formData.lastName}`,
             birthdate: formData.dateOfBirth,
             address: formData.address,
+            residencyType: formData.residencyType || 'resident',
           },
           userId: pendingUserId,
         });

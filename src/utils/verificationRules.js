@@ -285,6 +285,23 @@ export const compareAddressJurisdiction = (addressText) => {
   }
 };
 
+// Residency-aware address comparison. Residents must prove a Kalubihan
+// address; boarders live in Kalubihan but hold IDs showing a home address
+// elsewhere — for them an 'outside' result is EXPECTED, so it downgrades
+// from a definite correction to admin review of the boarding residence.
+export const compareAddressWithResidency = (addressText, residencyType = 'resident') => {
+  const base = compareAddressJurisdiction(addressText);
+  if (residencyType !== 'boarder') return base;
+  if (base.outcome === 'outside') {
+    return {
+      ...base,
+      status: 'uncertain',
+      reason: 'Applicant registered as a boarder: this address is outside Barangay Kalubihan — expected for a home address on the ID. An administrator must verify the declared boarding residence.',
+    };
+  }
+  return base;
+};
+
 // ---------------------------------------------------------------------------
 // Decision — combine field results into an outcome + explainable reasons.
 // NEVER approves. Only definite mismatches produce correction_required.

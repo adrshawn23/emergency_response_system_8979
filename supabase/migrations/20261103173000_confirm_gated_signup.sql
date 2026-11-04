@@ -20,6 +20,15 @@
 --     registration flow never supplies one, so no more ghost rows; the
 --     real row is inserted by verify-id / the storage fallback.
 
+-- Residency claim captured at registration. Residents must prove a Kalubihan
+-- home address; boarders live in Kalubihan but their ID shows a home address
+-- elsewhere, so an outside address on the ID is expected and an admin
+-- verifies the boarding residence instead (handled in verify-id).
+ALTER TABLE public.user_profiles
+    ADD COLUMN IF NOT EXISTS residency_type text NOT NULL DEFAULT 'resident'
+    CONSTRAINT user_profiles_residency_type_check
+    CHECK (residency_type IN ('resident', 'boarder'));
+
 CREATE OR REPLACE FUNCTION public.create_pending_profile(u auth.users)
 RETURNS void
 LANGUAGE plpgsql
@@ -31,7 +40,7 @@ DECLARE
 BEGIN
     INSERT INTO public.user_profiles (
         id, email, full_name, first_name, last_name, phone,
-        birthdate, address, role, status, account_status
+        birthdate, address, residency_type, role, status, account_status
     )
     VALUES (
         u.id,
@@ -48,6 +57,8 @@ BEGIN
         u.raw_user_meta_data->>'phone',
         NULLIF(u.raw_user_meta_data->>'birthdate', '')::date,
         u.raw_user_meta_data->>'address',
+        CASE WHEN u.raw_user_meta_data->>'residency_type' = 'boarder'
+             THEN 'boarder' ELSE 'resident' END,
         'resident'::public.user_role,
         'inactive',
         'pending'

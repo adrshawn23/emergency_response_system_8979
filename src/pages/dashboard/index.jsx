@@ -300,7 +300,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
 
       const { data } = await supabase
         .from('id_verifications')
-        .select('*, user_profiles!id_verifications_user_id_fkey(full_name, email, phone, address, birthdate)')
+        .select('*, user_profiles!id_verifications_user_id_fkey(full_name, email, phone, address, residency_type, birthdate)')
         .order('created_at', { ascending: false });
 
       if (!data) return;
@@ -1242,6 +1242,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
                     <div className="flex gap-3"><dt className="w-24 shrink-0 text-slate-500">Email</dt><dd className="min-w-0 truncate">{selectedVerification.user_profiles?.email || '—'}</dd></div>
                     <div className="flex gap-3"><dt className="w-24 shrink-0 text-slate-500">Phone</dt><dd className="min-w-0">{selectedVerification.user_profiles?.phone || '—'}</dd></div>
                     <div className="flex gap-3"><dt className="w-24 shrink-0 text-slate-500">Address</dt><dd className="min-w-0">{selectedVerification.user_profiles?.address || '—'}</dd></div>
+                    <div className="flex gap-3 items-center"><dt className="w-24 shrink-0 text-slate-500">Residency</dt><dd className="min-w-0"><span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${selectedVerification.user_profiles?.residency_type === 'boarder' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'}`}><Icon name={selectedVerification.user_profiles?.residency_type === 'boarder' ? 'BedDouble' : 'Home'} size={11}/>{selectedVerification.user_profiles?.residency_type === 'boarder' ? 'Boarder' : 'Resident'}</span></dd></div>
                     <div className="flex gap-3"><dt className="w-24 shrink-0 text-slate-500">Birthdate</dt><dd className="min-w-0">{selectedVerification.user_profiles?.birthdate || '—'}</dd></div>
                   </dl>
                 </div>
@@ -1268,6 +1269,12 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
                 </div>
               </div>
 
+              {selectedVerification.user_profiles?.residency_type === 'boarder' && (
+                <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800 flex items-start gap-2">
+                  <Icon name="BedDouble" size={16} className="mt-0.5 shrink-0 text-blue-600"/>
+                  <p><span className="font-semibold">Boarder.</span> This applicant rents/rooms in Kalubihan — an ID address outside Kalubihan is expected. Verify that the declared boarding address above is genuine (e.g. barangay certification, lease, or landlord confirmation) instead of comparing it against the ID address.</p>
+                </div>
+              )}
               <div>
                 <div className="flex items-center justify-between">
                   <p className="text-xs font-bold  text-slate-400">ID Document</p>

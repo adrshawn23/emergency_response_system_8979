@@ -105,6 +105,13 @@ const PendingRegistrations = ({
                           <Icon name={getRoleIcon(user?.requestedRole || user?.role)} size={14} className="text-muted-foreground" />
                           <span className="text-sm text-foreground capitalize">{user?.requestedRole || user?.role || 'resident'}</span>
                         </div>
+
+                        <div className="flex items-center space-x-1">
+                          <Icon name={user?.residency_type === 'boarder' ? 'BedDouble' : 'Home'} size={14} className={user?.residency_type === 'boarder' ? 'text-blue-600' : 'text-muted-foreground'} />
+                          <span className={`text-sm ${user?.residency_type === 'boarder' ? 'font-semibold text-blue-700' : 'text-foreground'}`}>
+                            {user?.residency_type === 'boarder' ? 'Boarder' : 'Resident'}
+                          </span>
+                        </div>
                         
                         <div className="flex items-center space-x-1">
                           <Icon name="Building" size={14} className="text-muted-foreground" />
@@ -182,7 +189,7 @@ const PendingRegistrations = ({
                       <span className="ml-2 text-foreground">{user?.phone}</span>
                     </div>
                     <div>
-                      <span className="text-muted-foreground">Address:</span>
+                      <span className="text-muted-foreground">{user?.residency_type === 'boarder' ? 'Boarding address:' : 'Address:'}</span>
                       <span className="ml-2 text-foreground">{user?.address}</span>
                     </div>
                   </div>
