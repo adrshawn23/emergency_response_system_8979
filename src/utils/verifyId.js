@@ -46,9 +46,11 @@ export const submitIdForVerification = async ({ file, declared, userId }) => {
       const reasons = (data.reasons || []).join(' ');
       return `Registration received, but the ID could not be verified: ${reasons} Sign in and resubmit a clearer photo — your account is not locked.`;
     }
+    // correction_required → field mismatch, not an unreadable photo. The row
+    // is flagged for admin review; the applicant sees the standard pending
+    // message rather than a resubmit prompt.
     if (!error && data?.outcome === 'correction_required') {
-      const reasons = (data.reasons || []).join(' ');
-      return `Registration received, but the ID needs correction: ${reasons} Sign in and resubmit a clearer or matching ID — your account is not locked.`;
+      return null;
     }
     if (!error && data?.outcome === 'pending_admin') {
       return null; // standard pending message

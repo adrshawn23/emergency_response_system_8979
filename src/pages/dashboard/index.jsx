@@ -660,8 +660,22 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
   // one exists; otherwise synthesize a minimal pending object so the modal
   // still renders declared data (id === null routes its action buttons to
   // the pending approve/reject handlers instead of review_verification).
-  const handleReviewPendingUser = (user) => {
-    const verification = findOpenVerification(user?.id) || {
+  const handleReviewPendingUser = async (user) => {
+    // The cached list can predate the applicant's submission; refetch their
+    // latest open row before falling back to the synthesized placeholder.
+    let verification = findOpenVerification(user?.id);
+    if (!verification && user?.id) {
+      const { data } = await supabase
+        .from('id_verifications')
+        .select('*, user_profiles!id_verifications_user_id_fkey(full_name, email, phone, address, residency_type, birthdate)')
+        .eq('user_id', user.id)
+        .neq('verification_status', 'superseded')
+        .order('created_at', { ascending: false })
+        .limit(1);
+      verification = data?.[0] || null;
+      if (verification) setIdVerifications(prev => [verification, ...prev]);
+    }
+    setSelectedVerification(verification || {
       id: null,
       user_id: user?.id,
       verification_status: 'pending',
@@ -670,8 +684,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
       ocr_confidence: null,
       id_document_url: null,
       document_storage_path: null,
-    };
-    setSelectedVerification(verification);
+    });
     setIsReviewModalOpen(true);
   };
 
