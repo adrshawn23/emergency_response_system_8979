@@ -51,7 +51,7 @@ WITH CHECK (
   sender_id = auth.uid()
   AND EXISTS (
     SELECT 1 FROM public.emergency_reports r
-    WHERE r.id = report_id
+    WHERE r.id = incident_messages.report_id
       AND r.assigned_to IS NOT NULL
       AND (r.reporter_id::text = auth.uid()::text OR r.assigned_to::text = auth.uid()::text)
   )
