@@ -13,13 +13,43 @@
 -- Safe to re-run; everything is guarded.
 
 -- ---------------------------------------------------------------------------
--- 1. Content columns
+-- 1. Content + structural columns
 -- ---------------------------------------------------------------------------
+-- The live table may predate the 20261016 operational_workflows schema (it can
+-- carry a legacy `read` boolean and lack recipient_id/read_at entirely), so
+-- every column the helpers, policies, and triggers below reference is added
+-- here defensively. Plain columns without FK constraints: existing rows might
+-- reference profiles/reports that fail a fresh constraint check.
 ALTER TABLE public.notifications
+  ADD COLUMN IF NOT EXISTS recipient_id uuid,
+  ADD COLUMN IF NOT EXISTS incident_id uuid,
+  ADD COLUMN IF NOT EXISTS assistance_request_id uuid,
+  ADD COLUMN IF NOT EXISTS channel text NOT NULL DEFAULT 'in_app',
+  ADD COLUMN IF NOT EXISTS delivery_status text NOT NULL DEFAULT 'sent',
+  ADD COLUMN IF NOT EXISTS sent_at timestamptz,
+  ADD COLUMN IF NOT EXISTS read_at timestamptz,
+  ADD COLUMN IF NOT EXISTS retry_count integer NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS failure_reason text,
   ADD COLUMN IF NOT EXISTS type text NOT NULL DEFAULT 'info',
   ADD COLUMN IF NOT EXISTS title text NOT NULL DEFAULT '',
   ADD COLUMN IF NOT EXISTS message text NOT NULL DEFAULT '',
   ADD COLUMN IF NOT EXISTS metadata jsonb NOT NULL DEFAULT '{}'::jsonb;
+
+-- Legacy schema backfill: a boolean `read` flag or `user_id` recipient column
+-- may exist from an earlier draft of the table.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns
+             WHERE table_schema = 'public' AND table_name = 'notifications'
+               AND column_name = 'read') THEN
+    EXECUTE 'UPDATE public.notifications SET read_at = COALESCE(read_at, created_at) WHERE "read" IS TRUE AND read_at IS NULL';
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns
+             WHERE table_schema = 'public' AND table_name = 'notifications'
+               AND column_name = 'user_id') THEN
+    EXECUTE 'UPDATE public.notifications SET recipient_id = user_id WHERE recipient_id IS NULL';
+  END IF;
+END $$;
 
 CREATE INDEX IF NOT EXISTS idx_notifications_recipient_unread
   ON public.notifications (recipient_id, created_at DESC)
