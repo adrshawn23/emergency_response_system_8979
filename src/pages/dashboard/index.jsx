@@ -1328,7 +1328,6 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
                         : <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase text-amber-700">Review</span>)}
                     </div>
                     <div className="flex items-start justify-between gap-3 border-t border-taste-100 pt-2.5">
-                      <div><span className="text-slate-500">OCR confidence</span><p className="font-medium">{selectedVerification.ocr_confidence ?? '—'}{selectedVerification.ocr_confidence != null ? '%' : ''}</p></div>
                       <div><span className="text-slate-500">Status</span><p className="font-medium capitalize">{selectedVerification.verification_status}</p></div>
                     </div>
                   </div>
