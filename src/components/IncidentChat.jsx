@@ -18,7 +18,7 @@ export default function IncidentChat({ reportId, title = 'Messages' }) {
     if (!reportId) return;
     const { data, error } = await supabase
       .from('incident_messages')
-      .select('id, sender_id, body, created_at, sender:user_profiles!sender_id(full_name, role)')
+      .select('id, sender_id, sender_name, body, created_at, sender:user_profiles!sender_id(full_name, role)')
       .eq('report_id', reportId)
       .order('created_at', { ascending: true });
     if (error) setError('Messaging is not available yet.');
@@ -37,7 +37,7 @@ export default function IncidentChat({ reportId, title = 'Messages' }) {
           // sender's name renders instead of the 'Participant' fallback.
           const { data } = await supabase
             .from('incident_messages')
-            .select('id, sender_id, body, created_at, sender:user_profiles!sender_id(full_name, role)')
+            .select('id, sender_id, sender_name, body, created_at, sender:user_profiles!sender_id(full_name, role)')
             .eq('id', payload.new.id)
             .single();
           const row = data || payload.new;
@@ -59,7 +59,7 @@ export default function IncidentChat({ reportId, title = 'Messages' }) {
     setError('');
     const { error } = await supabase
       .from('incident_messages')
-      .insert({ report_id: reportId, sender_id: profile.id, body });
+      .insert({ report_id: reportId, sender_id: profile.id, sender_name: profile.full_name, body });
     if (error) setError('Message could not be sent.');
     else setDraft('');
     setSending(false);
@@ -67,7 +67,7 @@ export default function IncidentChat({ reportId, title = 'Messages' }) {
 
   const senderName = (m) => {
     if (m.sender_id === profile?.id) return `You (${profile?.full_name || 'me'})`;
-    return m.sender?.full_name || (m.sender?.role ? m.sender.role : 'Participant');
+    return m.sender_name || m.sender?.full_name || (m.sender?.role ? m.sender.role : 'Participant');
   };
 
   return (
