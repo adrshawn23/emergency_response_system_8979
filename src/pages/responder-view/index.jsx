@@ -149,8 +149,8 @@ export default function ResponderView() {
       a.report?.status !== 'resolved');
 
   // Selected incident coords + the responder's own live pin — the same two
-  // marind stPos = reportCaores(electedReporte)tachments?.longitude;
-  const incidentPos = selLat && selLng ? [selLat, selLng] : null;
+  // markers the resident sees, plus a street-following dashed line.
+  const incidentPos = reportCoords(selectedReport);
   const myDept = departments.find(d => d.id === profile?.department_id)?.name;
   const selfMarkers = myPosition ? [{ position: myPosition, icon: responderDeptIcon(myDept) }] : [];
   // Accepted assistance on the selected report — the requester sees who
