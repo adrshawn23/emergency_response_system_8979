@@ -220,8 +220,11 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
     setImageFiles(imageFiles.filter((_, i) => i !== index));
   };
 
-  // Fetch reports from Supabase
+  // Fetch reports from Supabase — gated on profile so the request always
+  // carries a session; an unauthenticated call is silently RLS-filtered to []
+  // and was previously never retried.
   useEffect(() => {
+    if (!profile?.id) return undefined;
     const fetchReports = async () => {
       setLoading(true);
       const { data, error } = await supabase
@@ -260,7 +263,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
+  }, [profile?.id]);
 
   // Staff-side visibility for ALL assistance requests — including ones a
   // responder initiated from their incident modal. Refetches on any cda row
@@ -524,11 +527,25 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
     setSelectedDepartment(null);
     setSelectedResponder(null);
     setIsAssignModalOpen(true);
+    supabase
+      .from('emergency_reports')
+      .select('*')
+      .eq('id', report.id)
+      .single()
+      .then(({ data }) => { if (data) setSelectedReport(prev => (prev?.id === data.id ? data : prev)); });
   };
 
   const handleReportClick = (report) => {
     setSelectedReport(report);
     setIsReportDetailModalOpen(true);
+    // List rows come from the slim view (media stripped). Pull the full row
+    // so evidence images / resolution proof still render in the modal.
+    supabase
+      .from('emergency_reports')
+      .select('*')
+      .eq('id', report.id)
+      .single()
+      .then(({ data }) => { if (data) setSelectedReport(prev => (prev?.id === data.id ? data : prev)); });
   };
 
   const handleAssignmentSubmit = async () => {
@@ -1739,7 +1756,7 @@ export default function Dashboard({ section = 'command' }) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [profile?.id]);
 
   // Staff-side visibility for ALL assistance requests — including ones a
   // responder initiated from their incident modal. Refetches on any cda row
