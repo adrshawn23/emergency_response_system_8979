@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 import Icon from '../../components/AppIcon';
 import { useAuth } from '../../contexts/AuthContext';
 import { useMockData } from '../../contexts/MockDataContext';
@@ -23,6 +23,7 @@ import useResponderLocations from '../../hooks/useResponderLocations';
 import { RESPONDER_ICON, responderDeptIcon, incidentIcon } from '../../utils/leafletIcon';
 import useDrivingRoutes from '../../hooks/useDrivingRoutes';
 import { reportCoords } from '../../utils/reportCoords';
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
 import { compareBirthdates } from '../../utils/verificationRules';
 
 const priorityStyles = {
