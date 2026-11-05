@@ -1786,7 +1786,7 @@ export default function Dashboard({ section = 'command' }) {
     const fetchAssist = async () => {
       const { data } = await supabase
         .from('cross_department_assistance')
-        .select('report_id, responded_by, report:emergency_reports(status, latitude, longitude, attachments)')
+        .select('report_id, responded_by, report:emergency_reports(*)')
         .eq('status', 'accepted')
         .not('responded_by', 'is', null);
       if (data) setAcceptedAssistance(data);
