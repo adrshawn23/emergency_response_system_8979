@@ -22,6 +22,33 @@ export const RESPONDER_ICON = L.divIcon({
   popupAnchor: [0, -34],
 });
 
+// Department badge variants for responder pins — a small colored letter
+// chip pinned to the teardrop so a pin reads as "police responder" etc.
+const DEPT_BADGES = [
+  [/fire/i, 'F', '#dc2626'],
+  [/police|security|safety/i, 'P', '#2563eb'],
+  [/medic|ems|ambulance|health/i, 'M', '#db2777'],
+  [/disaster|management|rescue/i, 'R', '#ea580c'],
+  [/utility/i, 'U', '#ca8a04'],
+];
+const responderIconCache = {};
+export const responderDeptIcon = (deptName) => {
+  if (!deptName) return RESPONDER_ICON;
+  if (responderIconCache[deptName]) return responderIconCache[deptName];
+  const match = DEPT_BADGES.find(([re]) => re.test(deptName));
+  const letter = match ? match[1] : deptName.trim().charAt(0).toUpperCase() || '?';
+  const color = match ? match[2] : '#475569';
+  const icon = L.divIcon({
+    className: 'ers-pin ers-pin--responder',
+    html: `<div class="ers-pin__body"></div><div class="ers-pin__badge" style="background:${color}">${letter}</div>`,
+    iconSize: [28, 36],
+    iconAnchor: [14, 36],
+    popupAnchor: [0, -34],
+  });
+  responderIconCache[deptName] = icon;
+  return icon;
+};
+
 // Colored letter-badge dots for incident types on the command map.
 const INCIDENT_COLORS = {
   fire: '#dc2626', medical: '#db2777', police: '#2563eb', natural: '#16a34a',
@@ -60,6 +87,13 @@ if (typeof document !== 'undefined' && !document.getElementById('ers-pin-styles'
       box-shadow: 0 2px 6px rgba(0,0,0,0.35);
     }
     .ers-pin--responder .ers-pin__body { background: #2563eb; }
+    .ers-pin { position: relative; }
+    .ers-pin__badge {
+      position: absolute; top: -6px; right: -4px;
+      width: 14px; height: 14px; border-radius: 50%;
+      border: 1.5px solid #ffffff; box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+      color: #ffffff; font: 700 9px/12px system-ui, sans-serif; text-align: center;
+    }
     .ers-inc { background: none; border: none; }
     .ers-inc__dot {
       width: 22px; height: 22px; border-radius: 50%;

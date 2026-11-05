@@ -8,7 +8,8 @@ import NotificationBell from '../../components/NotificationBell';
 import SidebarProfile from '../../components/SidebarProfile';
 import BoundaryMap from '../../components/BoundaryMap';
 import IncidentChat from '../../components/IncidentChat';
-import { RESPONDER_ICON } from '../../utils/leafletIcon';
+import { RESPONDER_ICON, responderDeptIcon } from '../../utils/leafletIcon';
+import useDrivingRoutes from '../../hooks/useDrivingRoutes';
 import AppSidebar from '../../components/AppSidebar';
 
 // Extra pages appear only when granted in Access control — canAccessPage
@@ -115,12 +116,15 @@ export default function ResponderView() {
       a.report?.status !== 'resolved');
 
   // Selected incident coords + the responder's own live pin — the same two
-  // markers the resident sees, plus a dashed approach line between them.
+  // markers the resident sees, plus a street-following dashed line.
   const selLat = selectedReport?.latitude ?? selectedReport?.attachments?.latitude;
   const selLng = selectedReport?.longitude ?? selectedReport?.attachments?.longitude;
   const incidentPos = selLat && selLng ? [selLat, selLng] : null;
-  const selfMarkers = myPosition ? [{ position: myPosition, icon: RESPONDER_ICON }] : [];
-  const approachRoute = myPosition && incidentPos ? [myPosition, incidentPos] : null;
+  const myDept = departments.find(d => d.id === profile?.department_id)?.name;
+  const selfMarkers = myPosition ? [{ position: myPosition, icon: responderDeptIcon(myDept) }] : [];
+  const approachPairs = myPosition && incidentPos ? [{ id: 'me', from: myPosition, to: incidentPos }] : [];
+  const approachRoutes = useDrivingRoutes(approachPairs).map(r => r.positions);
+  const approachRoute = approachRoutes.length ? approachRoutes : null;
   useEffect(() => {
     if (!profile?.id || !hasOpenAssignment || !navigator.geolocation) return undefined;
     let lastWrite = 0;

@@ -26,13 +26,14 @@ export default function useResponderLocations(active = true) {
           longitude: row.longitude,
           updated_at: row.updated_at,
           name: row.user_profiles?.full_name || prev[row.responder_id]?.name || null,
+          dept: row.user_profiles?.departments?.name || prev[row.responder_id]?.dept || null,
         },
       }));
     };
 
     supabase
       .from('responder_locations')
-      .select('responder_id, latitude, longitude, updated_at, user_profiles!responder_id(full_name)')
+      .select('responder_id, latitude, longitude, updated_at, user_profiles!responder_id(full_name, departments(name))')
       .then(({ data }) => {
         if (!alive || !data) return;
         data.forEach(upsert);

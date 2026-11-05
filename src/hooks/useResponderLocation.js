@@ -19,10 +19,18 @@ export default function useResponderLocation(responderId, active = true) {
 
     supabase
       .from('responder_locations')
-      .select('latitude, longitude, updated_at')
+      .select('latitude, longitude, updated_at, user_profiles!responder_id(full_name, departments(name))')
       .eq('responder_id', responderId)
       .maybeSingle()
-      .then(({ data }) => { if (alive && data) setLocation(data); });
+      .then(({ data }) => {
+        if (alive && data) {
+          setLocation({
+            ...data,
+            name: data.user_profiles?.full_name || null,
+            dept: data.user_profiles?.departments?.name || null,
+          });
+        }
+      });
 
     const channel = supabase
       .channel(`responder_loc_${responderId}`)
@@ -31,7 +39,9 @@ export default function useResponderLocation(responderId, active = true) {
         schema: 'public',
         table: 'responder_locations',
         filter: `responder_id=eq.${responderId}`,
-      }, (payload) => { if (alive) setLocation(payload.new); })
+      }, (payload) => {
+        if (alive) setLocation(prev => ({ ...payload.new, name: prev?.name, dept: prev?.dept }));
+      })
       .subscribe();
 
     return () => { alive = false; supabase.removeChannel(channel); };

@@ -8,9 +8,10 @@ import IncidentChat from '../../components/IncidentChat';
 import SidebarProfile from '../../components/SidebarProfile';
 import AppSidebar from '../../components/AppSidebar';
 import BoundaryMap from '../../components/BoundaryMap';
-import { RESPONDER_ICON } from '../../utils/leafletIcon';
+import { RESPONDER_ICON, responderDeptIcon } from '../../utils/leafletIcon';
 import useResponderLocation from '../../hooks/useResponderLocation';
 import useResponderLocations from '../../hooks/useResponderLocations';
+import useDrivingRoutes from '../../hooks/useDrivingRoutes';
 import { supabase } from '../../lib/supabase';
 import { submitIdForVerification } from '../../utils/verifyId';
 
@@ -64,15 +65,17 @@ export default function ResidentHome() {
   );
   const liveMarkers = Object.entries(allLocs)
     .filter(([, loc]) => loc?.latitude && loc?.longitude)
-    .map(([id, loc]) => ({ id, position: [loc.latitude, loc.longitude], icon: RESPONDER_ICON }));
+    .map(([id, loc]) => ({ id, position: [loc.latitude, loc.longitude], icon: responderDeptIcon(loc.dept), dept: loc.dept }));
   const responderMarkers = liveMarkers.length
     ? liveMarkers
     : (responderLoc?.latitude
-        ? [{ position: [responderLoc.latitude, responderLoc.longitude], icon: RESPONDER_ICON }]
+        ? [{ position: [responderLoc.latitude, responderLoc.longitude], icon: responderDeptIcon(responderLoc.dept) }]
         : []);
-  const responderRoutes = incidentCoords
-    ? responderMarkers.map(m => [m.position, incidentCoords])
+  // Street-following approach lines via OSRM (straight lines while loading).
+  const routePairs = incidentCoords
+    ? responderMarkers.map(m => ({ id: m.id || 'assignee', from: m.position, to: incidentCoords }))
     : [];
+  const responderRoutes = useDrivingRoutes(routePairs).map(r => r.positions);
   const trackedTimes = Object.values(allLocs).map(l => l?.updated_at).filter(Boolean).sort();
   const lastUpdate = trackedTimes[trackedTimes.length - 1] || responderLoc?.updated_at;
 

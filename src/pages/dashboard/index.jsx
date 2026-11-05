@@ -20,7 +20,8 @@ import AppSidebar from '../../components/AppSidebar';
 import useServiceBoundary from '../../hooks/useServiceBoundary';
 import useResponderLocation from '../../hooks/useResponderLocation';
 import useResponderLocations from '../../hooks/useResponderLocations';
-import { RESPONDER_ICON, incidentIcon } from '../../utils/leafletIcon';
+import { RESPONDER_ICON, responderDeptIcon, incidentIcon } from '../../utils/leafletIcon';
+import useDrivingRoutes from '../../hooks/useDrivingRoutes';
 import { compareBirthdates } from '../../utils/verificationRules';
 
 const priorityStyles = {
@@ -1810,6 +1811,8 @@ export default function Dashboard({ section = 'command' }) {
       id,
       position: [loc.latitude, loc.longitude],
       name: loc.name,
+      dept: loc.dept,
+      icon: responderDeptIcon(loc.dept),
       updatedAt: loc.updated_at,
     }));
 
@@ -1831,9 +1834,9 @@ export default function Dashboard({ section = 'command' }) {
     })
     .filter(Boolean), [reports, activeReport?.id]);
 
-  // Dashed line from each broadcasting responder to their incident — a
-  // visual route hint. Assignee routes are blue; assisting responders amber.
-  const responderRoutes = useMemo(() => [
+  // Street-following lines from each broadcasting responder to their
+  // incident via OSRM — assignee routes blue, assisting responders amber.
+  const routePairs = useMemo(() => [
     ...reports
       .filter(r => r.status !== 'resolved' && r.assigned_to)
       .map(r => {
@@ -1841,7 +1844,7 @@ export default function Dashboard({ section = 'command' }) {
         const lat = r.latitude ?? r.attachments?.latitude;
         const lng = r.longitude ?? r.attachments?.longitude;
         return (loc?.latitude && lat && lng)
-          ? { id: r.id, positions: [[loc.latitude, loc.longitude], [lat, lng]] }
+          ? { id: r.id, from: [loc.latitude, loc.longitude], to: [lat, lng] }
           : null;
       })
       .filter(Boolean),
@@ -1852,11 +1855,12 @@ export default function Dashboard({ section = 'command' }) {
         const lat = r?.latitude ?? r?.attachments?.latitude;
         const lng = r?.longitude ?? r?.attachments?.longitude;
         return (loc?.latitude && r?.status !== 'resolved' && lat && lng)
-          ? { id: `assist-${a.report_id}-${a.responded_by}`, positions: [[loc.latitude, loc.longitude], [lat, lng]], color: '#d97706' }
+          ? { id: `assist-${a.report_id}-${a.responded_by}`, from: [loc.latitude, loc.longitude], to: [lat, lng], color: '#d97706' }
           : null;
       })
       .filter(Boolean),
   ], [reports, allResponderLocs, acceptedAssistance]);
+  const responderRoutes = useDrivingRoutes(routePairs);
 
   // Hooks must run in the same order when switching between command-center
   // sections. Keep this before the section-specific early returns below.
