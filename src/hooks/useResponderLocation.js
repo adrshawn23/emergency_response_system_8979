@@ -33,7 +33,7 @@ export default function useResponderLocation(responderId, active = true) {
       });
 
     const channel = supabase
-      .channel(`responder_loc_${responderId}`)
+      .channel(`responder_loc_${responderId}_${Math.random().toString(36).slice(2, 8)}`)
       .on('postgres_changes', {
         event: '*',
         schema: 'public',

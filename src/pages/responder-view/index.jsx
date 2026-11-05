@@ -73,7 +73,7 @@ export default function ResponderView() {
 
     // Real-time subscription for assigned reports
     const subscription = supabase
-      .channel('assigned_reports_changes')
+      .channel(`assigned_reports_${Math.random().toString(36).slice(2, 8)}`)
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'emergency_reports', filter: `assigned_to=eq.${profile.id}` }, (payload) => {
         setAssignedReports(prev => prev.map(r => r.id === payload.new.id ? payload.new : r));
       })
@@ -100,7 +100,7 @@ export default function ResponderView() {
     fetchAssistance();
 
     const channel = supabase
-      .channel('assistance_requests_changes')
+      .channel(`assistance_requests_${Math.random().toString(36).slice(2, 8)}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'cross_department_assistance', filter: `assisting_department_id=eq.${profile.department_id}` }, () => fetchAssistance())
       .subscribe();
 
@@ -131,7 +131,7 @@ export default function ResponderView() {
     };
     fetchMine();
     const ch = supabase
-      .channel('my_assistance_requests')
+      .channel(`my_assistance_${Math.random().toString(36).slice(2, 8)}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'cross_department_assistance', filter: `requested_by=eq.${profile.id}` }, () => fetchMine())
       .subscribe();
     return () => { supabase.removeChannel(ch); };

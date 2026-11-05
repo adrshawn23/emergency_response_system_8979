@@ -1794,7 +1794,7 @@ export default function Dashboard({ section = 'command' }) {
     };
     fetchAssist();
     const ch = supabase
-      .channel('cmd_assistance_changes')
+      .channel(`cmd_assistance_${Math.random().toString(36).slice(2, 8)}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'cross_department_assistance' }, () => fetchAssist())
       .subscribe();
     return () => { supabase.removeChannel(ch); };

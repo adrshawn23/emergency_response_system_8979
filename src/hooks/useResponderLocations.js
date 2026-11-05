@@ -40,7 +40,7 @@ export default function useResponderLocations(active = true) {
       });
 
     const channel = supabase
-      .channel('responder_locations_all')
+      .channel(`responder_locations_all_${Math.random().toString(36).slice(2, 8)}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'responder_locations' },
         (payload) => {
           if (!alive) return;
