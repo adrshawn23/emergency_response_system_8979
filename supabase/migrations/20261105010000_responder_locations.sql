@@ -44,17 +44,29 @@ CREATE POLICY "responder_locations_staff_read"
 
 DROP POLICY IF EXISTS "responder_locations_reporter_read" ON public.responder_locations;
 CREATE POLICY "responder_locations_reporter_read"
-    ON public.responder_locations
-    FOR SELECT
-    TO authenticated
-    USING (
-        EXISTS (
-            SELECT 1 FROM public.emergency_reports er
-            WHERE er.reporter_id = auth.uid()
-              AND er.assigned_to = responder_locations.responder_id
-              AND er.status <> 'resolved'
-        )
-    );
+  ON public.responder_locations
+  FOR SELECT
+  TO authenticated
+  USING (
+    -- Assigned responder on my unresolved report…
+    EXISTS (
+      SELECT 1 FROM public.emergency_reports er
+      WHERE er.reporter_id = auth.uid()
+        AND er.assigned_to = responder_locations.responder_id
+        AND er.status <> 'resolved'
+    )
+    OR
+    -- …or a responder who accepted an assistance request on it.
+    EXISTS (
+      SELECT 1
+      FROM public.cross_department_assistance cda
+      JOIN public.emergency_reports er ON er.id = cda.report_id
+      WHERE er.reporter_id = auth.uid()
+        AND er.status <> 'resolved'
+        AND cda.status = 'accepted'
+        AND cda.responded_by = responder_locations.responder_id
+    )
+  );
 
 -- Realtime so the incident map marker moves live.
 DO $$

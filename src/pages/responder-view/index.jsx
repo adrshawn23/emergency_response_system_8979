@@ -103,11 +103,16 @@ export default function ResponderView() {
     return () => { channel.unsubscribe(); };
   }, [profile?.id, profile?.department_id]);
 
-  // Publish live GPS while carrying an open assignment — the reporter can
-  // then watch the responder approach on the incident map. Updates are
-  // throttled to ≥20 m movement or ≥20 s, and stop entirely once every
-  // assignment is resolved.
-  const hasOpenAssignment = assignedReports.some(r => r.status !== 'resolved');
+  // Publish live GPS while carrying an open assignment OR an accepted
+  // assistance request on an unresolved incident — the reporter watches the
+  // responder approach on the incident map. Writes are throttled to ≥20 m
+  // movement or ≥20 s and stop entirely once every task is resolved.
+  const hasOpenAssignment =
+    assignedReports.some(r => r.status !== 'resolved') ||
+    assistanceRequests.some(a =>
+      a.status === 'accepted' &&
+      a.responded_by === profile?.id &&
+      a.report?.status !== 'resolved');
 
   // Selected incident coords + the responder's own live pin — the same two
   // markers the resident sees, plus a dashed approach line between them.

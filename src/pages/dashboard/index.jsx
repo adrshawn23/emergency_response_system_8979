@@ -1777,11 +1777,32 @@ export default function Dashboard({ section = 'command' }) {
   const allResponderLocs = useResponderLocations(
     !!profile && ['admin', 'dispatcher', 'responder'].includes(profile.role)
   );
+  // Responders who accepted cross-department assistance — visible like the
+  // assignee while the incident stays open.
+  const [acceptedAssistance, setAcceptedAssistance] = useState([]);
+  useEffect(() => {
+    if (!profile?.id) return undefined;
+    const fetchAssist = async () => {
+      const { data } = await supabase
+        .from('cross_department_assistance')
+        .select('report_id, responded_by, report:emergency_reports(status, latitude, longitude, attachments)')
+        .eq('status', 'accepted')
+        .not('responded_by', 'is', null);
+      if (data) setAcceptedAssistance(data);
+    };
+    fetchAssist();
+    const ch = supabase
+      .channel('cmd_assistance_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cross_department_assistance' }, () => fetchAssist())
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [profile?.id]);
   const busyResponderIds = useMemo(
-    () => new Set(
-      reports.filter(r => r.assigned_to && r.status !== 'resolved').map(r => r.assigned_to)
-    ),
-    [reports]
+    () => new Set([
+      ...reports.filter(r => r.assigned_to && r.status !== 'resolved').map(r => r.assigned_to),
+      ...acceptedAssistance.filter(a => a.report?.status !== 'resolved').map(a => a.responded_by),
+    ]),
+    [reports, acceptedAssistance]
   );
   const responderMarkers = Object.entries(allResponderLocs)
     .filter(([id, loc]) => busyResponderIds.has(id) && loc?.latitude && loc?.longitude)
@@ -1810,19 +1831,32 @@ export default function Dashboard({ section = 'command' }) {
     })
     .filter(Boolean), [reports, activeReport?.id]);
 
-  // Dashed line from each broadcasting responder to their assigned incident —
-  // a visual route hint, not turn-by-turn directions.
-  const responderRoutes = useMemo(() => reports
-    .filter(r => r.status !== 'resolved' && r.assigned_to)
-    .map(r => {
-      const loc = allResponderLocs[r.assigned_to];
-      const lat = r.latitude ?? r.attachments?.latitude;
-      const lng = r.longitude ?? r.attachments?.longitude;
-      return (loc?.latitude && lat && lng)
-        ? { id: r.id, positions: [[loc.latitude, loc.longitude], [lat, lng]] }
-        : null;
-    })
-    .filter(Boolean), [reports, allResponderLocs]);
+  // Dashed line from each broadcasting responder to their incident — a
+  // visual route hint. Assignee routes are blue; assisting responders amber.
+  const responderRoutes = useMemo(() => [
+    ...reports
+      .filter(r => r.status !== 'resolved' && r.assigned_to)
+      .map(r => {
+        const loc = allResponderLocs[r.assigned_to];
+        const lat = r.latitude ?? r.attachments?.latitude;
+        const lng = r.longitude ?? r.attachments?.longitude;
+        return (loc?.latitude && lat && lng)
+          ? { id: r.id, positions: [[loc.latitude, loc.longitude], [lat, lng]] }
+          : null;
+      })
+      .filter(Boolean),
+    ...acceptedAssistance
+      .map(a => {
+        const loc = allResponderLocs[a.responded_by];
+        const r = a.report;
+        const lat = r?.latitude ?? r?.attachments?.latitude;
+        const lng = r?.longitude ?? r?.attachments?.longitude;
+        return (loc?.latitude && r?.status !== 'resolved' && lat && lng)
+          ? { id: `assist-${a.report_id}-${a.responded_by}`, positions: [[loc.latitude, loc.longitude], [lat, lng]], color: '#d97706' }
+          : null;
+      })
+      .filter(Boolean),
+  ], [reports, allResponderLocs, acceptedAssistance]);
 
   // Hooks must run in the same order when switching between command-center
   // sections. Keep this before the section-specific early returns below.
@@ -1910,6 +1944,7 @@ export default function Dashboard({ section = 'command' }) {
                   <div className="mt-2 flex items-center gap-2"><span className="flex h-4 w-4 items-center justify-center rounded-full bg-slate-600 text-[8px] font-bold text-white">T</span>Open incidents (letter = type)</div>
                   <div className="mt-2 flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-blue-600"/>Responder (live)</div>
                   <div className="mt-2 flex items-center gap-2"><span className="h-0.5 w-4 border-t-2 border-dashed border-blue-500"/>Responder route</div>
+                  <div className="mt-2 flex items-center gap-2"><span className="h-0.5 w-4 border-t-2 border-dashed border-amber-600"/>Assistance route</div>
                   <div className="mt-2 flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full border-2 border-taste-500"/>Service boundary</div>
                 </div>
               </div>

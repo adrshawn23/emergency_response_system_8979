@@ -10,6 +10,7 @@ import AppSidebar from '../../components/AppSidebar';
 import BoundaryMap from '../../components/BoundaryMap';
 import { RESPONDER_ICON } from '../../utils/leafletIcon';
 import useResponderLocation from '../../hooks/useResponderLocation';
+import useResponderLocations from '../../hooks/useResponderLocations';
 import { supabase } from '../../lib/supabase';
 import { submitIdForVerification } from '../../utils/verifyId';
 
@@ -55,9 +56,25 @@ export default function ResidentHome() {
   const incidentLat = selectedReport?.latitude ?? selectedReport?.attachments?.latitude;
   const incidentLng = selectedReport?.longitude ?? selectedReport?.attachments?.longitude;
   const incidentCoords = incidentLat && incidentLng ? [incidentLat, incidentLng] : null;
-  const responderMarkers = responderLoc?.latitude
-    ? [{ position: [responderLoc.latitude, responderLoc.longitude], icon: RESPONDER_ICON }]
+
+  // Every responder the RLS policy exposes for this report: the assignee AND
+  // any responder who accepted cross-department assistance on it.
+  const allLocs = useResponderLocations(
+    !!selectedReport && selectedReport.status !== 'resolved'
+  );
+  const liveMarkers = Object.entries(allLocs)
+    .filter(([, loc]) => loc?.latitude && loc?.longitude)
+    .map(([id, loc]) => ({ id, position: [loc.latitude, loc.longitude], icon: RESPONDER_ICON }));
+  const responderMarkers = liveMarkers.length
+    ? liveMarkers
+    : (responderLoc?.latitude
+        ? [{ position: [responderLoc.latitude, responderLoc.longitude], icon: RESPONDER_ICON }]
+        : []);
+  const responderRoutes = incidentCoords
+    ? responderMarkers.map(m => [m.position, incidentCoords])
     : [];
+  const trackedTimes = Object.values(allLocs).map(l => l?.updated_at).filter(Boolean).sort();
+  const lastUpdate = trackedTimes[trackedTimes.length - 1] || responderLoc?.updated_at;
 
   const loadVerification = useCallback(async () => {
     if (!profile?.id) return;
@@ -182,15 +199,13 @@ export default function ResidentHome() {
                   <BoundaryMap
                     marker={incidentCoords}
                     markers={responderMarkers}
-                    route={responderLoc?.latitude && incidentCoords
-                      ? [[responderLoc.latitude, responderLoc.longitude], incidentCoords]
-                      : null}
+                    route={responderRoutes.length ? responderRoutes : null}
                   />
                 </div>
-                {responderLoc && (
+                {lastUpdate && (
                   <p className="mt-1.5 flex items-center gap-1.5 text-xs text-slate-500">
                     <Icon name="Navigation" size={12} className="text-blue-600"/>
-                    Responder location — updated {new Date(responderLoc.updated_at).toLocaleTimeString()}
+                    {responderMarkers.length > 1 ? 'Responders' : 'Responder'} live — updated {new Date(lastUpdate).toLocaleTimeString()}
                   </p>
                 )}
               </div>
