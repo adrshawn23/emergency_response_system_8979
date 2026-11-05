@@ -1863,6 +1863,46 @@ export default function Dashboard({ section = 'command' }) {
   // sections. Keep this before the section-specific early returns below.
   const openCount = useMemo(() => reports.filter(r => r.status !== 'resolved').length, [reports]);
 
+  // Operations analytics — derived client-side from the reports list already
+  // on the page. Trend counts reports per day and resolutions per day over
+  // the last 14 days; mix charts break the whole set by type and status.
+  const analytics = useMemo(() => {
+    const typeOf = r => (r.report_type || r.emergency_type || r.incident_type || 'other').toLowerCase();
+    const statusOf = r => r.status || r.attachments?.status || 'pending';
+    const byType = {};
+    const byStatus = {};
+    const days = [...Array(14)].map((_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() - (13 - i));
+      return { label: `${d.getMonth() + 1}/${d.getDate()}`, key: d.toISOString().slice(0, 10), reports: 0, resolved: 0 };
+    });
+    const dayIdx = Object.fromEntries(days.map((d, i) => [d.key, i]));
+    let resolved7 = 0;
+    let resTimeSum = 0;
+    let resTimeN = 0;
+    const weekAgo = Date.now() - 7 * 864e5;
+    reports.forEach(r => {
+      const t = typeOf(r); byType[t] = (byType[t] || 0) + 1;
+      const s = statusOf(r); byStatus[s] = (byStatus[s] || 0) + 1;
+      const day = String(r.created_at || '').slice(0, 10);
+      if (dayIdx[day] != null) days[dayIdx[day]].reports++;
+      if (s === 'resolved') {
+        const rDay = String(r.updated_at || r.created_at || '').slice(0, 10);
+        if (dayIdx[rDay] != null) days[dayIdx[rDay]].resolved++;
+        if (new Date(r.updated_at || 0).getTime() > weekAgo) resolved7++;
+        const ms = new Date(r.updated_at || 0) - new Date(r.created_at || 0);
+        if (ms > 0 && ms < 7 * 864e5) { resTimeSum += ms; resTimeN++; }
+      }
+    });
+    return {
+      trend: days.map(({ label, reports: a, resolved: b }) => ({ label, reports: a, resolved: b })),
+      types: Object.entries(byType).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value).slice(0, 6),
+      statuses: Object.entries(byStatus).map(([name, value]) => ({ name, value })),
+      resolved7,
+      avgResolveHrs: resTimeN ? resTimeSum / resTimeN / 36e5 : null,
+    };
+  }, [reports]);
+
   if (profile?.role === 'resident' && activeSection === 'command') return <ResidentHome />;
   if (profile?.role === 'responder' && activeSection === 'command') return <ResponderView />;
   // RBAC: role-gated sections must not render for other roles even if a
@@ -1900,8 +1940,8 @@ export default function Dashboard({ section = 'command' }) {
           <section className="overflow-hidden rounded-2xl bg-slate-900 px-6 py-6 text-white  sm:px-8">
             <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-center"><div><div className="mb-3 flex items-center gap-2 text-xs font-semibold  text-red-300"><span className="h-2 w-2  rounded-full bg-red-400"/>Live response operations</div><h2 className="text-2xl font-bold tracking-tight sm:text-3xl">Barangay Kalubihan Command Center</h2><p className="mt-2 max-w-xl text-sm leading-6 text-slate-300">Coordinate incidents, monitor the official service boundary, and request only the assistance your response needs.</p></div><div className="flex flex-wrap gap-3"><button onClick={() => navigate('/emergency-report')} className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-3 text-sm font-semibold hover:bg-red-700"><Icon name="Siren" size={18}/>Report emergency</button><button onClick={() => setShowBroadcast(true)} className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm font-semibold hover:bg-taste-600"><Icon name="Radio" size={18}/>Request assistance</button></div></div>
           </section>
-          <section className="grid gap-4 sm:grid-cols-2">
-            {[['Active incidents', openCount], ['Awaiting verification review', pendingCount]].map(([label, value]) => <div key={label} className="rounded-lg border border-slate-200/70 bg-white p-5"><p className="text-sm font-medium text-slate-500">{label}</p><p className="mt-2 text-3xl tabular-nums">{value}</p></div>)}
+          <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {[['Active incidents', openCount], ['Awaiting verification review', pendingCount], ['Resolved · last 7 days', analytics.resolved7], ['Avg time to resolve', analytics.avgResolveHrs == null ? '—' : `${analytics.avgResolveHrs.toFixed(1)} h`]].map(([label, value]) => <div key={label} className="rounded-lg border border-slate-200/70 bg-white p-5"><p className="text-sm font-medium text-slate-500">{label}</p><p className="mt-2 text-3xl tabular-nums">{value}</p></div>)}
           </section>
           {cdaRequests.length > 0 && (
             <section className="rounded-lg border border-amber-200 bg-amber-50 p-4">
@@ -1948,6 +1988,61 @@ export default function Dashboard({ section = 'command' }) {
                   <div className="mt-2 flex items-center gap-2"><span className="h-0.5 w-4 border-t-2 border-dashed border-amber-600"/>Assistance route</div>
                   <div className="mt-2 flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full border-2 border-taste-500"/>Service boundary</div>
                 </div>
+              </div>
+            </div>
+          </section>
+          <section className="grid gap-6 lg:grid-cols-3">
+            <div className="rounded-lg border border-slate-200/70 bg-white p-5">
+              <h3 className="font-bold">14-day incident trend</h3>
+              <p className="mt-0.5 text-xs text-slate-500">New reports vs. resolved per day</p>
+              <div className="mt-3 h-48">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={analytics.trend} margin={{ top: 4, right: 4, bottom: 0, left: -22 }}>
+                    <XAxis dataKey="label" tick={{ fontSize: 10, fill: '#64748b' }} tickLine={false} axisLine={false} interval={1}/>
+                    <YAxis allowDecimals={false} tick={{ fontSize: 10, fill: '#64748b' }} tickLine={false} axisLine={false}/>
+                    <Tooltip/>
+                    <Area type="monotone" dataKey="reports" name="Reports" stroke="#2563eb" fill="#2563eb" fillOpacity={0.15} strokeWidth={2}/>
+                    <Area type="monotone" dataKey="resolved" name="Resolved" stroke="#10b981" fill="#10b981" fillOpacity={0.15} strokeWidth={2}/>
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+            <div className="rounded-lg border border-slate-200/70 bg-white p-5">
+              <h3 className="font-bold">Incidents by type</h3>
+              <p className="mt-0.5 text-xs text-slate-500">Share of all reports</p>
+              <div className="mt-3 h-48">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={analytics.types} dataKey="value" nameKey="name" innerRadius={45} outerRadius={70} strokeWidth={2}>
+                      {analytics.types.map((t, i) => <Cell key={t.name} fill={CHART_COLORS[i % CHART_COLORS.length]}/>)}
+                    </Pie>
+                    <Tooltip/>
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1">
+                {analytics.types.map((t, i) => (
+                  <span key={t.name} className="inline-flex items-center gap-1.5 text-xs capitalize text-slate-600">
+                    <span className="h-2 w-2 rounded-full" style={{ background: CHART_COLORS[i % CHART_COLORS.length] }}/>
+                    {t.name} · {t.value}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <div className="rounded-lg border border-slate-200/70 bg-white p-5">
+              <h3 className="font-bold">Status breakdown</h3>
+              <p className="mt-0.5 text-xs text-slate-500">Reports by workflow state</p>
+              <div className="mt-3 h-48">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={analytics.statuses} margin={{ top: 4, right: 4, bottom: 0, left: -22 }}>
+                    <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#64748b' }} tickLine={false} axisLine={false}/>
+                    <YAxis allowDecimals={false} tick={{ fontSize: 10, fill: '#64748b' }} tickLine={false} axisLine={false}/>
+                    <Tooltip/>
+                    <Bar dataKey="value" name="Reports" radius={[4, 4, 0, 0]}>
+                      {analytics.statuses.map(s => <Cell key={s.name} fill={STATUS_COLORS[s.name] || '#64748b'}/>)}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
               </div>
             </div>
           </section>
