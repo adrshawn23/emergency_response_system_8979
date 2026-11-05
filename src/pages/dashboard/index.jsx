@@ -1715,7 +1715,8 @@ export default function Dashboard({ section = 'command' }) {
         .from('emergency_reports')
         .select('*')
         .order('created_at', { ascending: false });
-      
+
+      if (error) console.error('Reports fetch failed:', error);
       if (data && !error) {
         setReports(data);
       }
@@ -2011,6 +2012,9 @@ export default function Dashboard({ section = 'command' }) {
             <div className="rounded-lg border border-slate-200/70 bg-white p-5">
               <h3 className="font-bold">Incidents by type</h3>
               <p className="mt-0.5 text-xs text-slate-500">Share of all reports</p>
+              {analytics.types.length === 0 ? (
+                <div className="grid h-48 place-items-center text-xs text-slate-400">No reports yet</div>
+              ) : (
               <div className="mt-3 h-48">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
@@ -2021,6 +2025,7 @@ export default function Dashboard({ section = 'command' }) {
                   </PieChart>
                 </ResponsiveContainer>
               </div>
+              )}
               <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1">
                 {analytics.types.map((t, i) => (
                   <span key={t.name} className="inline-flex items-center gap-1.5 text-xs capitalize text-slate-600">
@@ -2033,6 +2038,9 @@ export default function Dashboard({ section = 'command' }) {
             <div className="rounded-lg border border-slate-200/70 bg-white p-5">
               <h3 className="font-bold">Status breakdown</h3>
               <p className="mt-0.5 text-xs text-slate-500">Reports by workflow state</p>
+              {analytics.statuses.length === 0 ? (
+                <div className="grid h-48 place-items-center text-xs text-slate-400">No reports yet</div>
+              ) : (
               <div className="mt-3 h-48">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={analytics.statuses} margin={{ top: 4, right: 4, bottom: 0, left: -22 }}>
@@ -2045,6 +2053,7 @@ export default function Dashboard({ section = 'command' }) {
                   </BarChart>
                 </ResponsiveContainer>
               </div>
+              )}
             </div>
           </section>
           {activeReport && <section className="rounded-lg border border-slate-200/70 bg-white p-5 "><div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-center"><div className="flex gap-4"><div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-red-50 text-red-600"><Icon name="Flame" size={23}/></div><div><div className="flex flex-wrap items-center gap-2"><h3 className="font-bold capitalize">{activeReport.report_type || activeReport.emergency_type || activeReport.incident_type} response · {activeReport.report_id}</h3><span className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase ring-1 ${priorityStyles[activeReport.priority]}`}>{activeReport.priority}</span></div><p className="mt-1 text-sm text-slate-500">{activeReport.content || activeReport.description}</p><p className="mt-2 flex items-center gap-1 text-xs font-medium text-slate-400"><Icon name="MapPin" size={13}/>{activeReport.attachments?.location || activeReport.location} <span className="mx-1">•</span> GPS location captured</p></div></div><div className="flex flex-wrap gap-2"><button onClick={() => updateStatus(activeReport, 'assigned')} className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold hover:bg-slate-50">Assign team</button><button onClick={() => setShowBroadcast(true)} className="rounded-xl bg-taste-500 px-3 py-2 text-sm font-semibold text-white hover:bg-taste-600">Request assistance</button><button onClick={() => navigate('/report-management')} className="rounded-xl border border-slate-200 p-2 text-slate-500 hover:bg-slate-50" aria-label="View incident details"><Icon name="ArrowUpRight" size={18}/></button></div></div></section>}
