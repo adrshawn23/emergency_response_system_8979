@@ -1821,11 +1821,10 @@ export default function Dashboard({ section = 'command' }) {
   const incidentMarkers = useMemo(() => reports
     .filter(r => r.status !== 'resolved' && r.id !== activeReport?.id)
     .map(r => {
-      const lat = r.latitude ?? r.attachments?.latitude;
-      const lng = r.longitude ?? r.attachments?.longitude;
-      return (lat && lng) ? {
+      const coords = reportCoords(r);
+      return coords ? {
         id: r.id,
-        position: [lat, lng],
+        position: coords,
         type: r.report_type || r.incident_type || r.emergency_type,
         reportId: r.report_id || r.id?.slice(0, 8),
         status: r.status,
@@ -1841,21 +1840,18 @@ export default function Dashboard({ section = 'command' }) {
       .filter(r => r.status !== 'resolved' && r.assigned_to)
       .map(r => {
         const loc = allResponderLocs[r.assigned_to];
-        const lat = r.latitude ?? r.attachments?.latitude;
-        const lng = r.longitude ?? r.attachments?.longitude;
-        return (loc?.latitude && lat && lng)
-          ? { id: r.id, from: [loc.latitude, loc.longitude], to: [lat, lng] }
+        const to = reportCoords(r);
+        return (loc?.latitude && to)
+          ? { id: r.id, from: [loc.latitude, loc.longitude], to }
           : null;
       })
       .filter(Boolean),
     ...acceptedAssistance
       .map(a => {
         const loc = allResponderLocs[a.responded_by];
-        const r = a.report;
-        const lat = r?.latitude ?? r?.attachments?.latitude;
-        const lng = r?.longitude ?? r?.attachments?.longitude;
-        return (loc?.latitude && r?.status !== 'resolved' && lat && lng)
-          ? { id: `assist-${a.report_id}-${a.responded_by}`, from: [loc.latitude, loc.longitude], to: [lat, lng], color: '#d97706' }
+        const to = reportCoords(a.report);
+        return (loc?.latitude && a.report?.status !== 'resolved' && to)
+          ? { id: `assist-${a.report_id}-${a.responded_by}`, from: [loc.latitude, loc.longitude], to, color: '#d97706' }
           : null;
       })
       .filter(Boolean),

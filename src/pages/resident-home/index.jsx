@@ -12,6 +12,7 @@ import { RESPONDER_ICON, responderDeptIcon } from '../../utils/leafletIcon';
 import useResponderLocation from '../../hooks/useResponderLocation';
 import useResponderLocations from '../../hooks/useResponderLocations';
 import useDrivingRoutes from '../../hooks/useDrivingRoutes';
+import { reportCoords } from '../../utils/reportCoords';
 import { supabase } from '../../lib/supabase';
 import { submitIdForVerification } from '../../utils/verifyId';
 
@@ -54,9 +55,7 @@ export default function ResidentHome() {
     selectedReport?.assigned_to,
     !!selectedReport && selectedReport.status !== 'resolved'
   );
-  const incidentLat = selectedReport?.latitude ?? selectedReport?.attachments?.latitude;
-  const incidentLng = selectedReport?.longitude ?? selectedReport?.attachments?.longitude;
-  const incidentCoords = incidentLat && incidentLng ? [incidentLat, incidentLng] : null;
+  const incidentCoords = reportCoords(selectedReport);
 
   // Every responder the RLS policy exposes for this report: the assignee AND
   // any responder who accepted cross-department assistance on it.

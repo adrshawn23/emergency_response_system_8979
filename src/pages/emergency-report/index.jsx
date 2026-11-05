@@ -152,8 +152,8 @@ const EmergencyReport = () => {
           content: formData.description,
           attachments: {
             status: 'pending',
-            latitude: formData.locationMetadata?.coordinates?.[0] || null,
-            longitude: formData.locationMetadata?.coordinates?.[1] || null,
+            latitude: formData.locationMetadata?.coordinates?.lat ?? formData.locationMetadata?.coordinates?.[0] ?? null,
+            longitude: formData.locationMetadata?.coordinates?.lng ?? formData.locationMetadata?.coordinates?.[1] ?? null,
             location: formData.location,
             priority: formData.priority,
             contact_name: profile?.full_name || 'Command user',

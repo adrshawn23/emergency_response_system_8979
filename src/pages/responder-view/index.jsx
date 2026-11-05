@@ -11,6 +11,7 @@ import IncidentChat from '../../components/IncidentChat';
 import { RESPONDER_ICON, responderDeptIcon } from '../../utils/leafletIcon';
 import useDrivingRoutes from '../../hooks/useDrivingRoutes';
 import useResponderLocations from '../../hooks/useResponderLocations';
+import { reportCoords } from '../../utils/reportCoords';
 import AppSidebar from '../../components/AppSidebar';
 
 // Extra pages appear only when granted in Access control — canAccessPage
@@ -148,9 +149,7 @@ export default function ResponderView() {
       a.report?.status !== 'resolved');
 
   // Selected incident coords + the responder's own live pin — the same two
-  // markers the resident sees, plus a street-following dashed line.
-  const selLat = selectedReport?.latitude ?? selectedReport?.attachments?.latitude;
-  const selLng = selectedReport?.longitude ?? selectedReport?.attachments?.longitude;
+  // marind stPos = reportCaores(electedReporte)tachments?.longitude;
   const incidentPos = selLat && selLng ? [selLat, selLng] : null;
   const myDept = departments.find(d => d.id === profile?.department_id)?.name;
   const selfMarkers = myPosition ? [{ position: myPosition, icon: responderDeptIcon(myDept) }] : [];
