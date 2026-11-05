@@ -39,6 +39,13 @@ export default function ResidentHome() {
   const links = RESIDENT_LINKS.filter(l => canAccessPage(l.key, profile?.role));
   const myReports = reports.filter(r => r.reporter_id === profile?.id).slice(0, 3);
 
+  const [selectedReport, setSelectedReport] = useState(null);
+  const [verification, setVerification] = useState(null);
+  const [verificationLoaded, setVerificationLoaded] = useState(false);
+  const [resubmitFile, setResubmitFile] = useState(null);
+  const [resubmitting, setResubmitting] = useState(false);
+  const [resubmitMsg, setResubmitMsg] = useState('');
+
   // Live responder position for the open report — visible only while the
   // incident is unresolved (mirrors the reporter_read RLS policy).
   const responderLoc = useResponderLocation(
@@ -51,12 +58,6 @@ export default function ResidentHome() {
   const responderMarkers = responderLoc?.latitude
     ? [{ position: [responderLoc.latitude, responderLoc.longitude], icon: RESPONDER_ICON }]
     : [];
-  const [selectedReport, setSelectedReport] = useState(null);
-  const [verification, setVerification] = useState(null);
-  const [verificationLoaded, setVerificationLoaded] = useState(false);
-  const [resubmitFile, setResubmitFile] = useState(null);
-  const [resubmitting, setResubmitting] = useState(false);
-  const [resubmitMsg, setResubmitMsg] = useState('');
 
   const loadVerification = useCallback(async () => {
     if (!profile?.id) return;

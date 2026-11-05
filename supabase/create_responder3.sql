@@ -18,8 +18,7 @@ WHERE email = 'responder3@emergency.gov'
 WITH police_dept AS (
   SELECT id
   FROM public.departments
-  WHERE type = 'police' OR name ILIKE '%police%'
-  ORDER BY CASE WHEN type = 'police' THEN 0 ELSE 1 END
+  WHERE name ILIKE '%police%'
   LIMIT 1
 )
 INSERT INTO public.user_profiles
