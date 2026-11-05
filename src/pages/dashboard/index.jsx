@@ -19,6 +19,7 @@ import BoundaryMap from '../../components/BoundaryMap';
 import AppSidebar from '../../components/AppSidebar';
 import useServiceBoundary from '../../hooks/useServiceBoundary';
 import useResponderLocation from '../../hooks/useResponderLocation';
+import useResponderLocations from '../../hooks/useResponderLocations';
 import { RESPONDER_ICON } from '../../utils/leafletIcon';
 import { compareBirthdates } from '../../utils/verificationRules';
 
@@ -62,22 +63,32 @@ const FitToBoundary = ({ positions }) => {
   return null;
 };
 
-const CommandCenterMap = ({ boundaryPoints, activeReport }) => {
+const CommandCenterMap = ({ boundaryPoints, activeReport, responderMarkers = [] }) => {
   return (
     <MapContainer center={[10.3172, 123.8951]} zoom={13} style={{ height: '100%', width: '100%' }}>
       <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"/>
       {boundaryPoints.length > 2 && (
         <Polygon 
-          positions={boundaryPoints.map(p => [p.lat, p.lng])} 
-          color="#1b6c80" 
-          fillColor="#1b6c80" 
-          fillOpacity={0.2}
+          positions={boundaryPoints.map(p => [p.lat, p.lng])}
+          color="#1b6c80"
+          fillColor="#1b6c80"
+          fillOpacity={0.08}
         />
       )}
       <FitToBoundary positions={boundaryPoints.length > 2 ? boundaryPoints.map(p => [p.lat, p.lng]) : []} />
       {activeReport?.latitude && activeReport?.longitude && (
         <Marker position={[activeReport.latitude, activeReport.longitude]}/>
       )}
+      {responderMarkers.map((m) => (
+        <Marker key={m.id} position={m.position} icon={RESPONDER_ICON}>
+          <Popup>
+            <div style={{ fontSize: 12 }}>
+              <strong>{m.name || 'Responder'}</strong><br/>
+              Updated {m.updatedAt ? new Date(m.updatedAt).toLocaleTimeString() : '—'}
+            </div>
+          </Popup>
+        </Marker>
+      ))}
     </MapContainer>
   );
 };
@@ -1748,6 +1759,26 @@ export default function Dashboard({ section = 'command' }) {
     setActiveSection(section);
   }, [section]);
 
+  // Live responder positions on the command map — staff read all rows per
+  // RLS. A pin shows only while that responder holds an open assignment.
+  const allResponderLocs = useResponderLocations(
+    !!profile && ['admin', 'dispatcher', 'responder'].includes(profile.role)
+  );
+  const busyResponderIds = useMemo(
+    () => new Set(
+      reports.filter(r => r.assigned_to && r.status !== 'resolved').map(r => r.assigned_to)
+    ),
+    [reports]
+  );
+  const responderMarkers = Object.entries(allResponderLocs)
+    .filter(([id, loc]) => busyResponderIds.has(id) && loc?.latitude && loc?.longitude)
+    .map(([id, loc]) => ({
+      id,
+      position: [loc.latitude, loc.longitude],
+      name: loc.name,
+      updatedAt: loc.updated_at,
+    }));
+
   // Hooks must run in the same order when switching between command-center
   // sections. Keep this before the section-specific early returns below.
   const openCount = useMemo(() => reports.filter(r => r.status !== 'resolved').length, [reports]);
@@ -1824,13 +1855,14 @@ export default function Dashboard({ section = 'command' }) {
                 </button>}
               </div>
               <div className="relative h-[365px] overflow-hidden">
-                <CommandCenterMap boundaryPoints={boundaryPoints} activeReport={activeReport} />
+                <CommandCenterMap boundaryPoints={boundaryPoints} activeReport={activeReport} responderMarkers={responderMarkers} />
                 <div className="absolute bottom-5 left-5 rounded-xl bg-white/95 p-3 shadow-lg">
                   <p className="text-xs font-bold">{activeReport?.report_id} · {activeReport?.priority} priority</p>
                   <p className="mt-1 max-w-[185px] text-xs text-slate-500">{activeReport?.attachments?.location || activeReport?.location}</p>
                 </div>
                 <div className="absolute right-5 top-5 rounded-xl bg-white/95 p-3 text-xs shadow-lg">
                   <div className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-red-600"/>Active incident</div>
+                  <div className="mt-2 flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-blue-600"/>Responder (live)</div>
                   <div className="mt-2 flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full border-2 border-taste-500"/>Service boundary</div>
                 </div>
               </div>
