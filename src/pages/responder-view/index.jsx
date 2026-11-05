@@ -8,6 +8,7 @@ import NotificationBell from '../../components/NotificationBell';
 import SidebarProfile from '../../components/SidebarProfile';
 import BoundaryMap from '../../components/BoundaryMap';
 import IncidentChat from '../../components/IncidentChat';
+import { RESPONDER_ICON } from '../../utils/leafletIcon';
 import AppSidebar from '../../components/AppSidebar';
 
 // Extra pages appear only when granted in Access control — canAccessPage
@@ -35,6 +36,7 @@ export default function ResponderView() {
   const [assistDeptIds, setAssistDeptIds] = useState([]);
   const [assistSending, setAssistSending] = useState(false);
   const [assistMsg, setAssistMsg] = useState('');
+  const [myPosition, setMyPosition] = useState(null);
   const [requestedDepts, setRequestedDepts] = useState({});
 
   // Fresh proof requirement per incident — clear any staged photo when the
@@ -106,6 +108,14 @@ export default function ResponderView() {
   // throttled to ≥20 m movement or ≥20 s, and stop entirely once every
   // assignment is resolved.
   const hasOpenAssignment = assignedReports.some(r => r.status !== 'resolved');
+
+  // Selected incident coords + the responder's own live pin — the same two
+  // markers the resident sees, plus a dashed approach line between them.
+  const selLat = selectedReport?.latitude ?? selectedReport?.attachments?.latitude;
+  const selLng = selectedReport?.longitude ?? selectedReport?.attachments?.longitude;
+  const incidentPos = selLat && selLng ? [selLat, selLng] : null;
+  const selfMarkers = myPosition ? [{ position: myPosition, icon: RESPONDER_ICON }] : [];
+  const approachRoute = myPosition && incidentPos ? [myPosition, incidentPos] : null;
   useEffect(() => {
     if (!profile?.id || !hasOpenAssignment || !navigator.geolocation) return undefined;
     let lastWrite = 0;
@@ -114,6 +124,7 @@ export default function ResponderView() {
       ({ coords }) => {
         const latitude = Number(coords.latitude.toFixed(6));
         const longitude = Number(coords.longitude.toFixed(6));
+        setMyPosition([latitude, longitude]);
         const now = Date.now();
         const moved = !lastPos
           || Math.hypot(latitude - lastPos[0], longitude - lastPos[1]) > 0.0002;
@@ -403,15 +414,23 @@ export default function ResponderView() {
                   <Icon name="MapPin" size={14} className="shrink-0 text-taste-500"/>
                   <p className="text-sm text-slate-700">{selectedReport.attachments?.location || selectedReport.location || 'No location recorded'}</p>
                 </div>
-                {selectedReport.attachments?.latitude && selectedReport.attachments?.longitude ? (
+                {incidentPos ? (
                   <>
                     <div className="mt-2 h-56 overflow-hidden rounded-lg border border-slate-200">
                       <BoundaryMap
-                        marker={[selectedReport.attachments.latitude, selectedReport.attachments.longitude]}
+                        marker={incidentPos}
+                        markers={selfMarkers}
+                        route={approachRoute}
                       />
                     </div>
+                    {myPosition && (
+                      <p className="mt-1.5 flex items-center gap-1.5 text-xs text-slate-500">
+                        <Icon name="Navigation" size={12} className="text-blue-600"/>
+                        Blue pin is your live location — the resident sees you approach too.
+                      </p>
+                    )}
                     <a
-                      href={`https://www.google.com/maps/dir/?api=1&destination=${selectedReport.attachments.latitude},${selectedReport.attachments.longitude}`}
+                      href={`https://www.google.com/maps/dir/?api=1&destination=${incidentPos[0]},${incidentPos[1]}`}
                       target="_blank"
                       rel="noreferrer"
                       className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-200"

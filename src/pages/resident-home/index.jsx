@@ -179,7 +179,13 @@ export default function ResidentHome() {
               <div>
                 <p className="text-xs font-bold  text-slate-400">Map</p>
                 <div className="mt-1 h-48 overflow-hidden rounded-lg border border-slate-200">
-                  <BoundaryMap marker={incidentCoords} markers={responderMarkers} />
+                  <BoundaryMap
+                    marker={incidentCoords}
+                    markers={responderMarkers}
+                    route={responderLoc?.latitude && incidentCoords
+                      ? [[responderLoc.latitude, responderLoc.longitude], incidentCoords]
+                      : null}
+                  />
                 </div>
                 {responderLoc && (
                   <p className="mt-1.5 flex items-center gap-1.5 text-xs text-slate-500">

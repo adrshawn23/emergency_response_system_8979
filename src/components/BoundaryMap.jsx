@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { MapContainer, TileLayer, Polygon, Marker, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Polygon, Polyline, Marker, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import '../utils/leafletIcon';
 import useServiceBoundary from '../hooks/useServiceBoundary';
@@ -29,10 +29,10 @@ const FitView = ({ positions }) => {
  *   <BoundaryMap />                       // boundary only
  *   <BoundaryMap marker={...} className="h-56" />
  */
-const BoundaryMap = ({ marker = null, markers = [], className = 'h-full w-full' }) => {
+const BoundaryMap = ({ marker = null, markers = [], route = null, className = 'h-full w-full' }) => {
   const { points } = useServiceBoundary();
   const polygon = points.map(p => [p.lat, p.lng]);
-  const extraPositions = markers.map(m => m.position);
+  const extraPositions = [...markers.map(m => m.position), ...(route || [])];
 
   const fitPositions = polygon.length >= 3
     ? (marker ? [...polygon, marker, ...extraPositions] : [...polygon, ...extraPositions])
@@ -47,6 +47,9 @@ const BoundaryMap = ({ marker = null, markers = [], className = 'h-full w-full' 
         />
         {polygon.length >= 3 && (
           <Polygon positions={polygon} color="#1b6c80" fillColor="#1b6c80" fillOpacity={0.08} />
+        )}
+        {route && route.length > 1 && (
+          <Polyline positions={route} color="#2563eb" weight={3} dashArray="6 8" opacity={0.75} />
         )}
         {marker && <Marker position={marker} />}
         {markers.map((m, i) => (
