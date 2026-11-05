@@ -7,6 +7,9 @@ import NotificationBell from '../../components/NotificationBell';
 import IncidentChat from '../../components/IncidentChat';
 import SidebarProfile from '../../components/SidebarProfile';
 import AppSidebar from '../../components/AppSidebar';
+import BoundaryMap from '../../components/BoundaryMap';
+import { RESPONDER_ICON } from '../../utils/leafletIcon';
+import useResponderLocation from '../../hooks/useResponderLocation';
 import { supabase } from '../../lib/supabase';
 import { submitIdForVerification } from '../../utils/verifyId';
 
@@ -18,17 +21,36 @@ const VERIFICATION_COPY = {
   rejected: { tone: 'red', label: 'Not approved', text: 'Your registration could not be approved. You may resubmit a different document or contact the barangay office to appeal.' },
 };
 
+// Extra pages appear only when granted in Access control — canAccessPage
+// filters this list so the sidebar mirrors page_permissions.
 const RESIDENT_LINKS = [
-  { label: 'Home', icon: 'Home', path: '/' },
-  { label: 'Report emergency', icon: 'Siren', path: '/emergency-report' },
-  { label: 'Profile', icon: 'User', path: '/profile' }
+  { key: 'command', label: 'Home', icon: 'Home', path: '/' },
+  { key: 'new', label: 'Report emergency', icon: 'Siren', path: '/emergency-report' },
+  { key: 'queue', label: 'Incident queue', icon: 'ListChecks', path: '/report-management' },
+  { key: 'residents', label: 'Residents & review', icon: 'Users', path: '/user-management' },
+  { key: 'departments', label: 'Departments', icon: 'Building2', path: '/department-management' },
+  { key: 'profile', label: 'Profile', icon: 'User', path: '/profile' }
 ];
 
 export default function ResidentHome() {
   const navigate = useNavigate();
-  const { profile, signOut } = useAuth();
+  const { profile, signOut, canAccessPage } = useAuth();
   const { reports } = useMockData();
+  const links = RESIDENT_LINKS.filter(l => canAccessPage(l.key, profile?.role));
   const myReports = reports.filter(r => r.reporter_id === profile?.id).slice(0, 3);
+
+  // Live responder position for the open report — visible only while the
+  // incident is unresolved (mirrors the reporter_read RLS policy).
+  const responderLoc = useResponderLocation(
+    selectedReport?.assigned_to,
+    !!selectedReport && selectedReport.status !== 'resolved'
+  );
+  const incidentLat = selectedReport?.latitude ?? selectedReport?.attachments?.latitude;
+  const incidentLng = selectedReport?.longitude ?? selectedReport?.attachments?.longitude;
+  const incidentCoords = incidentLat && incidentLng ? [incidentLat, incidentLng] : null;
+  const responderMarkers = responderLoc?.latitude
+    ? [{ position: [responderLoc.latitude, responderLoc.longitude], icon: RESPONDER_ICON }]
+    : [];
   const [selectedReport, setSelectedReport] = useState(null);
   const [verification, setVerification] = useState(null);
   const [verificationLoaded, setVerificationLoaded] = useState(false);
@@ -88,7 +110,7 @@ export default function ResidentHome() {
   const showVerificationCard = profile?.role === 'resident' && verificationLoaded
     && !isActiveResident;
   return <div className="flex min-h-screen bg-slate-50 text-slate-900">
-    <AppSidebar links={RESIDENT_LINKS} profile={profile} signOut={signOut} />
+    <AppSidebar links={links} profile={profile} signOut={signOut} />
     <div className="min-w-0 flex-1 pb-24 sm:pb-0">
     <header className="border-b border-slate-200 bg-white"><div className="mx-auto flex max-w-5xl items-center justify-between px-5 py-4"><div className="flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-xl bg-red-500 text-white"><Icon name="Siren" size={21}/></div><div><p className="font-bold">Kalubihan Emergency</p><p className="text-xs text-slate-500">Resident safety portal</p></div></div><div className="flex items-center gap-3"><NotificationBell userId={profile?.id} onOpenIncident={(id) => { const r = reports.find(x => x.id === id); if (r) setSelectedReport(r); }}/><SidebarProfile profile={profile} signOut={signOut} compact/></div></div></header>
     <main className="mx-auto max-w-5xl space-y-6 px-5 py-8">
@@ -152,6 +174,20 @@ export default function ResidentHome() {
               <p className="text-xs font-bold  text-slate-400">Location</p>
               <p className="mt-1 text-sm text-slate-700">{selectedReport.location || selectedReport.attachments?.location || 'No location recorded'}</p>
             </div>
+            {(incidentCoords || responderMarkers.length > 0) && (
+              <div>
+                <p className="text-xs font-bold  text-slate-400">Map</p>
+                <div className="mt-1 h-48 overflow-hidden rounded-lg border border-slate-200">
+                  <BoundaryMap marker={incidentCoords} markers={responderMarkers} />
+                </div>
+                {responderLoc && (
+                  <p className="mt-1.5 flex items-center gap-1.5 text-xs text-slate-500">
+                    <Icon name="Navigation" size={12} className="text-blue-600"/>
+                    Responder location — updated {new Date(responderLoc.updated_at).toLocaleTimeString()}
+                  </p>
+                )}
+              </div>
+            )}
             {selectedReport.status === 'resolved' && (
               <div className="flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700">
                 <Icon name="CheckCircle" size={16}/> This incident was resolved by responders.

@@ -10,15 +10,21 @@ import BoundaryMap from '../../components/BoundaryMap';
 import IncidentChat from '../../components/IncidentChat';
 import AppSidebar from '../../components/AppSidebar';
 
+// Extra pages appear only when granted in Access control — canAccessPage
+// filters this list so the sidebar mirrors page_permissions.
 const RESPONDER_LINKS = [
-  { label: 'Response board', icon: 'Ambulance', path: '/' },
-  { label: 'Profile', icon: 'User', path: '/profile' }
+  { key: 'command', label: 'Response board', icon: 'Ambulance', path: '/' },
+  { key: 'queue', label: 'Incident queue', icon: 'ListChecks', path: '/report-management' },
+  { key: 'new', label: 'New incident', icon: 'PlusCircle', path: '/emergency-report' },
+  { key: 'departments', label: 'Departments', icon: 'Building2', path: '/department-management' },
+  { key: 'profile', label: 'Profile', icon: 'User', path: '/profile' }
 ];
 
 export default function ResponderView() {
   const navigate = useNavigate();
-  const { profile, signOut } = useAuth();
+  const { profile, signOut, canAccessPage } = useAuth();
   const { reports: allReports, setReports } = useMockData();
+  const links = RESPONDER_LINKS.filter(l => canAccessPage(l.key, profile?.role));
   const [assignedReports, setAssignedReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedReport, setSelectedReport] = useState(null);
@@ -94,6 +100,40 @@ export default function ResponderView() {
 
     return () => { channel.unsubscribe(); };
   }, [profile?.id, profile?.department_id]);
+
+  // Publish live GPS while carrying an open assignment — the reporter can
+  // then watch the responder approach on the incident map. Updates are
+  // throttled to ≥20 m movement or ≥20 s, and stop entirely once every
+  // assignment is resolved.
+  const hasOpenAssignment = assignedReports.some(r => r.status !== 'resolved');
+  useEffect(() => {
+    if (!profile?.id || !hasOpenAssignment || !navigator.geolocation) return undefined;
+    let lastWrite = 0;
+    let lastPos = null;
+    const watchId = navigator.geolocation.watchPosition(
+      ({ coords }) => {
+        const latitude = Number(coords.latitude.toFixed(6));
+        const longitude = Number(coords.longitude.toFixed(6));
+        const now = Date.now();
+        const moved = !lastPos
+          || Math.hypot(latitude - lastPos[0], longitude - lastPos[1]) > 0.0002;
+        if (!moved && now - lastWrite < 20000) return;
+        lastPos = [latitude, longitude];
+        lastWrite = now;
+        supabase.from('responder_locations').upsert({
+          responder_id: profile.id,
+          latitude,
+          longitude,
+          updated_at: new Date().toISOString(),
+        }).then(({ error }) => {
+          if (error) console.error('Location share failed:', error);
+        });
+      },
+      (err) => console.warn('Location watch:', err.message),
+      { enableHighAccuracy: true, maximumAge: 10000 }
+    );
+    return () => navigator.geolocation.clearWatch(watchId);
+  }, [profile?.id, hasOpenAssignment]);
 
   // Responder-originated assistance request — allowed by the
   // responders_request_assistance INSERT policy only on incidents assigned
@@ -189,7 +229,7 @@ export default function ResponderView() {
 
   return (
     <div className="flex min-h-screen bg-slate-50">
-      <AppSidebar links={RESPONDER_LINKS} profile={profile} signOut={signOut} />
+      <AppSidebar links={links} profile={profile} signOut={signOut} />
       <div className="min-w-0 flex-1 pb-24 sm:pb-0">
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4">

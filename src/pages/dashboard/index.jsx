@@ -18,6 +18,8 @@ import '../../utils/leafletIcon';
 import BoundaryMap from '../../components/BoundaryMap';
 import AppSidebar from '../../components/AppSidebar';
 import useServiceBoundary from '../../hooks/useServiceBoundary';
+import useResponderLocation from '../../hooks/useResponderLocation';
+import { RESPONDER_ICON } from '../../utils/leafletIcon';
 import { compareBirthdates } from '../../utils/verificationRules';
 
 const priorityStyles = {
@@ -997,6 +999,11 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
   // resident must be verified (account_status='active'). The form renders
   // disabled with a lock notice so nothing is clickable while pending.
   const canReport = ['admin','dispatcher','responder'].includes(profile?.role) || profile?.account_status === 'active';
+  // Live responder position on the open incident — staff-readable per RLS,
+  // and only meaningful while the incident is unresolved.
+  const detailResponderLoc = useResponderLocation(
+    isReportDetailModalOpen && selectedReport?.status !== 'resolved' ? selectedReport?.assigned_to : null
+  );
   // Private storage paths resolve to short-lived signed URLs; legacy rows
   // hold data URLs that render directly.
   const idDocRaw = selectedVerification?.id_document_url;
@@ -1491,12 +1498,22 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
                 <div className="col-span-2">
                   <p className="text-xs font-bold  text-slate-400">Location</p>
                   <p className="text-sm mb-2">{selectedReport.attachments?.location || selectedReport.location}</p>
-                  {selectedReport.attachments?.latitude && selectedReport.attachments?.longitude && (
+                  {(selectedReport.attachments?.latitude && selectedReport.attachments?.longitude) || detailResponderLoc ? (
                     <div className="rounded-lg overflow-hidden border border-slate-200 h-48">
                       <BoundaryMap
-                        marker={[selectedReport.attachments.latitude, selectedReport.attachments.longitude]}
+                        marker={selectedReport.attachments?.latitude && selectedReport.attachments?.longitude
+                          ? [selectedReport.attachments.latitude, selectedReport.attachments.longitude] : null}
+                        markers={detailResponderLoc?.latitude
+                          ? [{ position: [detailResponderLoc.latitude, detailResponderLoc.longitude], icon: RESPONDER_ICON }]
+                          : []}
                       />
                     </div>
+                  ) : null}
+                  {detailResponderLoc && (
+                    <p className="mt-1.5 flex items-center gap-1.5 text-xs text-slate-500">
+                      <Icon name="Navigation" size={12} className="text-blue-600"/>
+                      Responder location — updated {new Date(detailResponderLoc.updated_at).toLocaleTimeString()}
+                    </p>
                   )}
                 </div>
                 <div>

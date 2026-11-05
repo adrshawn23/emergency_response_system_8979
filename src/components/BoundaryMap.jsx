@@ -29,13 +29,14 @@ const FitView = ({ positions }) => {
  *   <BoundaryMap />                       // boundary only
  *   <BoundaryMap marker={...} className="h-56" />
  */
-const BoundaryMap = ({ marker = null, className = 'h-full w-full' }) => {
+const BoundaryMap = ({ marker = null, markers = [], className = 'h-full w-full' }) => {
   const { points } = useServiceBoundary();
   const polygon = points.map(p => [p.lat, p.lng]);
+  const extraPositions = markers.map(m => m.position);
 
   const fitPositions = polygon.length >= 3
-    ? (marker ? [...polygon, marker] : polygon)
-    : (marker ? [marker] : []);
+    ? (marker ? [...polygon, marker, ...extraPositions] : [...polygon, ...extraPositions])
+    : (marker ? [marker, ...extraPositions] : extraPositions);
 
   return (
     <div className={className}>
@@ -48,6 +49,9 @@ const BoundaryMap = ({ marker = null, className = 'h-full w-full' }) => {
           <Polygon positions={polygon} color="#1b6c80" fillColor="#1b6c80" fillOpacity={0.08} />
         )}
         {marker && <Marker position={marker} />}
+        {markers.map((m, i) => (
+          <Marker key={i} position={m.position} icon={m.icon || undefined} />
+        ))}
         <FitView positions={fitPositions} />
       </MapContainer>
     </div>

@@ -12,6 +12,16 @@ L.Marker.prototype.options.icon = L.divIcon({
   popupAnchor: [0, -34],
 });
 
+// Blue variant for live responder positions — visually distinct from the
+// red incident pin on shared maps.
+export const RESPONDER_ICON = L.divIcon({
+  className: 'ers-pin ers-pin--responder',
+  html: '<div class="ers-pin__body"></div>',
+  iconSize: [28, 36],
+  iconAnchor: [14, 36],
+  popupAnchor: [0, -34],
+});
+
 // Inject the pin styles once. Teardrop shape: circle rotated 45deg with a
 // square corner acting as the point.
 if (typeof document !== 'undefined' && !document.getElementById('ers-pin-styles')) {
@@ -29,6 +39,7 @@ if (typeof document !== 'undefined' && !document.getElementById('ers-pin-styles'
       transform: rotate(-45deg);
       box-shadow: 0 2px 6px rgba(0,0,0,0.35);
     }
+    .ers-pin--responder .ers-pin__body { background: #2563eb; }
     .ers-pin__body::after {
       content: '';
       display: block;
