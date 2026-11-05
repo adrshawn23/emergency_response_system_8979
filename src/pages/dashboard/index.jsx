@@ -12,7 +12,7 @@ import PendingRegistrations from '../user-management/components/PendingRegistrat
 import { isPointInBoundary } from '../../utils/geofence';
 import ResidentHome from '../resident-home';
 import ResponderView from '../responder-view';
-import { MapContainer, TileLayer, Polygon, Marker, useMapEvents, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Polygon, Polyline, Marker, Popup, useMapEvents, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import '../../utils/leafletIcon';
 import BoundaryMap from '../../components/BoundaryMap';
@@ -20,7 +20,7 @@ import AppSidebar from '../../components/AppSidebar';
 import useServiceBoundary from '../../hooks/useServiceBoundary';
 import useResponderLocation from '../../hooks/useResponderLocation';
 import useResponderLocations from '../../hooks/useResponderLocations';
-import { RESPONDER_ICON } from '../../utils/leafletIcon';
+import { RESPONDER_ICON, incidentIcon } from '../../utils/leafletIcon';
 import { compareBirthdates } from '../../utils/verificationRules';
 
 const priorityStyles = {
@@ -63,7 +63,7 @@ const FitToBoundary = ({ positions }) => {
   return null;
 };
 
-const CommandCenterMap = ({ boundaryPoints, activeReport, responderMarkers = [] }) => {
+const CommandCenterMap = ({ boundaryPoints, activeReport, responderMarkers = [], incidentMarkers = [], routes = [] }) => {
   return (
     <MapContainer center={[10.3172, 123.8951]} zoom={13} style={{ height: '100%', width: '100%' }}>
       <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"/>
@@ -76,9 +76,22 @@ const CommandCenterMap = ({ boundaryPoints, activeReport, responderMarkers = [] 
         />
       )}
       <FitToBoundary positions={boundaryPoints.length > 2 ? boundaryPoints.map(p => [p.lat, p.lng]) : []} />
+      {routes.map((r) => (
+        <Polyline key={r.id} positions={r.positions} color={r.color || '#2563eb'} weight={3} dashArray="6 8" opacity={0.75}/>
+      ))}
       {activeReport?.latitude && activeReport?.longitude && (
         <Marker position={[activeReport.latitude, activeReport.longitude]}/>
       )}
+      {incidentMarkers.map((m) => (
+        <Marker key={m.id} position={m.position} icon={incidentIcon(m.type)}>
+          <Popup>
+            <div style={{ fontSize: 12 }}>
+              <strong className="capitalize">{m.type || 'incident'}</strong> — {m.reportId}<br/>
+              <span className="capitalize">{m.status}</span>{m.location ? ` · ${m.location}` : ''}
+            </div>
+          </Popup>
+        </Marker>
+      ))}
       {responderMarkers.map((m) => (
         <Marker key={m.id} position={m.position} icon={RESPONDER_ICON}>
           <Popup>
@@ -1779,6 +1792,38 @@ export default function Dashboard({ section = 'command' }) {
       updatedAt: loc.updated_at,
     }));
 
+  // Every open incident gets a type-coded pin; the highlighted activeReport
+  // keeps its larger red teardrop so the two don't stack.
+  const incidentMarkers = useMemo(() => reports
+    .filter(r => r.status !== 'resolved' && r.id !== activeReport?.id)
+    .map(r => {
+      const lat = r.latitude ?? r.attachments?.latitude;
+      const lng = r.longitude ?? r.attachments?.longitude;
+      return (lat && lng) ? {
+        id: r.id,
+        position: [lat, lng],
+        type: r.report_type || r.incident_type || r.emergency_type,
+        reportId: r.report_id || r.id?.slice(0, 8),
+        status: r.status,
+        location: r.attachments?.location || r.location,
+      } : null;
+    })
+    .filter(Boolean), [reports, activeReport?.id]);
+
+  // Dashed line from each broadcasting responder to their assigned incident —
+  // a visual route hint, not turn-by-turn directions.
+  const responderRoutes = useMemo(() => reports
+    .filter(r => r.status !== 'resolved' && r.assigned_to)
+    .map(r => {
+      const loc = allResponderLocs[r.assigned_to];
+      const lat = r.latitude ?? r.attachments?.latitude;
+      const lng = r.longitude ?? r.attachments?.longitude;
+      return (loc?.latitude && lat && lng)
+        ? { id: r.id, positions: [[loc.latitude, loc.longitude], [lat, lng]] }
+        : null;
+    })
+    .filter(Boolean), [reports, allResponderLocs]);
+
   // Hooks must run in the same order when switching between command-center
   // sections. Keep this before the section-specific early returns below.
   const openCount = useMemo(() => reports.filter(r => r.status !== 'resolved').length, [reports]);
@@ -1855,14 +1900,16 @@ export default function Dashboard({ section = 'command' }) {
                 </button>}
               </div>
               <div className="relative h-[365px] overflow-hidden">
-                <CommandCenterMap boundaryPoints={boundaryPoints} activeReport={activeReport} responderMarkers={responderMarkers} />
+                <CommandCenterMap boundaryPoints={boundaryPoints} activeReport={activeReport} responderMarkers={responderMarkers} incidentMarkers={incidentMarkers} routes={responderRoutes} />
                 <div className="absolute bottom-5 left-5 rounded-xl bg-white/95 p-3 shadow-lg">
                   <p className="text-xs font-bold">{activeReport?.report_id} · {activeReport?.priority} priority</p>
                   <p className="mt-1 max-w-[185px] text-xs text-slate-500">{activeReport?.attachments?.location || activeReport?.location}</p>
                 </div>
                 <div className="absolute right-5 top-5 rounded-xl bg-white/95 p-3 text-xs shadow-lg">
-                  <div className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-red-600"/>Active incident</div>
+                  <div className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-red-600"/>Selected incident</div>
+                  <div className="mt-2 flex items-center gap-2"><span className="flex h-4 w-4 items-center justify-center rounded-full bg-slate-600 text-[8px] font-bold text-white">T</span>Open incidents (letter = type)</div>
                   <div className="mt-2 flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-blue-600"/>Responder (live)</div>
+                  <div className="mt-2 flex items-center gap-2"><span className="h-0.5 w-4 border-t-2 border-dashed border-blue-500"/>Responder route</div>
                   <div className="mt-2 flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full border-2 border-taste-500"/>Service boundary</div>
                 </div>
               </div>
