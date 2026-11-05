@@ -32,11 +32,16 @@ const FitView = ({ positions }) => {
 const BoundaryMap = ({ marker = null, markers = [], route = null, className = 'h-full w-full' }) => {
   const { points } = useServiceBoundary();
   const polygon = points.map(p => [p.lat, p.lng]);
-  // `route` may be one line ([[lat,lng],[lat,lng]]) or a list of lines.
+  // `route` may be one line ([[lat,lng],[lat,lng]]), a list of lines, or a
+  // list of { positions, color } entries for differently colored routes.
   const routeList = route
-    ? (typeof route[0]?.[0] === 'number' ? [route] : route.filter(r => Array.isArray(r) && r.length > 1))
+    ? (typeof route[0]?.[0] === 'number'
+        ? [{ positions: route }]
+        : route
+            .map(r => (Array.isArray(r) ? { positions: r } : r))
+            .filter(r => Array.isArray(r?.positions) && r.positions.length > 1))
     : [];
-  const extraPositions = [...markers.map(m => m.position), ...routeList.flat()];
+  const extraPositions = [...markers.map(m => m.position), ...routeList.flatMap(r => r.positions)];
 
   const fitPositions = polygon.length >= 3
     ? (marker ? [...polygon, marker, ...extraPositions] : [...polygon, ...extraPositions])
@@ -53,7 +58,7 @@ const BoundaryMap = ({ marker = null, markers = [], route = null, className = 'h
           <Polygon positions={polygon} color="#1b6c80" fillColor="#1b6c80" fillOpacity={0.08} />
         )}
         {routeList.map((r, i) => (
-          <Polyline key={i} positions={r} color="#2563eb" weight={3} dashArray="6 8" opacity={0.75} />
+          <Polyline key={i} positions={r.positions} color={r.color || '#2563eb'} weight={3} dashArray="6 8" opacity={0.75} />
         ))}
         {marker && <Marker position={marker} />}
         {markers.map((m, i) => (

@@ -82,3 +82,9 @@ CREATE POLICY cda_staff_update ON public.cross_department_assistance
               AND up.department_id = cross_department_assistance.assisting_department_id
         )
     );
+
+-- The responder who requested assistance can read back their own requests
+-- (status, who accepted) even though the row targets another department.
+CREATE POLICY assistance_requester_read ON public.cross_department_assistance
+    FOR SELECT TO authenticated
+    USING (requested_by = auth.uid());
