@@ -221,15 +221,18 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
     setImageFiles(imageFiles.filter((_, i) => i !== index));
   };
 
-  // Fetch reports from Supabase
+  // Fetch reports from Supabase — gated on profile so the request always
+  // carries a session; an unauthenticated call is silently RLS-filtered to []
+  // and was previously never retried.
   useEffect(() => {
+    if (!profile?.id) return undefined;
     const fetchReports = async () => {
       setLoading(true);
       const { data, error } = await supabase
         .from('emergency_reports')
         .select('*')
         .order('created_at', { ascending: false });
-      
+
       console.log('Fetched reports:', data);
       console.log('Fetch error:', error);
       if (data && data.length > 0) {
@@ -261,7 +264,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
+  }, [profile?.id]);
 
   // Staff-side visibility for ALL assistance requests — including ones a
   // responder initiated from their incident modal. Refetches on any cda row
