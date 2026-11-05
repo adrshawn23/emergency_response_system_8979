@@ -171,8 +171,8 @@ BEGIN
   IF NEW.reporter_id IS NOT NULL AND NEW.reporter_id IS DISTINCT FROM auth.uid() THEN
     PERFORM public.create_notification(
       NEW.reporter_id, 'incident_status',
-      'Incident ' || REPLACE(NEW.status, '-', ' '),
-      'Your ' || COALESCE(NEW.report_type, 'emergency') || ' report is now ' || REPLACE(NEW.status, '-', ' ') || '.',
+      'Incident ' || REPLACE(NEW.status::text, '-', ' '),
+      'Your ' || COALESCE(NEW.report_type, 'emergency') || ' report is now ' || REPLACE(NEW.status::text, '-', ' ') || '.',
       NEW.id, jsonb_build_object('report_id', NEW.id, 'status', NEW.status));
   END IF;
 
@@ -180,8 +180,8 @@ BEGIN
      AND NEW.assigned_to IS DISTINCT FROM NEW.reporter_id THEN
     PERFORM public.create_notification(
       NEW.assigned_to, 'incident_status',
-      'Incident ' || REPLACE(NEW.status, '-', ' '),
-      'An incident assigned to you is now ' || REPLACE(NEW.status, '-', ' ') || '.',
+      'Incident ' || REPLACE(NEW.status::text, '-', ' '),
+      'An incident assigned to you is now ' || REPLACE(NEW.status::text, '-', ' ') || '.',
       NEW.id, jsonb_build_object('report_id', NEW.id, 'status', NEW.status));
   END IF;
   RETURN NEW;
