@@ -22,6 +22,7 @@ import useResponderLocation from '../../hooks/useResponderLocation';
 import useResponderLocations from '../../hooks/useResponderLocations';
 import { RESPONDER_ICON, responderDeptIcon, incidentIcon } from '../../utils/leafletIcon';
 import useDrivingRoutes from '../../hooks/useDrivingRoutes';
+import { reportCoords } from '../../utils/reportCoords';
 import { compareBirthdates } from '../../utils/verificationRules';
 
 const priorityStyles = {
