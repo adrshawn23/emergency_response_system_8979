@@ -5,15 +5,10 @@ import ErrorBoundary from "components/ErrorBoundary";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { MockDataProvider } from "./contexts/MockDataContext";
 import NotFound from "pages/NotFound";
-import DepartmentManagement from './pages/department-management';
 import Login from './pages/login';
-import UserManagement from './pages/user-management';
-import ReportManagement from './pages/report-management';
-import EmergencyReport from './pages/emergency-report';
 import Register from './pages/register';
 import ForgotPassword from './pages/forgot-password';
 import ResetPassword from './pages/reset-password';
-import Profile from './pages/profile';
 import NotificationsPage from './pages/notifications';
 import Dashboard from './pages/dashboard';
 

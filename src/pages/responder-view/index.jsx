@@ -57,8 +57,11 @@ export default function ResponderView() {
       .then(({ data }) => setDepartments(data || []));
     const fetchAssignedReports = async () => {
       setLoading(true);
+      // Slim view: attachments keeps location/coords/contact but drops
+      // base64 media so the board loads fast. Full rows are fetched on
+      // demand (resolve, notification open).
       const { data, error } = await supabase
-        .from('emergency_reports')
+        .from('emergency_reports_list')
         .select('*')
         .eq('assigned_to', profile.id)
         .order('created_at', { ascending: false });
@@ -71,16 +74,24 @@ export default function ResponderView() {
 
     fetchAssignedReports();
 
-    // Real-time subscription for assigned reports
+    // Real-time: a fresh dispatch arrives as an UPDATE that sets assigned_to
+    // to me, so the row is NOT yet in state — upsert (prepend if new,
+    // replace if known) instead of map-only, or the responder never sees
+    // the assignment without a reload.
     const subscription = supabase
       .channel(`assigned_reports_${Math.random().toString(36).slice(2, 8)}`)
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'emergency_reports', filter: `assigned_to=eq.${profile.id}` }, (payload) => {
-        setAssignedReports(prev => prev.map(r => r.id === payload.new.id ? payload.new : r));
+        const row = payload.new;
+        setAssignedReports(prev => {
+          const known = prev.some(r => r.id === row.id);
+          if (known) return prev.map(r => (r.id === row.id ? { ...r, ...row } : r));
+          return [row, ...prev];
+        });
       })
       .subscribe();
 
     return () => {
-      subscription.unsubscribe();
+      supabase.removeChannel(subscription);
     };
   }, [profile?.id]);
 
@@ -104,7 +115,7 @@ export default function ResponderView() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'cross_department_assistance', filter: `assisting_department_id=eq.${profile.department_id}` }, () => fetchAssistance())
       .subscribe();
 
-    return () => { channel.unsubscribe(); };
+    return () => { supabase.removeChannel(channel); };
   }, [profile?.id, profile?.department_id]);
 
   // My OUTGOING assistance requests — readable now via the
@@ -285,7 +296,15 @@ export default function ResponderView() {
   const resolveWithProof = async (report) => {
     if (!resolutionPhoto || resolving) return;
     setResolving(true);
-    const attachments = { ...(report.attachments || {}), resolution_proof: resolutionPhoto };
+    // Board rows come from the slim view (evidence images stripped). Merge
+    // onto the FULL attachments so resolving never erases the reporter's
+    // photos.
+    const { data: full } = await supabase
+      .from('emergency_reports')
+      .select('attachments')
+      .eq('id', report.id)
+      .single();
+    const attachments = { ...(full?.attachments || report.attachments || {}), resolution_proof: resolutionPhoto };
     const { error } = await supabase
       .from('emergency_reports')
       .update({ status: 'resolved', attachments })

@@ -139,7 +139,11 @@ export const AuthProvider = ({ children }) => {
     },
     signOut: async () => {
       const { error } = await supabase?.auth?.signOut();
-      localStorage.clear();
+      // Scope the wipe to auth/session keys — a blanket clear() also deletes
+      // unrelated data such as an unsent incident draft.
+      Object.keys(localStorage)
+        .filter(k => k.startsWith('sb-') || k.startsWith('supabase') || k.startsWith('ers.'))
+        .forEach(k => localStorage.removeItem(k));
       sessionStorage.clear();
       setUser(null);
       setProfile(null);
