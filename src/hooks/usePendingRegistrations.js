@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { supabase } from '../lib/supabase';
 
 // Pending registrations (status='inactive' profiles awaiting admin approval)
@@ -8,6 +8,7 @@ import { supabase } from '../lib/supabase';
 // locally without waiting for the next realtime refresh.
 const usePendingRegistrations = (profile) => {
   const [pendingUsers, setPendingUsers] = useState([]);
+  const instanceId = useId();
 
   useEffect(() => {
     const fetchPendingUsers = async () => {
@@ -28,7 +29,10 @@ const usePendingRegistrations = (profile) => {
     fetchPendingUsers();
 
     const channel = supabase
-      .channel('pending-registrations')
+      // Unique per hook instance — Dashboard and WorkspacePage can both
+      // subscribe; identical names throw "cannot add callbacks after
+      // subscribe()" on the shared channel topic.
+      .channel(`pending-registrations-${instanceId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'user_profiles' }, fetchPendingUsers)
       .subscribe();
 
