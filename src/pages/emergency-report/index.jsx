@@ -83,6 +83,10 @@ const EmergencyReport = () => {
       newErrors.description = 'Description must be at least 10 characters';
     }
 
+    if (!formData?.images || formData.images.length === 0) {
+      newErrors.images = 'At least one photo is required as evidence';
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors)?.length === 0;
   };
@@ -312,6 +316,7 @@ const EmergencyReport = () => {
                   images={formData?.images}
                   onImagesChange={(images) => handleInputChange('images', images)}
                   maxImages={5}
+                  error={errors?.images}
                 />
 
                 {/* Submit Button */}
