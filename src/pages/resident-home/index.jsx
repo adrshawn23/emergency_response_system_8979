@@ -15,6 +15,7 @@ import useDrivingRoutes from '../../hooks/useDrivingRoutes';
 import { reportCoords } from '../../utils/reportCoords';
 import { supabase } from '../../lib/supabase';
 import { submitIdForVerification } from '../../utils/verifyId';
+import useEscapeKey from '../../hooks/useEscapeKey';
 
 const VERIFICATION_COPY = {
   pending: { tone: 'amber', label: 'Under review', text: 'Your ID submission is waiting for an administrator review. This usually takes 1–2 business days.' },
@@ -48,6 +49,10 @@ export default function ResidentHome() {
   const [resubmitFile, setResubmitFile] = useState(null);
   const [resubmitting, setResubmitting] = useState(false);
   const [resubmitMsg, setResubmitMsg] = useState('');
+  const [contactNotice, setContactNotice] = useState(false);
+
+  // Esc closes the incident modal (audit U-05).
+  useEscapeKey(() => setSelectedReport(null), !!selectedReport);
 
   // Live responder position for the open report — visible only while the
   // incident is unresolved (mirrors the reporter_read RLS policy).
@@ -166,37 +171,37 @@ export default function ResidentHome() {
           </div>
         </section>
       )}
-      <section className="grid gap-5 md:grid-cols-[1.3fr_.7fr]"><div className="rounded-lg border border-slate-200 bg-white"><div className="flex items-center justify-between border-b border-slate-100 px-5 py-4"><div><h2 className="font-bold">Your recent reports</h2><p className="mt-1 text-xs text-slate-500">Only you and authorized response staff can see report details.</p></div><button onClick={() => navigate('/report-management')} className="text-sm font-semibold text-taste-600">View updates</button></div>{myReports.length ? <div className="divide-y divide-slate-100">{myReports.map(r => <div key={r.report_id || r.id} onClick={() => setSelectedReport(r)} className="flex cursor-pointer items-center gap-3 p-5 hover:bg-slate-50"><div className="grid h-9 w-9 place-items-center rounded-xl bg-taste-50 text-taste-600"><Icon name="FileText" size={18}/></div><div className="min-w-0 flex-1"><p className="font-semibold capitalize">{r.emergency_type || r.report_type} <span className="ml-1 font-mono text-xs text-slate-400">{r.report_id || r.id?.slice(0, 8)}</span></p><p className="mt-1 truncate text-sm text-slate-500">{r.location || r.attachments?.location}</p></div><span className="rounded-full bg-blue-50 px-2 py-1 text-xs font-medium capitalize text-taste-600">{r.status?.replace('-', ' ')}</span></div>)}</div> : <div className="p-8 text-sm text-slate-500">You have no recent reports.</div>}</div><aside className="rounded-lg border border-slate-200 bg-white p-5"><div className="flex items-center gap-2"><div className="grid h-9 w-9 place-items-center rounded-xl bg-amber-50 text-amber-700"><Icon name="MapPinned" size={18}/></div><h2 className="font-bold">Service area</h2></div><p className="mt-4 text-sm leading-6 text-slate-500">Barangay Kalubihan coverage is set by the administrator. Reports outside the boundary are still sent to dispatch for triage.</p><div className="mt-4 rounded-xl bg-slate-50 p-3 text-xs text-slate-500"><Icon name="ShieldCheck" size={14} className="mr-1 inline text-emerald-600"/>Your exact location is never shown to other residents.</div></aside></section>
-      <section className="rounded-lg border border-slate-200 bg-white p-5"><h2 className="font-bold">Emergency contacts & guidance</h2><p className="mt-2 text-sm text-slate-500">Emergency phone services are the fastest fallback when network or app notifications are unavailable. Contact details are managed and verified by Barangay administrators.</p><div className="mt-4 flex flex-wrap gap-3"><button onClick={() => navigate('/emergency-report')} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold hover:bg-slate-50"><Icon name="MapPin" size={16} className="mr-2 inline"/>Submit with a manual pin</button><button onClick={() => alert('Emergency contacts are configured by the Barangay administrator.')} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold hover:bg-slate-50"><Icon name="Phone" size={16} className="mr-2 inline"/>View contacts</button></div></section>
+      <section className="grid gap-5 md:grid-cols-[1.3fr_.7fr]"><div className="rounded-lg border border-slate-200 bg-white"><div className="flex items-center justify-between border-b border-slate-100 px-5 py-4"><div><h2 className="font-bold">Your recent reports</h2><p className="mt-1 text-xs text-slate-500">Only you and authorized response staff can see report details.</p></div><button onClick={() => navigate('/report-management')} className="text-sm font-semibold text-taste-600">View updates</button></div>{myReports.length ? <div className="divide-y divide-slate-100">{myReports.map(r => <div key={r.report_id || r.id} onClick={() => setSelectedReport(r)} className="flex cursor-pointer items-center gap-3 p-5 hover:bg-slate-50"><div className="grid h-9 w-9 place-items-center rounded-xl bg-taste-50 text-taste-600"><Icon name="FileText" size={18}/></div><div className="min-w-0 flex-1"><p className="font-semibold capitalize">{r.emergency_type || r.report_type} <span className="ml-1 font-mono text-xs text-slate-500">{r.report_id || r.id?.slice(0, 8)}</span></p><p className="mt-1 truncate text-sm text-slate-500">{r.location || r.attachments?.location}</p></div><span className="rounded-full bg-blue-50 px-2 py-1 text-xs font-medium capitalize text-taste-600">{r.status?.replace('-', ' ')}</span></div>)}</div> : <div className="p-8 text-sm text-slate-500">You have no recent reports.</div>}</div><aside className="rounded-lg border border-slate-200 bg-white p-5"><div className="flex items-center gap-2"><div className="grid h-9 w-9 place-items-center rounded-xl bg-amber-50 text-amber-700"><Icon name="MapPinned" size={18}/></div><h2 className="font-bold">Service area</h2></div><p className="mt-4 text-sm leading-6 text-slate-500">Barangay Kalubihan coverage is set by the administrator. Reports outside the boundary are still sent to dispatch for triage.</p><div className="mt-4 rounded-xl bg-slate-50 p-3 text-xs text-slate-500"><Icon name="ShieldCheck" size={14} className="mr-1 inline text-emerald-600"/>Your exact location is never shown to other residents.</div></aside></section>
+      <section className="rounded-lg border border-slate-200 bg-white p-5"><h2 className="font-bold">Emergency contacts & guidance</h2><p className="mt-2 text-sm text-slate-500">Emergency phone services are the fastest fallback when network or app notifications are unavailable. Contact details are managed and verified by Barangay administrators.</p><div className="mt-4 flex flex-wrap gap-3"><button onClick={() => navigate('/emergency-report')} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold hover:bg-slate-50"><Icon name="MapPin" size={16} className="mr-2 inline"/>Submit with a manual pin</button><button onClick={() => setContactNotice(v => !v)} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold hover:bg-slate-50"><Icon name="Phone" size={16} className="mr-2 inline"/>View contacts</button></div>{contactNotice && <p className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600">Emergency contacts are managed by the Barangay administrator — contact the front desk to add or update numbers.</p>}</section>
     </main>
 
     {selectedReport && (
-      <div className="fixed inset-0 z-1030 flex items-center justify-center bg-slate-900/50 p-4" role="dialog" aria-modal="true" onClick={() => setSelectedReport(null)}>
+      <div className="fixed inset-0 z-1050 flex items-center justify-center bg-slate-900/50 p-4" role="dialog" aria-modal="true" onClick={() => setSelectedReport(null)}>
         <div className="w-full max-w-md overflow-hidden rounded-2xl bg-white " onClick={(e) => e.stopPropagation()}>
           <div className="flex items-start justify-between border-b border-slate-100 px-6 py-4">
             <div>
               <p className="font-semibold capitalize">{selectedReport.emergency_type || selectedReport.report_type || 'Incident'} report</p>
-              <p className="font-mono text-xs text-slate-400">{selectedReport.report_id || selectedReport.id?.slice(0, 8)}</p>
+              <p className="font-mono text-xs text-slate-500">{selectedReport.report_id || selectedReport.id?.slice(0, 8)}</p>
             </div>
             <div className="flex items-center gap-2">
               <span className="rounded-full bg-taste-50 px-2 py-1 text-[10px] font-bold uppercase text-taste-600">{selectedReport.status || 'pending'}</span>
-              <button onClick={() => setSelectedReport(null)} aria-label="Close" className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100">
+              <button onClick={() => setSelectedReport(null)} aria-label="Close" className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100">
                 <Icon name="X" size={18}/>
               </button>
             </div>
           </div>
           <div className="max-h-[70vh] space-y-4 overflow-y-auto px-6 py-5">
             <div>
-              <p className="text-xs font-bold  text-slate-400">Description</p>
+              <p className="text-xs font-bold  text-slate-500">Description</p>
               <p className="mt-1 text-sm text-slate-700">{selectedReport.content || selectedReport.description || 'No description provided.'}</p>
             </div>
             <div>
-              <p className="text-xs font-bold  text-slate-400">Location</p>
+              <p className="text-xs font-bold  text-slate-500">Location</p>
               <p className="mt-1 text-sm text-slate-700">{selectedReport.location || selectedReport.attachments?.location || 'No location recorded'}</p>
             </div>
             {(incidentCoords || responderMarkers.length > 0) && (
               <div>
-                <p className="text-xs font-bold  text-slate-400">Map</p>
+                <p className="text-xs font-bold  text-slate-500">Map</p>
                 <div className="mt-1 h-48 overflow-hidden rounded-lg border border-slate-200">
                   <BoundaryMap
                     marker={incidentCoords}
@@ -219,7 +224,7 @@ export default function ResidentHome() {
             )}
             {selectedReport.attachments?.resolution_proof && (
               <div>
-                <p className="text-xs font-bold  text-slate-400">Resolution proof</p>
+                <p className="text-xs font-bold  text-slate-500">Resolution proof</p>
                 <img
                   src={selectedReport.attachments.resolution_proof}
                   alt="Resolution proof"
@@ -228,7 +233,7 @@ export default function ResidentHome() {
               </div>
             )}
             <div>
-              <p className="text-xs font-bold  text-slate-400">Reported</p>
+              <p className="text-xs font-bold  text-slate-500">Reported</p>
               <p className="mt-1 text-sm text-slate-700">{selectedReport.created_at ? new Date(selectedReport.created_at).toLocaleString() : 'N/A'}</p>
             </div>
             {selectedReport.assigned_to && (

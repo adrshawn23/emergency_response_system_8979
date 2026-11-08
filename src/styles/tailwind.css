@@ -117,6 +117,13 @@
   .font-mono {
     font-family: 'IBM Plex Mono', monospace;
   }
+
+  /* Tailwind v3 drops the UA pointer on buttons — restore the affordance on
+     every clickable control (audit U-02). */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
 }
 
 @layer utilities {

@@ -1,4 +1,6 @@
-import { createWorker } from 'tesseract.js';
+// tesseract.js (~2MB) is only needed when the local-OCR fallback actually
+// runs — the server-side verify-id edge function is the primary path.
+// Dynamic import keeps it out of the main bundle (audit U-03).
 
 // Downscale a photo for storage — a crisp readable copy without multi-MB payloads.
 export const fileToDataUrl = (file, maxSide = 1280) => new Promise((resolve, reject) => {
@@ -71,6 +73,7 @@ export const dateMatchesOcr = (declaredDob, ocrText) => {
 // Runs OCR on an ID photo and returns the data-url copy, parsed text, confidence
 // and match flags against the declared profile fields.
 export const ocrIdDocument = async (file, { fullName, birthdate }) => {
+  const { createWorker } = await import('tesseract.js');
   const [docDataUrl, worker] = await Promise.all([
     fileToDataUrl(file),
     createWorker('eng')

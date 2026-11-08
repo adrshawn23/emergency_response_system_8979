@@ -133,10 +133,15 @@ export default {
         '88': '22rem',
       },
       zIndex: {
+        // Documented scale: headers z-30, sidebar z-40, overlays start at
+        // 1000, modal backdrops 1050, image lightbox above all 1060.
         '1000': '1000',
         '1010': '1010',
         '1020': '1020',
         '1030': '1030',
+        '1040': '1040',
+        '1050': '1050',
+        '1060': '1060',
       },
     },
   },

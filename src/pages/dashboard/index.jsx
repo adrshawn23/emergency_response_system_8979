@@ -21,6 +21,7 @@ import useServiceBoundary from '../../hooks/useServiceBoundary';
 import useResponderLocation from '../../hooks/useResponderLocation';
 import useResponderLocations from '../../hooks/useResponderLocations';
 import usePendingRegistrations from '../../hooks/usePendingRegistrations';
+import useEscapeKey from '../../hooks/useEscapeKey';
 import { RESPONDER_ICON, responderDeptIcon, incidentIcon } from '../../utils/leafletIcon';
 import useDrivingRoutes from '../../hooks/useDrivingRoutes';
 import { reportCoords } from '../../utils/reportCoords';
@@ -193,6 +194,17 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
   const [selectedAssistanceReport, setSelectedAssistanceReport] = useState(null);
   const [selectedAssistanceDepts, setSelectedAssistanceDepts] = useState([]);
   const [cdaRequests, setCdaRequests] = useState([]);
+  const [assistError, setAssistError] = useState('');
+
+  // Esc closes any open modal (audit U-05).
+  useEscapeKey(() => setIsContactModalOpen(false), isContactModalOpen);
+  useEscapeKey(() => setIsBoundaryModalOpen(false), isBoundaryModalOpen);
+  useEscapeKey(() => setIsAssistanceModalOpen(false), isAssistanceModalOpen);
+  useEscapeKey(() => setIsReviewModalOpen(false), isReviewModalOpen);
+  useEscapeKey(() => setIsAssignModalOpen(false), isAssignModalOpen);
+  useEscapeKey(() => setIsReportDetailModalOpen(false), isReportDetailModalOpen);
+  useEscapeKey(() => setIsImageModalOpen(false), isImageModalOpen);
+
   const [imageFiles, setImageFiles] = useState([]);
   const [idVerifications, setIdVerifications] = useState([]);
   const [selectedVerification, setSelectedVerification] = useState(null);
@@ -633,12 +645,13 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
       requested_by: profile?.id,
       status: 'pending',
     }));
+    setAssistError('');
     const { error } = await supabase
       .from('cross_department_assistance')
       .upsert(rows, { onConflict: 'report_id,assisting_department_id' });
     if (error) {
       console.error('Assistance request failed:', error);
-      alert('Failed to send assistance request. Please try again.');
+      setAssistError('Failed to send assistance request. Please try again.');
       return;
     }
 
@@ -653,8 +666,9 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
 
   const handleAssistanceClick = async (report) => {
     try {
+      setAssistError('');
       if (!report) {
-        alert('No incident selected.');
+        setAssistError('No incident selected.');
         return;
       }
       // Departments are only fetched when the assign modal opens; fetch on demand here
@@ -665,7 +679,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
         setDepartments(available);
       }
       if (available.length === 0) {
-        alert('No departments available. Please create departments first.');
+        setAssistError('No departments available — create a department first.');
         return;
       }
       setSelectedAssistanceReport(report);
@@ -673,7 +687,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
       setIsAssistanceModalOpen(true);
     } catch (error) {
       console.error('Error opening assistance modal:', error);
-      alert('Failed to open assistance modal. Please try again.');
+      setAssistError('Failed to open assistance modal. Please try again.');
     }
   };
 
@@ -1045,7 +1059,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
     <main className="min-w-0 flex-1 pb-24 sm:pb-0"><header className="sticky top-0 z-30 flex h-20 items-center justify-between border-b border-slate-200/70 bg-white px-5  sm:px-8"><div><p className="text-xs font-medium  text-slate-400">Kalubihan emergency command</p><h1 className="text-lg font-bold">{current.title}</h1></div><div className="flex items-center gap-3"><NotificationBell userId={profile?.id} onOpenIncident={(id) => { const report = reports.find(r => r.id === id); if (report) handleReportClick(report); }}/></div></header><div className="mx-auto max-w-[1400px] p-5 sm:p-8"><p className="text-xs font-bold  text-taste-600">{current.eyebrow}</p><h2 className="mt-1 text-3xl font-bold tracking-tight">{current.title}</h2><p className="mt-2 text-sm text-slate-500">{current.description}</p>
       {section === 'queue' && <>
         <div className="mt-7 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex gap-2">{['all','pending','assigned','in-progress','resolved'].map(item => <button key={item} onClick={() => setStatus(item)} className={`rounded-lg px-3 py-2 text-sm font-medium capitalize ${status === item ? 'bg-taste-500 text-white' : 'border border-slate-200/70 bg-white text-slate-600'}`}>{item === 'in-progress' ? 'in progress' : item}</button>)}</div>
+          <div className="flex gap-2">{['all','pending','assigned','in-progress','resolved'].map(item => <button key={item} onClick={() => setStatus(item)} className={`min-h-11 rounded-lg px-4 py-2.5 text-sm font-medium capitalize ${status === item ? 'bg-taste-500 text-white' : 'border border-slate-200/70 bg-white text-slate-600'}`}>{item === 'in-progress' ? 'in progress' : item}</button>)}</div>
           <div className="flex items-center gap-3">
             <div className="relative">
               <input
@@ -1127,11 +1141,11 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
       
       {/* Emergency Contact Modal */}
       {isContactModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-1050 p-4">
           <div className="bg-white rounded-2xl ring-1 ring-slate-900/5 shadow-2xl w-full max-w-md">
             <div className="flex items-center justify-between p-4 border-b border-slate-200">
               <h3 className="font-bold text-lg">Add Emergency Contact</h3>
-              <button onClick={() => setIsContactModalOpen(false)} className="text-slate-400 hover:text-slate-600" aria-label="Close">
+              <button onClick={() => setIsContactModalOpen(false)} className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700" aria-label="Close">
                 <Icon name="X" size={20} />
               </button>
             </div>
@@ -1207,11 +1221,11 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
 
       {/* Boundary Configuration Modal */}
       {isBoundaryModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-1050 p-4">
           <div className="bg-white rounded-2xl ring-1 ring-slate-900/5 shadow-2xl w-full max-w-2xl">
             <div className="flex items-center justify-between p-4 border-b border-slate-200">
               <h3 className="font-bold text-lg">Configure Service Boundary</h3>
-              <button onClick={() => setIsBoundaryModalOpen(false)} className="text-slate-400 hover:text-slate-600" aria-label="Close">
+              <button onClick={() => setIsBoundaryModalOpen(false)} className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700" aria-label="Close">
                 <Icon name="X" size={20} />
               </button>
             </div>
@@ -1275,11 +1289,11 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
       
       {/* Cross-Department Assistance Modal */}
       {isAssistanceModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-1050 p-4">
           <div className="bg-white rounded-2xl ring-1 ring-slate-900/5 shadow-2xl w-full max-w-md">
             <div className="flex items-center justify-between p-4 border-b border-slate-200">
               <h3 className="font-bold text-lg">Request Assistance</h3>
-              <button onClick={() => setIsAssistanceModalOpen(false)} className="text-slate-400 hover:text-slate-600" aria-label="Close">
+              <button onClick={() => setIsAssistanceModalOpen(false)} className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700" aria-label="Close">
                 <Icon name="X" size={20} />
               </button>
             </div>
@@ -1306,6 +1320,12 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
                     </label>
                   ))}
               </div>
+              {assistError && (
+                <div className="mt-3 flex items-start justify-between gap-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+                  <span>{assistError}</span>
+                  <button onClick={() => setAssistError('')} aria-label="Dismiss" className="shrink-0 font-bold">×</button>
+                </div>
+              )}
               <div className="flex justify-end gap-2 pt-4">
                 <button 
                   onClick={() => setIsAssistanceModalOpen(false)}
@@ -1328,11 +1348,11 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
       
       {/* ID Verification Review Modal */}
       {isReviewModalOpen && selectedVerification && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-1050 p-4">
           <div className="bg-white rounded-2xl ring-1 ring-slate-900/5 shadow-2xl w-full max-w-4xl">
             <div className="flex items-center justify-between p-4 border-b border-slate-200">
               <h3 className="font-bold text-lg">Review ID Verification</h3>
-              <button onClick={() => setIsReviewModalOpen(false)} className="text-slate-400 hover:text-slate-600" aria-label="Close">
+              <button onClick={() => setIsReviewModalOpen(false)} className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700" aria-label="Close">
                 <Icon name="X" size={20} />
               </button>
             </div>
@@ -1441,11 +1461,11 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
       
       {/* Assignment Modal */}
       {isAssignModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-1050 p-4">
           <div className="bg-white rounded-2xl ring-1 ring-slate-900/5 shadow-2xl w-full max-w-md">
             <div className="flex items-center justify-between p-4 border-b border-slate-200">
               <h3 className="font-bold text-lg">Assign Incident</h3>
-              <button onClick={() => setIsAssignModalOpen(false)} className="text-slate-400 hover:text-slate-600" aria-label="Close">
+              <button onClick={() => setIsAssignModalOpen(false)} className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700" aria-label="Close">
                 <Icon name="X" size={20} />
               </button>
             </div>
@@ -1501,11 +1521,11 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
       
       {/* Report Detail Modal */}
       {isReportDetailModalOpen && selectedReport && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-1050 p-4">
           <div className="bg-white rounded-2xl ring-1 ring-slate-900/5 shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
             <div className="flex items-center justify-between p-4 border-b border-slate-200 shrink-0">
               <h3 className="font-bold text-lg">Incident Details</h3>
-              <button onClick={() => setIsReportDetailModalOpen(false)} className="text-slate-400 hover:text-slate-600" aria-label="Close">
+              <button onClick={() => setIsReportDetailModalOpen(false)} className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700" aria-label="Close">
                 <Icon name="X" size={20} />
               </button>
             </div>
@@ -1639,7 +1659,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
       
       {/* Image Modal */}
       {isImageModalOpen && selectedImage && (
-        <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[10000] p-4" onClick={() => setIsImageModalOpen(false)}>
+        <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-1060 p-4" onClick={() => setIsImageModalOpen(false)}>
           <div className="relative max-w-5xl max-h-[90vh]">
             <img
               src={selectedImage}
@@ -1674,6 +1694,10 @@ export default function Dashboard({ section = 'command' }) {
   const [departments, setDepartments] = useState([]);
   const [cdaRequests, setCdaRequests] = useState([]);
   const [isBoundaryModalOpen, setIsBoundaryModalOpen] = useState(false);
+
+  // Esc closes overlays (audit U-05).
+  useEscapeKey(() => { setShowBroadcast(false); setSent(false); }, showBroadcast);
+  useEscapeKey(() => setIsBoundaryModalOpen(false), isBoundaryModalOpen);
 
   // Active service boundary: Supabase geofence_boundaries first,
   // legacy localStorage copy as the mock/offline fallback.
@@ -1961,7 +1985,7 @@ export default function Dashboard({ section = 'command' }) {
       </main>
     </div>
     {showBroadcast && (
-      <div className="fixed inset-0 z-50 grid place-items-center bg-slate-900/50 p-4">
+      <div className="fixed inset-0 z-1050 grid place-items-center bg-slate-900/50 p-4">
         <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl">
           <div className="flex items-center justify-between border-b border-slate-100 p-6">
             <div>
@@ -2012,11 +2036,11 @@ export default function Dashboard({ section = 'command' }) {
       </div>
     )}
     {isBoundaryModalOpen && (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4">
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-1050 p-4">
         <div className="bg-white rounded-2xl ring-1 ring-slate-900/5 shadow-2xl w-full max-w-2xl">
           <div className="flex items-center justify-between p-4 border-b border-slate-200">
             <h3 className="font-bold text-lg">Configure Service Boundary</h3>
-            <button onClick={() => setIsBoundaryModalOpen(false)} className="text-slate-400 hover:text-slate-600" aria-label="Close">
+            <button onClick={() => setIsBoundaryModalOpen(false)} className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700" aria-label="Close">
               <Icon name="X" size={20} />
             </button>
           </div>

@@ -13,6 +13,7 @@ import useDrivingRoutes from '../../hooks/useDrivingRoutes';
 import useResponderLocations from '../../hooks/useResponderLocations';
 import { reportCoords } from '../../utils/reportCoords';
 import AppSidebar from '../../components/AppSidebar';
+import useEscapeKey from '../../hooks/useEscapeKey';
 
 // Extra pages appear only when granted in Access control — canAccessPage
 // filters this list so the sidebar mirrors page_permissions.
@@ -50,6 +51,9 @@ export default function ResponderView() {
     setAssistDeptIds([]);
     setAssistMsg('');
   }, [selectedReport?.id]);
+
+  // Esc closes the incident modal (audit U-05).
+  useEscapeKey(() => setSelectedReport(null), !!selectedReport);
 
   useEffect(() => {
     if (!profile?.id) return; // skip the eq.undefined 400 + broken subscription before profile loads
@@ -371,7 +375,7 @@ export default function ResponderView() {
                 return (
                   <div key={req.id} className="flex flex-col gap-3 rounded-lg border border-slate-200 p-4 sm:flex-row sm:items-center sm:justify-between">
                     <div className="min-w-0">
-                      <p className="font-semibold capitalize">{r.report_type || r.incident_type || 'incident'} <span className="font-mono text-xs text-slate-400">{r.report_id || r.id?.slice(0, 8)}</span></p>
+                      <p className="font-semibold capitalize">{r.report_type || r.incident_type || 'incident'} <span className="font-mono text-xs text-slate-500">{r.report_id || r.id?.slice(0, 8)}</span></p>
                       <p className="mt-0.5 truncate text-sm text-slate-600">{r.content || r.description}</p>
                       <p className="mt-1 text-xs text-slate-500">
                         {r.attachments?.location || r.location || 'No location'}
@@ -463,7 +467,7 @@ export default function ResponderView() {
       </main>
 
       {selectedReport && (
-        <div className="fixed inset-0 z-1030 flex items-center justify-center bg-slate-900/50 p-4" role="dialog" aria-modal="true" onClick={() => setSelectedReport(null)}>
+        <div className="fixed inset-0 z-1050 flex items-center justify-center bg-slate-900/50 p-4" role="dialog" aria-modal="true" onClick={() => setSelectedReport(null)}>
           <div className="w-full max-w-lg overflow-hidden rounded-2xl bg-white " onClick={(e) => e.stopPropagation()}>
             <div className="flex items-start justify-between border-b border-slate-100 px-6 py-4">
               <div className="flex items-center gap-3">
@@ -472,14 +476,14 @@ export default function ResponderView() {
                 </div>
                 <div>
                   <p className="font-semibold capitalize">{selectedReport.report_type || selectedReport.incident_type} emergency</p>
-                  <p className="font-mono text-xs text-slate-400">{selectedReport.report_id || selectedReport.id?.slice(0, 8)}</p>
+                  <p className="font-mono text-xs text-slate-500">{selectedReport.report_id || selectedReport.id?.slice(0, 8)}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
                 <span className="rounded-full bg-taste-50 px-2 py-1 text-[10px] font-bold uppercase text-taste-600">
                   {selectedReport.status || 'pending'}
                 </span>
-                <button onClick={() => setSelectedReport(null)} aria-label="Close" className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100">
+                <button onClick={() => setSelectedReport(null)} aria-label="Close" className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100">
                   <Icon name="X" size={18}/>
                 </button>
               </div>
@@ -487,12 +491,12 @@ export default function ResponderView() {
 
             <div className="max-h-[70vh] space-y-4 overflow-y-auto px-6 py-5">
               <div>
-                <p className="text-xs font-bold  text-slate-400">Description</p>
+                <p className="text-xs font-bold  text-slate-500">Description</p>
                 <p className="mt-1 text-sm text-slate-700">{selectedReport.content || selectedReport.description}</p>
               </div>
 
               <div>
-                <p className="text-xs font-bold  text-slate-400">Location</p>
+                <p className="text-xs font-bold  text-slate-500">Location</p>
                 <div className="mt-1 flex items-center gap-1.5">
                   <Icon name="MapPin" size={14} className="shrink-0 text-taste-500"/>
                   <p className="text-sm text-slate-700">{selectedReport.attachments?.location || selectedReport.location || 'No location recorded'}</p>
@@ -530,7 +534,7 @@ export default function ResponderView() {
 
               {selectedReport.attachments?.resolution_proof && (
                 <div>
-                  <p className="text-xs font-bold  text-slate-400">Resolution proof</p>
+                  <p className="text-xs font-bold  text-slate-500">Resolution proof</p>
                   <img
                     src={selectedReport.attachments.resolution_proof}
                     alt="Resolution proof"
@@ -541,21 +545,21 @@ export default function ResponderView() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-xs font-bold  text-slate-400">Priority</p>
+                  <p className="text-xs font-bold  text-slate-500">Priority</p>
                   <p className="mt-1 text-sm font-semibold capitalize">{selectedReport.priority || 'N/A'}</p>
                 </div>
                 <div>
-                  <p className="text-xs font-bold  text-slate-400">Reported</p>
+                  <p className="text-xs font-bold  text-slate-500">Reported</p>
                   <p className="mt-1 text-sm text-slate-700">{selectedReport.created_at ? new Date(selectedReport.created_at).toLocaleString() : 'N/A'}</p>
                 </div>
                 <div>
-                  <p className="text-xs font-bold  text-slate-400">Reporter contact</p>
+                  <p className="text-xs font-bold  text-slate-500">Reporter contact</p>
                   <p className="mt-1 text-sm text-slate-700">{selectedReport.attachments?.contact_name || 'N/A'}</p>
                   <p className="text-xs text-slate-500">{selectedReport.attachments?.contact_phone || ''}</p>
                 </div>
                 {selectedReport.attachments?.service_area_status && (
                   <div>
-                    <p className="text-xs font-bold  text-slate-400">Service area</p>
+                    <p className="text-xs font-bold  text-slate-500">Service area</p>
                     <p className="mt-1 text-sm capitalize text-slate-700">{selectedReport.attachments.service_area_status}</p>
                   </div>
                 )}
