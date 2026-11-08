@@ -20,6 +20,7 @@ import AppSidebar from '../../components/AppSidebar';
 import useServiceBoundary from '../../hooks/useServiceBoundary';
 import useResponderLocation from '../../hooks/useResponderLocation';
 import useResponderLocations from '../../hooks/useResponderLocations';
+import usePendingRegistrations from '../../hooks/usePendingRegistrations';
 import { RESPONDER_ICON, responderDeptIcon, incidentIcon } from '../../utils/leafletIcon';
 import useDrivingRoutes from '../../hooks/useDrivingRoutes';
 import { reportCoords } from '../../utils/reportCoords';
@@ -152,7 +153,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
   const [selectedResponder, setSelectedResponder] = useState(null);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [emergencyContacts, setEmergencyContacts] = useState([]);
-  const [pendingUsers, setPendingUsers] = useState([]);
+  const [pendingUsers, setPendingUsers] = usePendingRegistrations(profile);
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
   const [contactError, setContactError] = useState('');
   const [newContact, setNewContact] = useState({ name: '', relationship: '', phone_number: '', is_primary: false });
@@ -363,34 +364,6 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
 
     fetchVerifications();
   }, [profile?.role, section]);
-
-  // Fetch pending registrations (admin only) — real signups land here with
-  // status='inactive' until an administrator approves them. A realtime
-  // subscription keeps the sidebar badge live on any section — same pattern
-  // as the incident queue badge on emergency_reports.
-  useEffect(() => {
-    const fetchPendingUsers = async () => {
-      if (profile?.role !== 'admin') return;
-
-      const { data } = await supabase
-        .from('user_profiles')
-        .select('*')
-        .eq('status', 'inactive')
-        .order('created_at', { ascending: false });
-
-      if (data) setPendingUsers(data);
-    };
-
-    fetchPendingUsers();
-    if (profile?.role !== 'admin') return undefined;
-
-    const channel = supabase
-      .channel('pending-registrations')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'user_profiles' }, fetchPendingUsers)
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
-  }, [profile?.role]);
 
   // review_verification() (migration 20261030101000) is the atomic server
   // path: decision + activation + audit in one transaction, with stale-
@@ -1691,6 +1664,7 @@ export default function Dashboard({ section = 'command' }) {
   const navigate = useNavigate();
   const { profile, signOut, canAccessPage } = useAuth();
   const { reports, setReports } = useMockData();
+  const [pendingUsers] = usePendingRegistrations(profile);
   const [activeReport, setActiveReport] = useState(null);
   const [showBroadcast, setShowBroadcast] = useState(false);
   const [selectedDepartments, setSelectedDepartments] = useState([]);
@@ -1913,7 +1887,7 @@ export default function Dashboard({ section = 'command' }) {
     { label: 'Command center', icon: 'LayoutDashboard', path: '/', roles: ['admin', 'dispatcher'], key: 'command' },
     { label: 'Incident queue', icon: 'Siren', path: '/report-management', badge: pendingCount, roles: ['admin', 'dispatcher'], key: 'queue' },
     { label: 'New incident', icon: 'PlusCircle', path: '/emergency-report', roles: ['admin', 'dispatcher'], key: 'new' },
-    { label: 'Residents & review', icon: 'Users', path: '/user-management', roles: ['admin'], key: 'residents' },
+    { label: 'Residents & review', icon: 'Users', path: '/user-management', badge: pendingUsers.length, roles: ['admin'], key: 'residents' },
     { label: 'Access control', icon: 'ShieldCheck', path: '/access-control', roles: ['admin'], key: 'access' },
     { label: 'Departments', icon: 'Building2', path: '/department-management', roles: ['admin'], key: 'departments' },
     { label: 'Profile', icon: 'User', path: '/profile', roles: ['admin', 'dispatcher'], key: 'profile' }
