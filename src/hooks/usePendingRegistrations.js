@@ -6,9 +6,24 @@ import { supabase } from '../lib/supabase';
 // realtime subscription — same pattern as the emergency_reports badge.
 // Returns the list plus its setter so approve/reject handlers can drop rows
 // locally without waiting for the next realtime refresh.
+// Module-level cache: route changes remount the consuming pages; seeding
+// state from the last result keeps the badge visible while a fresh fetch
+// runs, instead of flashing empty and reappearing.
+let cachedPending = [];
+
 const usePendingRegistrations = (profile) => {
-  const [pendingUsers, setPendingUsers] = useState([]);
+  const [pendingUsers, setPendingUsersState] = useState(
+    () => (profile?.role === 'admin' ? cachedPending : [])
+  );
   const instanceId = useId();
+
+  const setPendingUsers = (updater) => {
+    setPendingUsersState((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      cachedPending = next;
+      return next;
+    });
+  };
 
   useEffect(() => {
     const fetchPendingUsers = async () => {
@@ -22,7 +37,8 @@ const usePendingRegistrations = (profile) => {
     };
 
     if (profile?.role !== 'admin') {
-      setPendingUsers([]);
+      cachedPending = [];
+      setPendingUsersState([]);
       return undefined;
     }
 
