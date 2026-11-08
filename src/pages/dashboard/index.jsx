@@ -365,10 +365,12 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
   }, [profile?.role, section]);
 
   // Fetch pending registrations (admin only) — real signups land here with
-  // status='inactive' until an administrator approves them.
+  // status='inactive' until an administrator approves them. A realtime
+  // subscription keeps the sidebar badge live on any section — same pattern
+  // as the incident queue badge on emergency_reports.
   useEffect(() => {
     const fetchPendingUsers = async () => {
-      if (profile?.role !== 'admin' || section !== 'residents') return;
+      if (profile?.role !== 'admin') return;
 
       const { data } = await supabase
         .from('user_profiles')
@@ -380,7 +382,15 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
     };
 
     fetchPendingUsers();
-  }, [profile?.role, section]);
+    if (profile?.role !== 'admin') return undefined;
+
+    const channel = supabase
+      .channel('pending-registrations')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'user_profiles' }, fetchPendingUsers)
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [profile?.role]);
 
   // review_verification() (migration 20261030101000) is the atomic server
   // path: decision + activation + audit in one transaction, with stale-
