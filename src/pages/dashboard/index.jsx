@@ -224,6 +224,17 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Esc closes any open modal (audit U-05). Must sit below ALL modal state
+  // declarations — referencing a useState value above its declaration is a
+  // TDZ ReferenceError.
+  useEscapeKey(() => setIsContactModalOpen(false), isContactModalOpen);
+  useEscapeKey(() => setIsBoundaryModalOpen(false), isBoundaryModalOpen);
+  useEscapeKey(() => setIsAssistanceModalOpen(false), isAssistanceModalOpen);
+  useEscapeKey(() => setIsReviewModalOpen(false), isReviewModalOpen);
+  useEscapeKey(() => setIsAssignModalOpen(false), isAssignModalOpen);
+  useEscapeKey(() => setIsReportDetailModalOpen(false), isReportDetailModalOpen);
+  useEscapeKey(() => setIsImageModalOpen(false), isImageModalOpen);
+
   const handleImageUpload = (e) => {
     const files = Array.from(e.target.files);
     setImageFiles([...imageFiles, ...files]);
