@@ -145,12 +145,12 @@ const sectionCopy = {
 // matrix, so the "admin sees only 5 pages" rule must live here. Reporting
 // and triage stay with dispatchers/responders/residents who own them.
 const SECTION_ROLES = {
-  queue: ['dispatcher', 'responder'],
+  queue: ['dispatcher', 'responder', 'department_admin'],
   new: ['dispatcher', 'responder', 'resident'],
   residents: ['admin'],
   access: ['admin'],
   departments: ['admin'],
-  profile: ['admin', 'dispatcher', 'responder', 'resident'],
+  profile: ['admin', 'dispatcher', 'responder', 'resident', 'department_admin'],
 };
 const sectionAllowed = (key, role) => !SECTION_ROLES[key] || SECTION_ROLES[key].includes(role);
 
@@ -547,7 +547,9 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
 
   const handleAssignClick = (report) => {
     setSelectedReport(report);
-    setSelectedDepartment(null);
+    // department_admin only assigns inside their own department — the
+    // RLS check enforces it server-side too; this pre-selects it for UX.
+    setSelectedDepartment(profile?.role === 'department_admin' ? profile?.department_id : null);
     setSelectedResponder(null);
     setIsAssignModalOpen(true);
     supabase
@@ -1548,10 +1550,13 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
                 <select 
                   value={selectedDepartment || ''}
                   onChange={(e) => setSelectedDepartment(e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                  disabled={profile?.role === 'department_admin'}
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-slate-500"
                 >
                   <option value="">Select a department</option>
-                  {departments.map(dept => (
+                  {departments
+                    .filter(dept => profile?.role !== 'department_admin' || dept.id === profile?.department_id)
+                    .map(dept => (
                     <option key={dept.id} value={dept.id}>{dept.name}</option>
                   ))}
                 </select>
@@ -1987,13 +1992,13 @@ export default function Dashboard({ section = 'command' }) {
   const toggleDepartment = id => setSelectedDepartments(ids => ids.includes(id) ? ids.filter(item => item !== id) : [...ids, id]);
 
   const sidebarLinks = [
-    { label: 'Command center', icon: 'LayoutDashboard', path: '/', roles: ['admin', 'dispatcher'], key: 'command' },
-    { label: 'Incident queue', icon: 'Siren', path: '/report-management', badge: pendingCount, roles: ['dispatcher', 'responder'], key: 'queue' },
+    { label: 'Command center', icon: 'LayoutDashboard', path: '/', roles: ['admin', 'dispatcher', 'department_admin'], key: 'command' },
+    { label: 'Incident queue', icon: 'Siren', path: '/report-management', badge: pendingCount, roles: ['dispatcher', 'responder', 'department_admin'], key: 'queue' },
     { label: 'New incident', icon: 'PlusCircle', path: '/emergency-report', roles: ['dispatcher', 'responder', 'resident'], key: 'new' },
     { label: 'Residents & review', icon: 'Users', path: '/user-management', badge: pendingUsers.length, roles: ['admin'], key: 'residents' },
     { label: 'Access control', icon: 'ShieldCheck', path: '/access-control', roles: ['admin'], key: 'access' },
     { label: 'Departments', icon: 'Building2', path: '/department-management', roles: ['admin'], key: 'departments' },
-    { label: 'Profile', icon: 'User', path: '/profile', roles: ['admin', 'dispatcher'], key: 'profile' }
+    { label: 'Profile', icon: 'User', path: '/profile', roles: ['admin', 'dispatcher', 'department_admin'], key: 'profile' }
   ].filter(link => link.roles?.includes(profile?.role) && canAccessPage(link.key, profile?.role));
 
   return <div className="min-h-screen bg-slate-50 text-slate-900">

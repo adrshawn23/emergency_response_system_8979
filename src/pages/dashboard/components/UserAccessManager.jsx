@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../../contexts/AuthContext';
 
-const ROLE_OPTIONS = ['resident', 'dispatcher', 'responder', 'admin'];
+const ROLE_OPTIONS = ['resident', 'dispatcher', 'responder', 'department_admin', 'admin'];
 
 // Admin control panel: change any account's role, or suspend/reactivate it.
 // Changes land in user_profiles; the affected user's AuthContext realtime
