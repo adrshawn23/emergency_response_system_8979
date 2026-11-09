@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
 import Image from '../../../components/AppImage';
+import IncidentTimeline from '../../../components/IncidentTimeline';
 
 const ReportDetailsModal = ({ 
   report, 
@@ -45,16 +46,6 @@ const ReportDetailsModal = ({
       default: return 'AlertTriangle';
     }
   };
-
-  const mockResponseHistory = [
-    {
-      id: 1,
-      action: 'Report Created',
-      user: report?.contact_name,
-      timestamp: report?.created_at,
-      details: 'Initial emergency report submitted'
-    }
-  ];
 
   const formatTimestamp = (timestamp) => {
     return new Date(timestamp)?.toLocaleString();
@@ -275,22 +266,8 @@ const ReportDetailsModal = ({
             <div className="space-y-4">
               <div>
                 <label className="text-sm font-medium text-foreground">Response History</label>
-                <div className="mt-2 space-y-3">
-                  {mockResponseHistory?.map((entry) => (
-                    <div key={entry?.id} className="flex items-start space-x-3 p-3 bg-muted rounded-md">
-                      <div className="w-2 h-2 bg-primary rounded-full mt-2"></div>
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between">
-                          <p className="text-sm font-medium text-foreground">{entry?.action}</p>
-                          <span className="text-xs text-muted-foreground">
-                            {formatTimestamp(entry?.timestamp)}
-                          </span>
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-1">by {entry?.user}</p>
-                        <p className="text-sm text-foreground mt-1">{entry?.details}</p>
-                      </div>
-                    </div>
-                  ))}
+                <div className="mt-2">
+                  <IncidentTimeline report={report} />
                 </div>
               </div>
             </div>

@@ -14,6 +14,9 @@ import useResponderLocations from '../../hooks/useResponderLocations';
 import { reportCoords } from '../../utils/reportCoords';
 import AppSidebar from '../../components/AppSidebar';
 import ServiceAreaBadge from '../../components/ServiceAreaBadge';
+import IncidentTimeline from '../../components/IncidentTimeline';
+import useIncidentHistory from '../../hooks/useIncidentHistory';
+import { haversineMeters } from '../../utils/distance';
 import useEscapeKey from '../../hooks/useEscapeKey';
 
 // Extra pages appear only when granted in Access control — canAccessPage
@@ -154,15 +157,15 @@ export default function ResponderView() {
   }, [profile?.id]);
 
   // Publish live GPS while carrying an open assignment OR an accepted
-  // assistance request on an unresolved incident — the reporter watches the
+  // assistance request on a non-terminal incident — the reporter watches the
   // responder approach on the incident map. Writes are throttled to ≥20 m
-  // movement or ≥20 s and stop entirely once every task is resolved.
+  // movement or ≥10 s and stop entirely once every task is resolved/declined.
   const hasOpenAssignment =
-    assignedReports.some(r => r.status !== 'resolved') ||
+    assignedReports.some(r => !['resolved', 'declined'].includes(r.status)) ||
     assistanceRequests.some(a =>
       a.status === 'accepted' &&
       a.responded_by === profile?.id &&
-      a.report?.status !== 'resolved');
+      !['resolved', 'declined'].includes(a.report?.status));
 
   // Selected incident coords + the responder's own live pin — the same two
   // markers the resident sees, plus a street-following dashed line.
@@ -196,6 +199,51 @@ export default function ResponderView() {
   ];
   const approachRoutes = useDrivingRoutes(approachPairs);
   const approachRoute = approachRoutes.length ? approachRoutes : null;
+
+  // --- Arrived-on-scene gate (Spec 001 FR-011..013) -----------------------
+  // Client-side distance is a UX preview only — the RPC re-verifies the
+  // server's copy of our position before recording anything.
+  const [arriving, setArriving] = useState(false);
+  const [arriveMsg, setArriveMsg] = useState('');
+  const [radiusM, setRadiusM] = useState(50);
+  const { rows: selHistory } = useIncidentHistory(selectedReport?.id, !!selectedReport);
+  const hasArrived = selHistory.some(r => r.to_status === 'arrived');
+
+  useEffect(() => {
+    // Table may not exist until the migration is applied — default 50 stays.
+    supabase.from('app_settings').select('value').eq('key', 'arrival_radius_m').maybeSingle()
+      .then(({ data }) => {
+        const v = Number(data?.value);
+        if (Number.isFinite(v) && v > 0) setRadiusM(v);
+      });
+  }, []);
+
+  const distM = haversineMeters(incidentPos, myPosition);
+  const arriveBlock =
+    !myPosition ? 'Location unavailable — enable GPS to confirm arrival.'
+    : !incidentPos ? 'Incident has no coordinates — arrival cannot be verified.'
+    : distM == null ? 'Location unavailable — enable GPS to confirm arrival.'
+    : distM > radiusM ? `You're ~${Math.round(distM)} m away — move within ${Math.round(radiusM)} m.`
+    : null;
+
+  const markArrived = async () => {
+    if (arriving || !selectedReport) return;
+    setArriving(true);
+    setArriveMsg('');
+    const { data, error } = await supabase.rpc('mark_incident_arrived', { p_report_id: selectedReport.id });
+    setArriving(false);
+    const code = data?.error || error?.code;
+    if (error || !data?.ok) {
+      setArriveMsg(
+        code === 'too_far' ? `You're ~${Math.round(data.distance_m)} m away — move within ${Math.round(data.radius_m)} m.`
+        : code === 'location_unavailable' ? 'Location unavailable — enable GPS.'
+        : code === 'unauthorized' ? 'Only the assigned responder can mark arrival.'
+        : code === 'already_arrived' ? 'Arrival already recorded.'
+        : 'Could not record arrival — try again.');
+      return;
+    }
+    setArriveMsg(data?.already ? 'Arrival already recorded.' : 'Arrival recorded — the reporter can see it now.');
+  };
   useEffect(() => {
     if (!profile?.id || !hasOpenAssignment || !navigator.geolocation) return undefined;
     let lastWrite = 0;
@@ -208,7 +256,7 @@ export default function ResponderView() {
         const now = Date.now();
         const moved = !lastPos
           || Math.hypot(latitude - lastPos[0], longitude - lastPos[1]) > 0.0002;
-        if (!moved && now - lastWrite < 20000) return;
+        if (!moved && now - lastWrite < 10000) return;
         lastPos = [latitude, longitude];
         lastWrite = now;
         supabase.from('responder_locations').upsert({
@@ -561,6 +609,8 @@ export default function ResponderView() {
                 <ServiceAreaBadge report={selectedReport} />
               </div>
 
+              <IncidentTimeline report={selectedReport} />
+
               {selectedReport.assigned_to === profile?.id && (
                 <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                   <div className="flex items-center gap-2">
@@ -630,6 +680,22 @@ export default function ResponderView() {
                 >
                   Acknowledge
                 </button>
+              )}
+              {selectedReport.status === 'in-progress' && selectedReport.assigned_to === profile?.id && !hasArrived && (
+                <div className="flex-1 space-y-1">
+                  <button
+                    onClick={markArrived}
+                    disabled={arriving || !!arriveBlock}
+                    className="w-full rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {arriving ? 'Recording…' : 'Arrived on scene'}
+                  </button>
+                  {(arriveBlock || arriveMsg) && (
+                    <p className={`text-center text-xs ${arriveMsg && !arriveBlock ? 'text-emerald-700' : 'text-slate-500'}`}>
+                      {arriveBlock || arriveMsg}
+                    </p>
+                  )}
+                </div>
               )}
               {selectedReport.status === 'in-progress' && selectedReport.assigned_to === profile?.id && (
                 <div className="flex-1 space-y-2">

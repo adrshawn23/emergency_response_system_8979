@@ -17,6 +17,8 @@ import 'leaflet/dist/leaflet.css';
 import '../../utils/leafletIcon';
 import BoundaryMap from '../../components/BoundaryMap';
 import ServiceAreaBadge from '../../components/ServiceAreaBadge';
+import IncidentTimeline from '../../components/IncidentTimeline';
+import useIncidentHistory from '../../hooks/useIncidentHistory';
 import AppSidebar from '../../components/AppSidebar';
 import useServiceBoundary from '../../hooks/useServiceBoundary';
 import useResponderLocation from '../../hooks/useResponderLocation';
@@ -1047,10 +1049,37 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
   // disabled with a lock notice so nothing is clickable while pending.
   const canReport = ['admin','dispatcher','responder'].includes(profile?.role) || profile?.account_status === 'active';
   // Live responder position on the open incident — staff-readable per RLS,
-  // and only meaningful while the incident is unresolved.
+  // and only meaningful while the incident is non-terminal.
   const detailResponderLoc = useResponderLocation(
-    isReportDetailModalOpen && selectedReport?.status !== 'resolved' ? selectedReport?.assigned_to : null
+    isReportDetailModalOpen && !['resolved', 'declined'].includes(selectedReport?.status) ? selectedReport?.assigned_to : null
   );
+
+  // --- Manual arrival fallback (Spec 001 FR-017) --------------------------
+  // Staff mark arrival when the responder's GPS can't; audited via
+  // meta.method='manual'. The RPC re-checks role + state server-side.
+  const [manualArriving, setManualArriving] = useState(false);
+  const [manualArriveMsg, setManualArriveMsg] = useState('');
+  const { rows: selHistory } = useIncidentHistory(
+    isReportDetailModalOpen ? selectedReport?.id : null
+  );
+  const hasArrived = selHistory.some(r => r.to_status === 'arrived');
+
+  const markManualArrived = async () => {
+    if (manualArriving || !selectedReport) return;
+    setManualArriving(true);
+    setManualArriveMsg('');
+    const { data, error } = await supabase.rpc('mark_incident_arrived_manual', { p_report_id: selectedReport.id });
+    setManualArriving(false);
+    const code = data?.error || error?.code;
+    if (error || !data?.ok) {
+      setManualArriveMsg(
+        code === 'unauthorized' ? 'Only dispatchers/admins can mark arrival.'
+        : code === 'invalid_state' ? 'Incident is not in-progress.'
+        : 'Could not record arrival — try again.');
+      return;
+    }
+    setManualArriveMsg(data?.already ? 'Arrival already recorded.' : 'Arrival recorded — visible to the reporter.');
+  };
   // Private storage paths resolve to short-lived signed URLs; legacy rows
   // hold data URLs that render directly.
   const idDocRaw = selectedVerification?.id_document_url;
@@ -1592,6 +1621,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
                 </div>
               )}
               <ServiceAreaBadge report={selectedReport} />
+              <IncidentTimeline report={selectedReport} />
               {selectedReport.attachments?.images && selectedReport.attachments.images.length > 0 && (
                 <div>
                   <p className="text-xs font-bold  text-slate-400 mb-2">Evidence Images</p>
@@ -1632,6 +1662,18 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
                 >
                   Close
                 </button>
+                {(profile?.role === 'dispatcher' || profile?.role === 'admin') && selectedReport.status === 'in-progress' && !hasArrived && (
+                  <div className="flex flex-col items-end gap-1">
+                    <button
+                      onClick={markManualArrived}
+                      disabled={manualArriving}
+                      className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {manualArriving ? 'Recording…' : 'Mark arrived'}
+                    </button>
+                    {manualArriveMsg && <p className="text-xs text-slate-500">{manualArriveMsg}</p>}
+                  </div>
+                )}
                 {(profile?.role === 'dispatcher' || profile?.role === 'admin') && (selectedReport.status) !== 'resolved' && (
                   <button 
                     onClick={() => {

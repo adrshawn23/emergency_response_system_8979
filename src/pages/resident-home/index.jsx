@@ -8,6 +8,7 @@ import IncidentChat from '../../components/IncidentChat';
 import SidebarProfile from '../../components/SidebarProfile';
 import AppSidebar from '../../components/AppSidebar';
 import ServiceAreaBadge from '../../components/ServiceAreaBadge';
+import IncidentTimeline from '../../components/IncidentTimeline';
 import BoundaryMap from '../../components/BoundaryMap';
 import { RESPONDER_ICON, responderDeptIcon } from '../../utils/leafletIcon';
 import useResponderLocation from '../../hooks/useResponderLocation';
@@ -201,6 +202,7 @@ export default function ResidentHome() {
               <p className="mt-1 text-sm text-slate-700">{selectedReport.location || selectedReport.attachments?.location || 'No location recorded'}</p>
             </div>
             <ServiceAreaBadge report={selectedReport} />
+            <IncidentTimeline report={selectedReport} />
             {(incidentCoords || responderMarkers.length > 0) && (
               <div>
                 <p className="text-xs font-bold  text-slate-500">Map</p>
