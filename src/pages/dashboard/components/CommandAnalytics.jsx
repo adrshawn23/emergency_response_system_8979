@@ -194,7 +194,6 @@ const CommandAnalytics = ({ reports }) => {
     supabase
       .from('departments')
       .select('id, name')
-      .eq('is_active', true)
       .order('name')
       .then(({ data }) => { if (live && data) setDepartments(data); });
     return () => { live = false; };
