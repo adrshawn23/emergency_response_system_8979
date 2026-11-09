@@ -203,6 +203,9 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
   const [idVerifications, setIdVerifications] = useState([]);
   const [selectedVerification, setSelectedVerification] = useState(null);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  // Required for Reject / Request clarity — stored as review_notes, shown
+  // to the applicant on their verification card and inside the decision email.
+  const [reviewRemark, setReviewRemark] = useState('');
   const [idDocSignedUrl, setIdDocSignedUrl] = useState(null);
   const [profileTab, setProfileTab] = useState('info');
   const [profileForm, setProfileForm] = useState({ first_name: '', last_name: '', phone: '' });
@@ -704,6 +707,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
   ]).size;
 
   const handleReviewClick = (verification) => {
+    setReviewRemark('');
     setSelectedVerification(verification);
     setIsReviewModalOpen(true);
   };
@@ -737,6 +741,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
       id_document_url: null,
       document_storage_path: null,
     });
+    setReviewRemark('');
     setIsReviewModalOpen(true);
   };
 
@@ -815,6 +820,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
     }
     setIsReviewModalOpen(false);
     setSelectedVerification(null);
+    setReviewRemark('');
   };
 
   const handleApproveVerification = async () => {
@@ -904,9 +910,9 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
     }
   };
 
-  const handleRequestClarity = async () => {
+  const handleRequestClarity = async (remark) => {
     if (!selectedVerification) return;
-    const reason = 'Please upload a clearer image of your ID document';
+    const reason = remark?.trim() || 'Please upload a clearer image of your ID document';
 
     const { error, unsupported } = await callReviewVerification(
       selectedVerification.id, 'needs_clarity', reason);
@@ -1445,18 +1451,34 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
                 )}
               </div>
 
+              <div>
+                <label className="block text-xs font-bold text-slate-400" htmlFor="reviewRemark">
+                  Remark <span className="font-normal text-slate-400">— required for Reject / Request clarity; shown to the applicant and included in the email</span>
+                </label>
+                <textarea
+                  id="reviewRemark"
+                  rows={2}
+                  value={reviewRemark}
+                  onChange={(e) => setReviewRemark(e.target.value)}
+                  placeholder="e.g. ID photo is too blurry — please re-upload in good lighting"
+                  className="mt-1.5 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-taste-500"
+                />
+              </div>
+
               <div className="flex justify-end gap-2 pt-4 border-t border-slate-200">
                 {selectedVerification.id ? (
                   <>
                     <button
-                      onClick={handleRequestClarity}
-                      className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700 hover:bg-amber-100"
+                      onClick={() => handleRequestClarity(reviewRemark)}
+                      disabled={!reviewRemark.trim()}
+                      className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       Request Clarity
                     </button>
                     <button
-                      onClick={() => handleRejectVerification('ID verification rejected by administrator')}
-                      className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-100"
+                      onClick={() => handleRejectVerification(reviewRemark.trim())}
+                      disabled={!reviewRemark.trim()}
+                      className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       Reject
                     </button>
@@ -1472,8 +1494,9 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
                     {/* No id_verifications row exists — clarity/review RPCs need
                         one, so route to the registration-level handlers. */}
                     <button
-                      onClick={async () => { await handlePendingReject(selectedVerification.user_id, 'Registration rejected by administrator'); setIsReviewModalOpen(false); setSelectedVerification(null); }}
-                      className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-100"
+                      onClick={async () => { await handlePendingReject(selectedVerification.user_id, reviewRemark.trim() || 'Registration rejected by administrator'); setIsReviewModalOpen(false); setSelectedVerification(null); setReviewRemark(''); }}
+                      disabled={!reviewRemark.trim()}
+                      className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       Reject
                     </button>
