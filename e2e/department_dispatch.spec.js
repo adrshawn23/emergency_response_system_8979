@@ -101,9 +101,12 @@ test.describe.serial('Department dispatch gate', () => {
     await page.click('button[type="submit"]');
     await page.waitForURL('/', { timeout: 30000 });
 
-    await page.click('text=Incident queue');
+    // Nav label carries a pending-count badge ("Incident queue 2"), so match
+    // by role + regex and wait for the queue's status-filter bar to render.
+    await page.getByRole('button', { name: /Incident queue/ }).first().click();
+    await expect(page.getByRole('button', { name: 'pending', exact: true })).toBeVisible();
     const row = page.locator('div.cursor-pointer').filter({ hasText: uniqueDesc });
-    await expect(row).toBeVisible();
+    await expect(row).toBeVisible({ timeout: 30000 });
     await row.locator('button', { hasText: 'Assign' }).click();
 
     const modal = page.locator('div.fixed.inset-0')
@@ -156,9 +159,10 @@ test.describe.serial('Department dispatch gate', () => {
     await page.click('button[type="submit"]');
     await page.waitForURL('/', { timeout: 30000 });
 
-    await page.click('text=Incident queue');
+    await page.getByRole('button', { name: /Incident queue/ }).first().click();
+    await expect(page.getByRole('button', { name: 'pending', exact: true })).toBeVisible();
     const row = page.locator('div.cursor-pointer').filter({ hasText: uniqueDesc });
-    await expect(row).toBeVisible();
+    await expect(row).toBeVisible({ timeout: 30000 });
     await row.locator('button', { hasText: 'Assign responder' }).click();
 
     const modal = page.locator('div.fixed.inset-0')

@@ -214,6 +214,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
   const [selectedAssistanceDepts, setSelectedAssistanceDepts] = useState([]);
   const [cdaRequests, setCdaRequests] = useState([]);
   const [assistError, setAssistError] = useState('');
+  const [assignError, setAssignError] = useState('');
 
   const [imageFiles, setImageFiles] = useState([]);
   const [idVerifications, setIdVerifications] = useState([]);
@@ -564,6 +565,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
     // RLS check enforces it server-side too; this pre-selects it for UX.
     setSelectedDepartment(profile?.role === 'department_admin' ? profile?.department_id : null);
     setSelectedResponder(null);
+    setAssignError('');
     setIsAssignModalOpen(true);
     supabase
       .from('emergency_reports')
@@ -604,6 +606,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
 
     if (error) {
       console.error('Assignment error:', error);
+      setAssignError(error.message || 'Assignment failed. Please try again.');
       return;
     }
 
@@ -1633,6 +1636,9 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
               )}
               {profile?.role === 'dispatcher' && (
                 <p className="text-xs text-slate-500">The department's admin will pick which responder goes — including on any cross-department assists this triggers.</p>
+              )}
+              {assignError && (
+                <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{assignError}</div>
               )}
               <div className="flex justify-end gap-2 pt-4">
                 <button 

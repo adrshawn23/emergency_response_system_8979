@@ -49,6 +49,17 @@ depts simply receive no auto-dispatch) + name-pattern backfill; modal
 wires the select through to the insert. Responder assignment unaffected
 (dept membership is `user_profiles.department_id`, not type-driven).
 
+### D-17 · Trigger reads `NEW.incident_type`; live column is `report_type` — `contradicts` (III)
+**Where**: `auto_dispatch_assistance()` (all versions through `20261109090000`).
+**Evidence**: dispatcher UPDATE fails `42703 record "new" has no field
+"incident_type"` (probe, after D-16 applied — the `d.type` error masked
+it). The app writes `report_type: draft.type`; `incident_type` only ever
+existed in the unapplied original schema file. Net effect: the dispatch
+gate has NEVER successfully fired in production.
+**Fix shape**: `20261109110000` redefines the function on `NEW.report_type`.
+Also: `handleAssignmentSubmit` swallows the error (`console.error` only) —
+the modal just stays open with no feedback. Surface it.
+
 ### D-02 · Incident queue reads full `emergency_reports` — `contradicts` (IV)
 **Where**: `src/pages/dashboard/index.jsx:268-270` and `:1879-1882`
 (both queue components), plus post-submit refresh `:1088`.
