@@ -196,15 +196,6 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
   const [cdaRequests, setCdaRequests] = useState([]);
   const [assistError, setAssistError] = useState('');
 
-  // Esc closes any open modal (audit U-05).
-  useEscapeKey(() => setIsContactModalOpen(false), isContactModalOpen);
-  useEscapeKey(() => setIsBoundaryModalOpen(false), isBoundaryModalOpen);
-  useEscapeKey(() => setIsAssistanceModalOpen(false), isAssistanceModalOpen);
-  useEscapeKey(() => setIsReviewModalOpen(false), isReviewModalOpen);
-  useEscapeKey(() => setIsAssignModalOpen(false), isAssignModalOpen);
-  useEscapeKey(() => setIsReportDetailModalOpen(false), isReportDetailModalOpen);
-  useEscapeKey(() => setIsImageModalOpen(false), isImageModalOpen);
-
   const [imageFiles, setImageFiles] = useState([]);
   const [idVerifications, setIdVerifications] = useState([]);
   const [selectedVerification, setSelectedVerification] = useState(null);
