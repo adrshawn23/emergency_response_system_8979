@@ -249,5 +249,9 @@ Phase 2.5 API responder assignment (`assignResponderToReport` helper).
 - D-10 `assigned` with no responder — accepted as cosmetic for now
 - D-15 process note only
 
-**Remaining:** D-07 partially met (dept-admin UI path needs the env-gated
-account to actually run); no other open findings.
+**Verification pass (2026-11-09):** `department_dispatch.spec.js` 3/3 green
+(gate + auto-dispatch + dept-admin UI); `workflow.spec.js` 4/4 green after
+un-staling (sign-out flake, New-incident label, queue nav, and a live-data
+fix: `page_permissions.new` had `dispatcher` unchecked while the sidebar
+still offered him "New incident" — restored to match the sidebar roles).
+**Remaining:** none open. D-07 fully met including the dept-admin UI path.

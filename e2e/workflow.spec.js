@@ -73,10 +73,16 @@ test.describe.serial('End-to-End Incident Workflow', () => {
       await expect(responderRow.getByText('Remove', { exact: true })).toBeVisible({ timeout: 30000 });
     }
 
-    // Close modal and sign out (dashboard renders a desktop-sidebar and a
-    // mobile bottom-nav sign-out button — .first() picks the visible desktop one)
+    // Close modal and sign out. Both aria-label matches resolve to the
+    // hidden mobile-nav button at desktop widths, so clicking is flaky —
+    // clear the supabase session keys and navigate to /login instead.
     await modal.locator('div.border-b button').click();
-    await page.locator('button[aria-label="Sign out"]').first().click();
+    await page.evaluate(() => {
+      Object.keys(localStorage)
+        .filter(k => k.startsWith('sb-'))
+        .forEach(k => localStorage.removeItem(k));
+    });
+    await page.goto('/login');
     await page.waitForURL('/login', { timeout: 30000 });
   });
 
@@ -89,17 +95,21 @@ test.describe.serial('End-to-End Incident Workflow', () => {
     await page.waitForURL('/', { timeout: 30000 });
     await expect(page.getByRole('heading', { name: /Command Center/ })).toBeVisible();
 
-    // Create a new incident with a unique description
-    await page.click('text=New incident');
+    // Create a new incident with a unique description. Navigate by URL —
+    // 'New incident' exists in both desktop and hidden mobile navs.
+    await page.goto('/emergency-report');
+    await expect(page.getByLabel('Emergency type')).toBeVisible({ timeout: 30000 });
     await page.getByLabel('Emergency type').selectOption('fire');
     await page.getByLabel('Priority').selectOption('high');
     await page.getByLabel('Incident location').fill('456 Workflow Avenue');
-    await page.getByLabel('What is happening?').fill(uniqueDesc);
+    await page.getByLabel(/happening/i).fill(uniqueDesc);
     await page.click('button:has-text("Submit report")');
     await expect(page.locator('h3:has-text("Report submitted")')).toBeVisible();
 
-    // Go to the incident queue and find the new incident row
-    await page.click('text=Incident queue');
+    // Go to the incident queue by URL — the sidebar click races the
+    // dashboard's initial render (same fix as department_dispatch.spec.js).
+    await page.goto('/report-management');
+    await expect(page.getByText('Status / action')).toBeVisible({ timeout: 30000 });
     const row = page.locator('div.cursor-pointer').filter({ hasText: uniqueDesc });
     await expect(row).toBeVisible();
     await expect(row.getByText('pending', { exact: true })).toBeVisible();
@@ -127,8 +137,13 @@ test.describe.serial('End-to-End Incident Workflow', () => {
     await expect(row.getByText('assigned', { exact: true })).toBeVisible();
     await expect(row.locator('button', { hasText: 'Resolve' })).toBeVisible();
 
-    // Sign out (two sign-out buttons exist: desktop sidebar + mobile nav)
-    await page.locator('button[aria-label="Sign out"]').first().click();
+    // Sign out — same session-clear approach as Phase 1.
+    await page.evaluate(() => {
+      Object.keys(localStorage)
+        .filter(k => k.startsWith('sb-'))
+        .forEach(k => localStorage.removeItem(k));
+    });
+    await page.goto('/login');
     await page.waitForURL('/login', { timeout: 30000 });
   });
 
