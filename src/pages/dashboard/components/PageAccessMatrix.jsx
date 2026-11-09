@@ -57,7 +57,8 @@ export default function PageAccessMatrix() {
         </div>
       )}
 
-      <table className="mt-4 w-full text-sm">
+      <div className="mt-4 overflow-x-auto">
+      <table className="w-full min-w-[560px] text-sm">
         <thead>
           <tr className="text-left text-xs uppercase tracking-wide text-slate-400">
             <th className="pb-2 font-semibold">Page</th>
@@ -110,6 +111,7 @@ export default function PageAccessMatrix() {
           ))}
         </tbody>
       </table>
+      </div>
 
       <p className="mt-3 text-xs text-slate-400">
         Locked rows are fixed by design � Command center is every role's landing
