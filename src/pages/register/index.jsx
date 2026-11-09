@@ -11,7 +11,6 @@ import EmergencyContactSection from './components/EmergencyContactSection';
 import TrustIndicators from './components/TrustIndicators';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
-import { isAddressInServiceArea } from '../../utils/geofence';
 // IDs are uploaded after sign-in from the resident home verification card —
 // the registration-stage upload was dropped because the file could not
 // survive the email-confirmation step reliably.
@@ -161,12 +160,9 @@ const Register = () => {
         } else if (new Date(formData.dateOfBirth) > new Date()) {
           newErrors.dateOfBirth = 'Date of birth cannot be in the future';
         }
+        // Free-text address temporarily removed from the form — the
+        // sitio/street dropdown is the declared location.
         if (!formData?.sitio) newErrors.sitio = 'Please select your sitio or street';
-        if (!formData?.address?.trim()) {
-          newErrors.address = 'Address is required';
-        } else if (!isAddressInServiceArea(formData.address)) {
-          newErrors.address = 'Address must be within Barangay Kalubihan to register. Any format works — e.g. "Brgy. Kalubihan, Cebu City" or the spelling shown on your ID.';
-        }
         break;
 
       case 2: // Account Credentials
@@ -266,7 +262,7 @@ const Register = () => {
           phone: formData.phone,
           birthdate: formData.dateOfBirth,
           date_of_birth: formData.dateOfBirth,
-          address: formData.sitio ? `${formData.sitio}, ${formData.address}` : formData.address,
+          address: formData.sitio || '', // free-text address field temporarily removed
           residency_type: formData.residencyType || 'resident',
           emergency_contacts: formData.emergencyContacts?.map(contact => ({
             name: contact.name,

@@ -132,22 +132,9 @@ const PersonalInfoSection = ({
         </p>
         {errors?.sitio && <p className="mt-1 text-xs text-destructive">{errors.sitio}</p>}
       </div>
-      <div>
-        <Input
-          label={formData?.residencyType === 'boarder' ? 'Boarding Address in Kalubihan' : 'Address'}
-          type="text"
-          name="address"
-          placeholder={formData?.residencyType === 'boarder' ? 'Enter the address where you board/rent in Kalubihan' : 'Enter your full address'}
-          value={formData?.address}
-          onChange={onChange}
-          error={errors?.address}
-          description={formData?.residencyType === 'boarder'
-            ? 'This must be within Barangay Kalubihan — it determines your emergency-service eligibility'
-            : 'Must be within Barangay Kalubihan — required for location-based emergency services'}
-          required
-          className="w-full"
-        />
-      </div>
+      {/* Free-text Address input temporarily removed — the sitio/street
+          dropdown is the stored location for now. Restore the block (and
+          the address validation in register/index.jsx) when re-enabled. */}
     </div>
   );
 };
