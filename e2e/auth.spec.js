@@ -42,8 +42,10 @@ test.describe('Authentication', () => {
     await page.click('button[type="submit"]');
     await page.waitForURL('/', { timeout: 30000 });
     
-    // Logout
-    await page.click('button[aria-label="Sign out"]');
+    // Logout via the desktop account menu — the aria-label="Sign out"
+    // button is mobile-only (sm:hidden), so it's never clickable here.
+    await page.getByRole('button', { name: 'Account menu' }).click();
+    await page.getByRole('menuitem', { name: 'Logout' }).click();
     
     // Verify redirected to login
     await page.waitForURL('/login', { timeout: 30000 });
