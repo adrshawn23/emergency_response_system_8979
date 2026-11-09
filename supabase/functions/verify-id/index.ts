@@ -16,8 +16,8 @@
 //     so no numeric confidence floor is required. Confidence < 30% means
 //     the image is unreadable → auto-rejected with a resubmission email.
 //     Anything in between stays pending for a human.
-//   * Decision emails go through _shared/email.ts (Resend); they no-op
-//     until RESEND_API_KEY is set.
+//   * Decision emails go through _shared/email.ts (Brevo/Resend); they
+//     no-op until BREVO_API_KEY or RESEND_API_KEY is set.
 //   * The ID image goes to the private 'id-documents' bucket at an
 //     unpredictable path; nothing lands in auth metadata or logs.
 //   * Rate-limited per user (default 5 submissions/hour).

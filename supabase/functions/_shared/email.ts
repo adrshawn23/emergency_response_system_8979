@@ -1,41 +1,61 @@
 // Minimal transactional email helper for edge functions.
 //
-// Provider: Resend (https://resend.com). Active only when the secrets are
-// configured — otherwise every call is a logged no-op so callers never fail:
+// Providers (auto-detected from secrets, in priority order):
+//   Brevo  — BREVO_API_KEY   (free 300/day, single-sender verify, NO domain needed)
+//   Resend — RESEND_API_KEY  (needs verified domain for real recipients)
+// When neither is set every call is a logged no-op so callers never fail:
 //
-//   supabase secrets set RESEND_API_KEY=re_xxxx
-//   supabase secrets set EMAIL_FROM="Kalubihan Emergency Command <noreply@yourdomain.com>"
+//   supabase secrets set BREVO_API_KEY=xkeysib-xxxx
+//   supabase secrets set EMAIL_FROM="Kalubihan Emergency Command <kalubihan.brgy@gmail.com>"
 //
-// Swap providers by replacing the fetch below; keep the sendEmail contract.
+// EMAIL_FROM accepts "Name <addr>" or a bare address; the sender address must
+// be the one verified in Brevo (Senders → Add sender → confirm link).
 
 const RESEND_ENDPOINT = 'https://api.resend.com/emails';
+const BREVO_ENDPOINT = 'https://api.brevo.com/v3/smtp/email';
+
+const parseFrom = (from: string): { name?: string; email: string } => {
+  const m = from.match(/^\s*(.*?)\s*<([^>]+)>\s*$/);
+  return m ? { name: m[1] || undefined, email: m[2] } : { email: from };
+};
+
+const sendViaBrevo = async (
+  apiKey: string, from: string, to: string, subject: string, html: string,
+): Promise<Response> => {
+  const sender = parseFrom(from);
+  return fetch(BREVO_ENDPOINT, {
+    method: 'POST',
+    headers: { 'api-key': apiKey, 'Content-Type': 'application/json', accept: 'application/json' },
+    body: JSON.stringify({ sender, to: [{ email: to }], subject, htmlContent: html }),
+  });
+};
 
 export const sendEmail = async (
   to: string,
   subject: string,
   html: string,
 ): Promise<{ sent: boolean; skipped?: boolean; error?: string }> => {
-  const apiKey = Deno.env.get('RESEND_API_KEY');
+  const brevoKey = Deno.env.get('BREVO_API_KEY');
+  const resendKey = Deno.env.get('RESEND_API_KEY');
   const from = Deno.env.get('EMAIL_FROM') ?? 'Kalubihan Emergency Command <onboarding@resend.dev>';
 
-  if (!apiKey) {
-    console.log(`sendEmail skipped (RESEND_API_KEY unset) → ${to} :: ${subject}`);
+  if (!brevoKey && !resendKey) {
+    console.log(`sendEmail skipped (BREVO_API_KEY/RESEND_API_KEY unset) → ${to} :: ${subject}`);
     return { sent: false, skipped: true };
   }
   if (!to) return { sent: false, error: 'missing_recipient' };
 
   try {
-    const res = await fetch(RESEND_ENDPOINT, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ from, to: [to], subject, html }),
-    });
+    const res = brevoKey
+      ? await sendViaBrevo(brevoKey, from, to, subject, html)
+      : await fetch(RESEND_ENDPOINT, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${resendKey}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ from, to: [to], subject, html }),
+        });
     if (!res.ok) {
       const detail = await res.text().catch(() => '');
-      console.error(`sendEmail provider error ${res.status}: ${detail}`);
+      console.error(`sendEmail ${brevoKey ? 'brevo' : 'resend'} error ${res.status}: ${detail}`);
       return { sent: false, error: `provider_${res.status}` };
     }
     return { sent: true };

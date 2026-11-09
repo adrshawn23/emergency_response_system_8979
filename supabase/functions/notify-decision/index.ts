@@ -6,7 +6,8 @@
 // supply a fake reason.
 //
 // Deploy: supabase functions deploy notify-decision
-// Secrets: RESEND_API_KEY, EMAIL_FROM — without them sendEmail no-ops.
+// Secrets: BREVO_API_KEY (or RESEND_API_KEY fallback), EMAIL_FROM —
+// without them sendEmail no-ops.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { sendEmail, decisionEmail } from '../_shared/email.ts';
