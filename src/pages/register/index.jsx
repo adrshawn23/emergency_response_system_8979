@@ -68,6 +68,7 @@ const Register = () => {
     email: '',
     phone: '',
     dateOfBirth: '',
+    sitio: '',
     address: '',
     residencyType: 'resident',
     
@@ -160,6 +161,7 @@ const Register = () => {
         } else if (new Date(formData.dateOfBirth) > new Date()) {
           newErrors.dateOfBirth = 'Date of birth cannot be in the future';
         }
+        if (!formData?.sitio) newErrors.sitio = 'Please select your sitio or street';
         if (!formData?.address?.trim()) {
           newErrors.address = 'Address is required';
         } else if (!isAddressInServiceArea(formData.address)) {
@@ -264,7 +266,7 @@ const Register = () => {
           phone: formData.phone,
           birthdate: formData.dateOfBirth,
           date_of_birth: formData.dateOfBirth,
-          address: formData.address,
+          address: formData.sitio ? `${formData.sitio}, ${formData.address}` : formData.address,
           residency_type: formData.residencyType || 'resident',
           emergency_contacts: formData.emergencyContacts?.map(contact => ({
             name: contact.name,

@@ -1,6 +1,18 @@
 import React from 'react';
 import Input from '../../../components/ui/Input';
 
+// Sitios and streets within Barangay Kalubihan — picked from a dropdown so
+// the stored address uses the canonical spelling (helps ID-address match).
+const SITIOS = [
+  'Kalubihan Proper',
+  'Sanciangko',
+  'Leon Kilat',
+  'Pelaez',
+  'P. Lopez',
+  'Osmeña Blvd',
+  'Borromeo St',
+];
+
 const PersonalInfoSection = ({ 
   formData, 
   errors, 
@@ -99,6 +111,26 @@ const PersonalInfoSection = ({
           </p>
           {errors?.residencyType && <p className="mt-1 text-xs text-destructive">{errors.residencyType}</p>}
         </div>
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-foreground mb-1.5" htmlFor="sitio">
+          Sitio / Street <span className="text-destructive">*</span>
+        </label>
+        <select
+          id="sitio"
+          name="sitio"
+          value={formData?.sitio || ''}
+          onChange={onChange}
+          required
+          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+        >
+          <option value="" disabled>Select your sitio or street</option>
+          {SITIOS.map(s => <option key={s} value={s}>{s}</option>)}
+        </select>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Pick the sitio or street your {formData?.residencyType === 'boarder' ? 'boarding' : 'Kalubihan'} address is on.
+        </p>
+        {errors?.sitio && <p className="mt-1 text-xs text-destructive">{errors.sitio}</p>}
       </div>
       <div>
         <Input
