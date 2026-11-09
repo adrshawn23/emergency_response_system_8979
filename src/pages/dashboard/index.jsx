@@ -309,7 +309,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
     const fetchAssistance = async () => {
       const { data } = await supabase
         .from('cross_department_assistance')
-        .select('*, requester:user_profiles!requested_by(full_name), department:departments!assisting_department_id(name)')
+        .select('*, requester:user_profiles!requested_by(full_name), department:departments!assisting_department_id(name), responder:user_profiles!responder_id(full_name)')
         .in('status', ['pending', 'accepted', 'declined'])
         .order('created_at', { ascending: false });
       setCdaRequests(data || []);
@@ -350,6 +350,19 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
 
     fetchAssignmentData();
   }, [isAssignModalOpen]);
+
+  // department_admin: load their department's responders once — used by the
+  // assign modal and by the per-request responder select in the CDA list.
+  useEffect(() => {
+    if (profile?.role !== 'department_admin' || !profile?.department_id) return;
+    supabase
+      .from('user_profiles')
+      .select('id, full_name, email, department_id, role')
+      .eq('department_id', profile.department_id)
+      .eq('role', 'responder')
+      .eq('status', 'active')
+      .then(({ data }) => { if (data) setResponders(data); });
+  }, [profile?.role, profile?.department_id]);
 
   // Fetch emergency contacts
   useEffect(() => {
@@ -574,15 +587,19 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
   };
 
   const handleAssignmentSubmit = async () => {
-    if (!selectedReport || !selectedDepartment || !selectedResponder) return;
+    if (!selectedReport || !selectedDepartment) return;
+
+    // Dispatcher assigns the MAIN department only — that write fires the
+    // auto-dispatch trigger (cross-dept requests) and hands responder
+    // selection to each department's admin.
+    const patch = profile?.role === 'dispatcher'
+      ? { assigned_department_id: selectedDepartment, status: 'assigned' }
+      : { assigned_to: selectedResponder, assigned_department_id: selectedDepartment, status: 'assigned' };
+    if (profile?.role !== 'dispatcher' && !selectedResponder) return;
 
     const { error } = await supabase
       .from('emergency_reports')
-      .update({
-        assigned_to: selectedResponder,
-        assigned_department_id: selectedDepartment,
-        status: 'assigned'
-      })
+      .update(patch)
       .eq('id', selectedReport.id);
 
     if (error) {
@@ -590,10 +607,9 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
       return;
     }
 
-    // Update local state
-    setReports(prev => prev.map(r => 
-      r.id === selectedReport.id 
-        ? { ...r, assigned_to: selectedResponder, assigned_department_id: selectedDepartment, status: 'assigned' }
+    setReports(prev => prev.map(r =>
+      r.id === selectedReport.id
+        ? { ...r, ...patch }
         : r
     ));
 
@@ -601,6 +617,22 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
     setSelectedReport(null);
     setSelectedDepartment(null);
     setSelectedResponder(null);
+  };
+
+  // department_admin assigns the responder for a CDA request targeted at
+  // their department — picking a responder IS accepting the request.
+  const handleCdaResponderAssign = async (cdaId, responderId) => {
+    const { error } = await supabase
+      .from('cross_department_assistance')
+      .update({ responder_id: responderId, status: 'accepted', responded_by: profile?.id })
+      .eq('id', cdaId);
+    if (error) {
+      console.error('CDA responder assign error:', error);
+      return;
+    }
+    setCdaRequests(prev => prev.map(c =>
+      c.id === cdaId ? { ...c, responder_id: responderId, status: 'accepted' } : c
+    ));
   };
 
   const handleAddContact = async () => {
@@ -1145,6 +1177,19 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
                       ? <span className="rounded-full bg-slate-700 px-1.5 py-0.5 text-[9px] font-bold uppercase text-white">auto-dispatch</span>
                       : <span className="text-xs text-slate-500">requested by {row.requester?.full_name || 'staff'}</span>}
                     <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${row.status === 'accepted' ? 'bg-emerald-100 text-emerald-700' : row.status === 'declined' ? 'bg-red-100 text-red-700' : 'bg-amber-200 text-amber-800'}`}>{row.status}</span>
+                    {profile?.role === 'department_admin' && row.assisting_department_id === profile?.department_id && row.status !== 'declined' && (
+                      row.responder_id
+                        ? <span className="text-xs text-slate-600">→ responder {row.responder?.full_name || 'assigned'}</span>
+                        : <select
+                            defaultValue=""
+                            onClick={e => e.stopPropagation()}
+                            onChange={e => e.target.value && handleCdaResponderAssign(row.id, e.target.value)}
+                            className="rounded-lg border border-slate-200 bg-white px-2 py-0.5 text-xs"
+                          >
+                            <option value="">Assign responder…</option>
+                            {responders.map(r => <option key={r.id} value={r.id}>{r.full_name || r.email}</option>)}
+                          </select>
+                    )}
                   </li>
                 );
               })}
@@ -1159,7 +1204,10 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
             <span className={`w-fit rounded-full px-2 py-1 text-[10px] font-bold uppercase ${priorityStyles[report.priority]}`}>{report.priority}</span>
             <div className="flex min-w-0 items-center gap-2">
               <span className={`inline-flex h-8 min-w-[84px] items-center justify-center rounded-full px-2 text-xs font-medium capitalize ${statusStyles[report.status] || 'bg-slate-100 text-slate-700'}`}>{formatStatus(report.status)}</span>
-              {(profile?.role === 'dispatcher' || profile?.role === 'admin') && (report.status) !== 'resolved' && <div className="flex gap-1"><button onClick={(e) => { e.stopPropagation(); (report.status) === 'pending' ? handleAssignClick(report) : setReportStatus(report.report_id || report.id, 'resolved'); }} className="inline-flex h-8 min-w-[72px] items-center justify-center rounded-lg border border-taste-200 bg-taste-50 px-3 text-xs font-bold text-taste-600 transition hover:border-taste-300 hover:bg-taste-100 focus:outline-none focus:ring-2 focus:ring-taste-500 focus:ring-offset-2">{(report.status) === 'pending' ? 'Assign' : 'Resolve'}</button><button onClick={(e) => { e.stopPropagation(); handleAssistanceClick(report); }} className="inline-flex h-8 items-center justify-center gap-1 rounded-lg border border-amber-200 bg-amber-50 px-3 text-xs font-bold text-amber-700 transition hover:border-amber-300 hover:bg-amber-100" title="Request cross-department assistance"><Icon name="Users" size={14}/>{assistCount(report.id) > 0 && <span className="rounded-full bg-amber-200 px-1.5 text-[10px]">{assistCount(report.id)}</span>}</button></div>}
+              {(profile?.role === 'dispatcher' || profile?.role === 'admin') && (report.status) !== 'resolved' && <div className="flex gap-1"><button onClick={(e) => { e.stopPropagation(); (report.status) === 'pending' ? handleAssignClick(report) : setReportStatus(report.report_id || report.id, 'resolved'); }} className="inline-flex h-8 min-w-[72px] items-center justify-center rounded-lg border border-taste-200 bg-taste-50 px-3 text-xs font-bold text-taste-600 transition hover:border-taste-300 hover:bg-taste-100 focus:outline-none focus:ring-2 focus:ring-taste-500 focus:ring-offset-2">{(report.status) === 'pending' ? 'Assign' : 'Resolve'}</button>{report.assigned_department_id && <button onClick={(e) => { e.stopPropagation(); handleAssistanceClick(report); }} className="inline-flex h-8 items-center justify-center gap-1 rounded-lg border border-amber-200 bg-amber-50 px-3 text-xs font-bold text-amber-700 transition hover:border-amber-300 hover:bg-amber-100" title="Request cross-department assistance"><Icon name="Users" size={14}/>{assistCount(report.id) > 0 && <span className="rounded-full bg-amber-200 px-1.5 text-[10px]">{assistCount(report.id)}</span>}</button>}</div>}
+              {profile?.role === 'department_admin' && report.assigned_department_id === profile?.department_id && report.status !== 'resolved' && (
+                <button onClick={(e) => { e.stopPropagation(); handleAssignClick(report); }} className="inline-flex h-8 items-center justify-center rounded-lg border border-taste-200 bg-taste-50 px-3 text-xs font-bold text-taste-600 transition hover:border-taste-300 hover:bg-taste-100">{report.assigned_to ? 'Reassign' : 'Assign responder'}</button>
+              )}
             </div>
           </div>)}
         </div>
@@ -1561,9 +1609,10 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
                   ))}
                 </select>
               </div>
+              {profile?.role !== 'dispatcher' && (
               <div>
                 <label className="block text-sm font-semibold mb-2">Responder</label>
-                <select 
+                <select
                   value={selectedResponder || ''}
                   onChange={(e) => setSelectedResponder(e.target.value)}
                   className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
@@ -1577,6 +1626,10 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
                     ))}
                 </select>
               </div>
+              )}
+              {profile?.role === 'dispatcher' && (
+                <p className="text-xs text-slate-500">The department's admin will pick which responder goes — including on any cross-department assists this triggers.</p>
+              )}
               <div className="flex justify-end gap-2 pt-4">
                 <button 
                   onClick={() => setIsAssignModalOpen(false)}
@@ -1584,12 +1637,12 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
                 >
                   Cancel
                 </button>
-                <button 
+                <button
                   onClick={handleAssignmentSubmit}
-                  disabled={!selectedDepartment || !selectedResponder}
+                  disabled={!selectedDepartment || (profile?.role !== 'dispatcher' && !selectedResponder)}
                   className="rounded-lg bg-taste-500 px-4 py-2 text-sm font-semibold text-white hover:bg-taste-600 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Assign
+                  {profile?.role === 'dispatcher' ? 'Assign department' : 'Assign'}
                 </button>
               </div>
             </div>
@@ -1861,7 +1914,7 @@ export default function Dashboard({ section = 'command' }) {
     const fetchAssistance = async () => {
       const { data } = await supabase
         .from('cross_department_assistance')
-        .select('*, requester:user_profiles!requested_by(full_name), department:departments!assisting_department_id(name)')
+        .select('*, requester:user_profiles!requested_by(full_name), department:departments!assisting_department_id(name), responder:user_profiles!responder_id(full_name)')
         .in('status', ['pending', 'accepted', 'declined'])
         .order('created_at', { ascending: false });
       setCdaRequests(data || []);
