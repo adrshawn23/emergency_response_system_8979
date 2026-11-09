@@ -29,8 +29,20 @@ test.describe.serial('Department dispatch gate', () => {
   ];
   let reportId = null;
   let fireDeptId = null;
+  // responder@emergency.gov is parked in E2E Fire Dept for the dept-admin
+  // test, then restored to wherever it lived before.
+  let responderOrigDept;
 
   test.afterAll(async () => {
+    if (responderOrigDept !== undefined) {
+      const sb = client();
+      await signInWithRetry(sb, 'admin@emergency.gov', 'admin123');
+      await sb
+        .from('user_profiles')
+        .update({ department_id: responderOrigDept })
+        .eq('email', 'responder@emergency.gov');
+      await sb.auth.signOut();
+    }
     // Cancel leftover pending CDA rows so the dashboard amber list stays
     // clean (delete rights on CDA are staff-restricted).
     if (reportId) {
@@ -70,6 +82,20 @@ test.describe.serial('Department dispatch gate', () => {
       .limit(1);
     fireDeptId = fire?.[0]?.id;
     expect(fireDeptId).toBeTruthy();
+
+    // Give the fire dept an active responder for the dept-admin picker.
+    const { data: resp } = await sb
+      .from('user_profiles')
+      .select('id, department_id')
+      .eq('email', 'responder@emergency.gov')
+      .limit(1);
+    if (resp?.[0] && resp[0].department_id !== fireDeptId) {
+      responderOrigDept = resp[0].department_id;
+      await sb
+        .from('user_profiles')
+        .update({ department_id: fireDeptId })
+        .eq('id', resp[0].id);
+    }
     await sb.auth.signOut();
 
     await createReport(uniqueDesc, 'pending', 'E2E Dispatch Avenue');
