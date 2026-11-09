@@ -63,9 +63,9 @@ export default function PageAccessMatrix() {
           <tr className="text-left text-xs uppercase tracking-wide text-slate-400">
             <th className="pb-2 font-semibold">Page</th>
             {EDITABLE_ROLES.map(r => (
-              <th key={r} className="pb-2 font-semibold capitalize">{r.replace(/_/g, ' ')}</th>
+              <th key={r} className="pb-2 text-center font-semibold capitalize">{r.replace(/_/g, ' ')}</th>
             ))}
-            <th className="pb-2 font-semibold">Admin</th>
+            <th className="pb-2 text-center font-semibold">Admin</th>
           </tr>
         </thead>
         <tbody>
@@ -76,7 +76,7 @@ export default function PageAccessMatrix() {
                 const allowed = (pageRoles[p.key] || []).includes(role);
                 const busy = busyKey === `${p.key}:${role}`;
                 return (
-                  <td key={role} className="py-2.5">
+                  <td key={role} className="py-2.5 text-center">
                     <input
                       type="checkbox"
                       checked={allowed}
@@ -88,7 +88,7 @@ export default function PageAccessMatrix() {
                   </td>
                 );
               })}
-              <td className="py-2.5">
+              <td className="py-2.5 text-center">
                 <Icon name="Lock" size={14} className="text-slate-400" />
               </td>
             </tr>
@@ -100,11 +100,11 @@ export default function PageAccessMatrix() {
                 <span className="ml-2 text-[10px] font-normal text-slate-400">({p.note})</span>
               </td>
               {EDITABLE_ROLES.map(role => (
-                <td key={role} className="py-2.5">
+                <td key={role} className="py-2.5 text-center">
                   <Icon name="Lock" size={14} className="text-slate-300" />
                 </td>
               ))}
-              <td className="py-2.5">
+              <td className="py-2.5 text-center">
                 <Icon name="Lock" size={14} className="text-slate-400" />
               </td>
             </tr>
