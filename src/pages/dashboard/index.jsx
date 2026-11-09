@@ -1139,7 +1139,9 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
                     <span className="font-mono text-xs text-slate-500">{rep?.report_id || '—'}</span>
                     <span className="font-semibold capitalize">{rep?.report_type || rep?.incident_type || 'Incident'}</span>
                     <span>→ {row.department?.name || 'department'}</span>
-                    <span className="text-xs text-slate-500">requested by {row.requester?.full_name || 'staff'}</span>
+                    {row.notes === 'auto-dispatch'
+                      ? <span className="rounded-full bg-slate-700 px-1.5 py-0.5 text-[9px] font-bold uppercase text-white">auto-dispatch</span>
+                      : <span className="text-xs text-slate-500">requested by {row.requester?.full_name || 'staff'}</span>}
                     <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${row.status === 'accepted' ? 'bg-emerald-100 text-emerald-700' : row.status === 'declined' ? 'bg-red-100 text-red-700' : 'bg-amber-200 text-amber-800'}`}>{row.status}</span>
                   </li>
                 );
@@ -2025,7 +2027,9 @@ export default function Dashboard({ section = 'command' }) {
                       <span className="font-mono text-xs text-slate-500">{rep?.report_id || '—'}</span>
                       <span className="font-semibold capitalize">{rep?.report_type || rep?.incident_type || 'Incident'}</span>
                       <span>→ {row.department?.name || 'department'}</span>
-                      <span className="text-xs text-slate-500">requested by {row.requester?.full_name || 'staff'}</span>
+                      {row.notes === 'auto-dispatch'
+                      ? <span className="rounded-full bg-slate-700 px-1.5 py-0.5 text-[9px] font-bold uppercase text-white">auto-dispatch</span>
+                      : <span className="text-xs text-slate-500">requested by {row.requester?.full_name || 'staff'}</span>}
                     <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${row.status === 'accepted' ? 'bg-emerald-100 text-emerald-700' : row.status === 'declined' ? 'bg-red-100 text-red-700' : 'bg-amber-200 text-amber-800'}`}>{row.status}</span>
                     </li>
                   );
