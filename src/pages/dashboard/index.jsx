@@ -6,6 +6,7 @@ import { useMockData } from '../../contexts/MockDataContext';
 import NotificationBell from '../../components/NotificationBell';
 import { supabase } from '../../lib/supabase';
 import DepartmentManagementSection from './components/DepartmentManagementSection';
+import CommandAnalytics from './components/CommandAnalytics';
 import UserAccessManager from './components/UserAccessManager';
 import PageAccessMatrix from './components/PageAccessMatrix';
 import PendingRegistrations from '../user-management/components/PendingRegistrations';
@@ -137,6 +138,19 @@ const sectionCopy = {
   departments: { eyebrow: 'Administration', title: 'Departments & memberships', description: 'Only administrators can change department access, roles, and memberships.' },
   profile: { eyebrow: 'Account', title: 'Your profile', description: 'Review your command-center account and operational availability.' }
 };
+
+// Hard gate on top of canAccessPage — admins bypass the page_permissions
+// matrix, so the "admin sees only 5 pages" rule must live here. Reporting
+// and triage stay with dispatchers/responders/residents who own them.
+const SECTION_ROLES = {
+  queue: ['dispatcher', 'responder'],
+  new: ['dispatcher', 'responder', 'resident'],
+  residents: ['admin'],
+  access: ['admin'],
+  departments: ['admin'],
+  profile: ['admin', 'dispatcher', 'responder', 'resident'],
+};
+const sectionAllowed = (key, role) => !SECTION_ROLES[key] || SECTION_ROLES[key].includes(role);
 
 function WorkspacePage({ section, profile, signOut, onSectionChange }) {
   const { refreshProfile, canAccessPage } = useAuth();
@@ -497,7 +511,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
     { key: 'departments', label: 'Departments', icon: 'Building2', path: '/department-management' },
     { key: 'profile', label: 'Profile', icon: 'User', path: '/profile' }
   ]
-    .filter(link => canAccessPage(link.key, profile?.role))
+    .filter(link => sectionAllowed(link.key, profile?.role) && canAccessPage(link.key, profile?.role))
     .map(link => ({ ...link, ...(linkVariants[profile?.role]?.[link.key] || {}) }));
   const current = sectionCopy[section];
   const filteredReports = searchQuery 
@@ -1958,7 +1972,7 @@ export default function Dashboard({ section = 'command' }) {
   // RBAC: role-gated sections must not render for other roles even if a
   // route guard is bypassed (direct URL, role change mid-session). The
   // editable page_permissions matrix overrides the built-in defaults.
-  if (profile?.role && !canAccessPage(activeSection, profile.role)) return <Navigate to="/" replace />;
+  if (profile?.role && (!sectionAllowed(activeSection, profile.role) || !canAccessPage(activeSection, profile.role))) return <Navigate to="/" replace />;
   if (activeSection !== 'command') return <WorkspacePage section={activeSection} profile={profile} signOut={signOut} onSectionChange={setActiveSection} />;
 
   const pendingCount = reports.filter(r => r.status === 'pending').length;
@@ -1970,13 +1984,13 @@ export default function Dashboard({ section = 'command' }) {
 
   const sidebarLinks = [
     { label: 'Command center', icon: 'LayoutDashboard', path: '/', roles: ['admin', 'dispatcher'], key: 'command' },
-    { label: 'Incident queue', icon: 'Siren', path: '/report-management', badge: pendingCount, roles: ['admin', 'dispatcher'], key: 'queue' },
-    { label: 'New incident', icon: 'PlusCircle', path: '/emergency-report', roles: ['admin', 'dispatcher'], key: 'new' },
+    { label: 'Incident queue', icon: 'Siren', path: '/report-management', badge: pendingCount, roles: ['dispatcher', 'responder'], key: 'queue' },
+    { label: 'New incident', icon: 'PlusCircle', path: '/emergency-report', roles: ['dispatcher', 'responder', 'resident'], key: 'new' },
     { label: 'Residents & review', icon: 'Users', path: '/user-management', badge: pendingUsers.length, roles: ['admin'], key: 'residents' },
     { label: 'Access control', icon: 'ShieldCheck', path: '/access-control', roles: ['admin'], key: 'access' },
     { label: 'Departments', icon: 'Building2', path: '/department-management', roles: ['admin'], key: 'departments' },
     { label: 'Profile', icon: 'User', path: '/profile', roles: ['admin', 'dispatcher'], key: 'profile' }
-  ].filter(link => canAccessPage(link.key, profile?.role));
+  ].filter(link => link.roles?.includes(profile?.role) && canAccessPage(link.key, profile?.role));
 
   return <div className="min-h-screen bg-slate-50 text-slate-900">
     <div className="flex min-h-screen">
@@ -1988,11 +2002,12 @@ export default function Dashboard({ section = 'command' }) {
         </header>
         <div className="mx-auto max-w-[1600px] space-y-6 p-5 sm:p-8">
           <section className="overflow-hidden rounded-2xl bg-slate-900 px-6 py-6 text-white  sm:px-8">
-            <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-center"><div><div className="mb-3 flex items-center gap-2 text-xs font-semibold  text-red-300"><span className="h-2 w-2  rounded-full bg-red-400"/>Live response operations</div><h2 className="text-2xl font-bold tracking-tight sm:text-3xl">Barangay Kalubihan Command Center</h2><p className="mt-2 max-w-xl text-sm leading-6 text-slate-300">Coordinate incidents, monitor the official service boundary, and request only the assistance your response needs.</p></div><div className="flex flex-wrap gap-3"><button onClick={() => navigate('/emergency-report')} className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-3 text-sm font-semibold hover:bg-red-700"><Icon name="Siren" size={18}/>Report emergency</button><button onClick={() => setShowBroadcast(true)} className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm font-semibold hover:bg-taste-600"><Icon name="Radio" size={18}/>Request assistance</button></div></div>
+            <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-center"><div><div className="mb-3 flex items-center gap-2 text-xs font-semibold  text-red-300"><span className="h-2 w-2  rounded-full bg-red-400"/>Live response operations</div><h2 className="text-2xl font-bold tracking-tight sm:text-3xl">Barangay Kalubihan Command Center</h2><p className="mt-2 max-w-xl text-sm leading-6 text-slate-300">Coordinate incidents, monitor the official service boundary, and request only the assistance your response needs.</p></div><div className="flex flex-wrap gap-3">{profile?.role !== 'admin' && <button onClick={() => navigate('/emergency-report')} className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-3 text-sm font-semibold hover:bg-red-700"><Icon name="Siren" size={18}/>Report emergency</button>}<button onClick={() => setShowBroadcast(true)} className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm font-semibold hover:bg-taste-600"><Icon name="Radio" size={18}/>Request assistance</button></div></div>
           </section>
           <section className="grid gap-4 sm:grid-cols-2">
             {[['Active incidents', openCount], ['Awaiting verification review', pendingCount]].map(([label, value]) => <div key={label} className="rounded-lg border border-slate-200/70 bg-white p-5"><p className="text-sm font-medium text-slate-500">{label}</p><p className="mt-2 text-3xl tabular-nums">{value}</p></div>)}
           </section>
+          {profile?.role === 'admin' && <CommandAnalytics reports={reports} />}
           {cdaRequests.length > 0 && (
             <section className="rounded-lg border border-amber-200 bg-amber-50 p-4">
               <p className="text-xs font-bold uppercase text-amber-700">Assistance requests ({cdaRequests.length})</p>
@@ -2013,7 +2028,7 @@ export default function Dashboard({ section = 'command' }) {
             </section>
           )}
           <section className="grid gap-6 xl:grid-cols-[1.05fr_1.4fr]">
-            <div className="overflow-hidden rounded-lg border border-slate-200/70 bg-white"><div className="flex items-center justify-between border-b border-slate-100 px-5 py-4"><div><h3 className="font-bold">Live incident queue</h3><p className="mt-0.5 text-xs text-slate-500">New reports appear immediately for triage.</p></div><button onClick={() => navigate('/report-management')} className="text-sm font-semibold text-taste-600 hover:text-taste-700">View all</button></div><div className="divide-y divide-slate-100">{reports.filter(r => (r.attachments?.status || r.status) !== 'resolved').slice(0, 4).map(report => <button key={report.report_id || report.id} onClick={() => setActiveReport(report)} className={`w-full px-5 py-4 text-left transition hover:bg-slate-50 ${activeReport?.report_id === report.report_id ? 'bg-taste-50/70' : ''}`}><div className="flex gap-3"><div className={`mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-xl ${(report.report_type || report.emergency_type) === 'fire' ? 'bg-red-100 text-red-600' : 'bg-taste-100 text-taste-500'}`}><Icon name={(report.report_type || report.emergency_type) === 'fire' ? 'Flame' : (report.report_type || report.emergency_type) === 'medical' ? 'HeartPulse' : 'Car'} size={18}/></div><div className="min-w-0 flex-1"><div className="flex items-start justify-between gap-2"><p className="font-semibold capitalize">{report.report_type || report.emergency_type || report.incident_type} <span className="font-mono text-xs font-medium text-slate-400">{report.report_id || report.id?.slice(0, 8)}</span></p><span className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase ring-1 ${priorityStyles[report.priority]}`}>{report.priority}</span></div><p className="mt-1 truncate text-sm text-slate-500">{report.attachments?.location || report.location}</p><div className="mt-2 flex items-center gap-2 text-xs text-slate-400"><span className={`rounded-full px-2 py-0.5 font-medium capitalize ${statusStyles[report.status]}`}>{formatStatus(report.status)}</span><span>•</span><span>{formatTimeAgo(report.created_at)}</span></div></div></div></button>)}</div></div>
+            <div className="overflow-hidden rounded-lg border border-slate-200/70 bg-white"><div className="flex items-center justify-between border-b border-slate-100 px-5 py-4"><div><h3 className="font-bold">Live incident queue</h3><p className="mt-0.5 text-xs text-slate-500">New reports appear immediately for triage.</p></div>{profile?.role !== 'admin' && <button onClick={() => navigate('/report-management')} className="text-sm font-semibold text-taste-600 hover:text-taste-700">View all</button>}</div><div className="divide-y divide-slate-100">{reports.filter(r => (r.attachments?.status || r.status) !== 'resolved').slice(0, 4).map(report => <button key={report.report_id || report.id} onClick={() => setActiveReport(report)} className={`w-full px-5 py-4 text-left transition hover:bg-slate-50 ${activeReport?.report_id === report.report_id ? 'bg-taste-50/70' : ''}`}><div className="flex gap-3"><div className={`mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-xl ${(report.report_type || report.emergency_type) === 'fire' ? 'bg-red-100 text-red-600' : 'bg-taste-100 text-taste-500'}`}><Icon name={(report.report_type || report.emergency_type) === 'fire' ? 'Flame' : (report.report_type || report.emergency_type) === 'medical' ? 'HeartPulse' : 'Car'} size={18}/></div><div className="min-w-0 flex-1"><div className="flex items-start justify-between gap-2"><p className="font-semibold capitalize">{report.report_type || report.emergency_type || report.incident_type} <span className="font-mono text-xs font-medium text-slate-400">{report.report_id || report.id?.slice(0, 8)}</span></p><span className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase ring-1 ${priorityStyles[report.priority]}`}>{report.priority}</span></div><p className="mt-1 truncate text-sm text-slate-500">{report.attachments?.location || report.location}</p><div className="mt-2 flex items-center gap-2 text-xs text-slate-400"><span className={`rounded-full px-2 py-0.5 font-medium capitalize ${statusStyles[report.status]}`}>{formatStatus(report.status)}</span><span>•</span><span>{formatTimeAgo(report.created_at)}</span></div></div></div></button>)}</div></div>
             <div className="overflow-hidden rounded-lg border border-slate-200/70 bg-white">
               <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
                 <div>
@@ -2041,7 +2056,7 @@ export default function Dashboard({ section = 'command' }) {
               </div>
             </div>
           </section>
-          {activeReport && <section className="rounded-lg border border-slate-200/70 bg-white p-5 "><div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-center"><div className="flex gap-4"><div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-red-50 text-red-600"><Icon name="Flame" size={23}/></div><div><div className="flex flex-wrap items-center gap-2"><h3 className="font-bold capitalize">{activeReport.report_type || activeReport.emergency_type || activeReport.incident_type} response · {activeReport.report_id}</h3><span className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase ring-1 ${priorityStyles[activeReport.priority]}`}>{activeReport.priority}</span></div><p className="mt-1 text-sm text-slate-500">{activeReport.content || activeReport.description}</p><p className="mt-2 flex items-center gap-1 text-xs font-medium text-slate-400"><Icon name="MapPin" size={13}/>{activeReport.attachments?.location || activeReport.location} <span className="mx-1">•</span> GPS location captured</p></div></div><div className="flex flex-wrap gap-2"><button onClick={() => updateStatus(activeReport, 'assigned')} className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold hover:bg-slate-50">Assign team</button><button onClick={() => setShowBroadcast(true)} className="rounded-xl bg-taste-500 px-3 py-2 text-sm font-semibold text-white hover:bg-taste-600">Request assistance</button><button onClick={() => navigate('/report-management')} className="rounded-xl border border-slate-200 p-2 text-slate-500 hover:bg-slate-50" aria-label="View incident details"><Icon name="ArrowUpRight" size={18}/></button></div></div></section>}
+          {activeReport && <section className="rounded-lg border border-slate-200/70 bg-white p-5 "><div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-center"><div className="flex gap-4"><div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-red-50 text-red-600"><Icon name="Flame" size={23}/></div><div><div className="flex flex-wrap items-center gap-2"><h3 className="font-bold capitalize">{activeReport.report_type || activeReport.emergency_type || activeReport.incident_type} response · {activeReport.report_id}</h3><span className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase ring-1 ${priorityStyles[activeReport.priority]}`}>{activeReport.priority}</span></div><p className="mt-1 text-sm text-slate-500">{activeReport.content || activeReport.description}</p><p className="mt-2 flex items-center gap-1 text-xs font-medium text-slate-400"><Icon name="MapPin" size={13}/>{activeReport.attachments?.location || activeReport.location} <span className="mx-1">•</span> GPS location captured</p></div></div><div className="flex flex-wrap gap-2"><button onClick={() => updateStatus(activeReport, 'assigned')} className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold hover:bg-slate-50">Assign team</button><button onClick={() => setShowBroadcast(true)} className="rounded-xl bg-taste-500 px-3 py-2 text-sm font-semibold text-white hover:bg-taste-600">Request assistance</button>{profile?.role !== 'admin' && <button onClick={() => navigate('/report-management')} className="rounded-xl border border-slate-200 p-2 text-slate-500 hover:bg-slate-50" aria-label="View incident details"><Icon name="ArrowUpRight" size={18}/></button>}</div></div></section>}
         </div>
       </main>
     </div>
