@@ -166,6 +166,8 @@ const Breakdown = ({ title, icon, rows }) => {
 
 const CommandAnalytics = ({ reports }) => {
   const [period, setPeriod] = useState('week'); // 'week' | 'month' | 'year'
+  const [dept, setDept] = useState('all'); // department id, or 'all' for overall
+  const [departments, setDepartments] = useState([]);
   // report_id -> latest 'resolved' transition time (ms) from the audit table.
   const [resolvedAt, setResolvedAt] = useState({});
 
@@ -187,7 +189,30 @@ const CommandAnalytics = ({ reports }) => {
     return () => { live = false; };
   }, []);
 
-  const stats = useMemo(() => summarize(reports, period, resolvedAt), [reports, period, resolvedAt]);
+  useEffect(() => {
+    let live = true;
+    supabase
+      .from('departments')
+      .select('id, name')
+      .eq('is_active', true)
+      .order('name')
+      .then(({ data }) => { if (live && data) setDepartments(data); });
+    return () => { live = false; };
+  }, []);
+
+  // Department performance view — every number on the card narrows to the
+  // selected department; 'all' keeps the overall picture.
+  const scopedReports = useMemo(() => {
+    if (dept === 'all') return reports || [];
+    const name = departments.find(d => d.id === dept)?.name;
+    return (reports || []).filter(r =>
+      r.assigned_department_id === dept
+      || r.assigned_department?.id === dept
+      || (name && r.assigned_department?.name === name)
+    );
+  }, [reports, dept, departments]);
+
+  const stats = useMemo(() => summarize(scopedReports, period, resolvedAt), [scopedReports, period, resolvedAt]);
 
   const headline = [
     ['Total incidents', stats.total, 'Siren'],
@@ -202,9 +227,18 @@ const CommandAnalytics = ({ reports }) => {
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
         <div>
           <h3 className="font-bold">Incident reports</h3>
-          <p className="mt-0.5 text-xs text-slate-500">{PERIOD_LABEL[period]}</p>
+          <p className="mt-0.5 text-xs text-slate-500">{PERIOD_LABEL[period]}{dept !== 'all' ? ` · ${departments.find(d => d.id === dept)?.name || 'department'} only` : ' · all departments'}</p>
         </div>
-        <div className="flex rounded-lg border border-slate-200 p-0.5 text-xs font-semibold">
+        <div className="flex items-center gap-2">
+          <select
+            value={dept}
+            onChange={(e) => setDept(e.target.value)}
+            className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-taste-500"
+          >
+            <option value="all">All departments (overall)</option>
+            {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+          </select>
+          <div className="flex rounded-lg border border-slate-200 p-0.5 text-xs font-semibold">
           {PERIODS.map(([key, label]) => (
             <button
               key={key}
@@ -214,6 +248,7 @@ const CommandAnalytics = ({ reports }) => {
               {label}
             </button>
           ))}
+          </div>
         </div>
       </div>
 
