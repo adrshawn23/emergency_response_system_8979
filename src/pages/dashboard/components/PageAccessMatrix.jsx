@@ -13,7 +13,7 @@ const EDITABLE_PAGES = [
 ];
 
 // 'admin' is excluded — it always has full access and is shown as locked.
-const EDITABLE_ROLES = ['resident', 'dispatcher', 'responder'];
+const EDITABLE_ROLES = ['resident', 'dispatcher', 'responder', 'department_admin'];
 
 // Fixed pages — shown for completeness but intentionally not editable.
 const LOCKED_PAGES = [
@@ -62,7 +62,7 @@ export default function PageAccessMatrix() {
           <tr className="text-left text-xs uppercase tracking-wide text-slate-400">
             <th className="pb-2 font-semibold">Page</th>
             {EDITABLE_ROLES.map(r => (
-              <th key={r} className="pb-2 font-semibold capitalize">{r}</th>
+              <th key={r} className="pb-2 font-semibold capitalize">{r.replace(/_/g, ' ')}</th>
             ))}
             <th className="pb-2 font-semibold">Admin</th>
           </tr>
