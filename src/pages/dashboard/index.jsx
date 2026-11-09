@@ -1194,6 +1194,12 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
             </ul>
           </div>
         )}
+        {profile?.role === 'department_admin' && !profile?.department_id && (
+          <div className="mt-4 flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 p-4">
+            <Icon name="AlertTriangle" size={18} className="mt-0.5 shrink-0 text-red-700"/>
+            <p className="text-sm text-red-800"><span className="font-semibold">No department linked to your account.</span> Ask an administrator to assign you to a department — until then you can't assign responders.</p>
+          </div>
+        )}
         <div className="mt-5 overflow-x-auto rounded-lg border border-slate-200/70 bg-white">
           <div className="grid min-w-[640px] grid-cols-[minmax(0,1.2fr)_minmax(0,1.3fr)_minmax(110px,.7fr)_minmax(170px,.8fr)] gap-4 border-b border-slate-100 bg-slate-50 px-5 py-3 text-xs font-bold  text-slate-400"><span>Incident</span><span>Location</span><span>Priority</span><span>Status / action</span></div>
           {visibleReports.map(report => <div key={report.id || report.report_id} onClick={() => handleReportClick(report)} className="grid min-w-[640px] grid-cols-[minmax(0,1.2fr)_minmax(0,1.3fr)_minmax(110px,.7fr)_minmax(170px,.8fr)] items-center gap-4 border-b border-slate-100 px-5 py-4 last:border-0 cursor-pointer hover:bg-slate-50 transition">

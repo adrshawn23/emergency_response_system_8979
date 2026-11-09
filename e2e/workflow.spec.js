@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { deleteReportsByContent } from './helpers.js';
+import { deleteReportsByContent, assignResponderToReport } from './helpers.js';
 
 /**
  * End-to-End Incident Workflow (TESTING.md Tests 3-5)
@@ -80,7 +80,7 @@ test.describe.serial('End-to-End Incident Workflow', () => {
     await page.waitForURL('/login', { timeout: 30000 });
   });
 
-  test('Phase 2 (dispatcher): create incident and assign it to the responder', async ({ page }) => {
+  test('Phase 2 (dispatcher): create incident and assign the main department', async ({ page }) => {
     // Login as dispatcher
     await page.goto('/');
     await page.fill('input[type="email"]', 'dispatcher@emergency.gov');
@@ -111,39 +111,16 @@ test.describe.serial('End-to-End Incident Workflow', () => {
     await expect(modal.locator('h3:has-text("Assign Incident")')).toBeVisible();
 
     const deptSelect = modal.locator('select').first();
-    const responderSelect = modal.locator('select').nth(1);
 
-    // Wait for the modal's async fetches to finish: departments load first,
-    // then responders (unfiltered until a department is chosen). NOTE: <option>
-    // elements are never 'visible' in Playwright terms, so wait for 'attached'.
+    // Dispatch-gate flow: the dispatcher assigns the MAIN department only —
+    // there is exactly one select and no responder picker. Responder
+    // selection belongs to each department's admin (Phase 2.5).
+    await expect(modal.locator('select')).toHaveCount(1);
     await deptSelect.locator('option').nth(1).waitFor({ state: 'attached', timeout: 30000 });
-    await responderSelect.locator('option').nth(1).waitFor({ state: 'attached', timeout: 30000 });
 
-    // Many test departments share the same name, so match by unique option
-    // value (department id) rather than label. For each department, the
-    // responder select re-filters to that department's members.
-    const deptValues = await deptSelect.locator('option').evaluateAll(opts =>
-      opts.map(o => o.getAttribute('value')).filter(Boolean)
-    );
-
-    let deptFound = false;
-    for (const v of deptValues) {
-      await deptSelect.selectOption(v);
-      // let React re-render the filtered responder options
-      await page.waitForTimeout(300);
-      // a real responder option has a non-empty value; the placeholder's is ''
-      if ((await responderSelect.locator('option:not([value=""])').count()) > 0) {
-        deptFound = true;
-        break;
-      }
-    }
-    expect(deptFound, `responder "${responderName}" not found under any department`).toBe(true);
-
-    // Select the responder and confirm assignment
-    const responderValue = await responderSelect
-      .locator('option:not([value=""])').first().getAttribute('value');
-    await responderSelect.selectOption(responderValue);
-    await modal.getByRole('button', { name: 'Assign' }).click();
+    // Pick the department Phase 1 placed the responder into.
+    await deptSelect.selectOption({ label: departmentName });
+    await modal.getByRole('button', { name: 'Assign department' }).click();
 
     // Modal closes and the queue row reflects the assigned status
     await expect(modal).toBeHidden();
@@ -153,6 +130,13 @@ test.describe.serial('End-to-End Incident Workflow', () => {
     // Sign out (two sign-out buttons exist: desktop sidebar + mobile nav)
     await page.locator('button[aria-label="Sign out"]').first().click();
     await page.waitForURL('/login', { timeout: 30000 });
+  });
+
+  // In production this step is the department_admin picking a responder from
+  // their own department. No dept-admin seed account exists, so the admin
+  // API writes the same fields (assigned_to + assigned_department_id).
+  test('Phase 2.5 (dept admin stand-in): assign the responder via API', async () => {
+    await assignResponderToReport(uniqueDesc, 'responder@emergency.gov');
   });
 
   test('Phase 3 (responder): acknowledge and resolve the incident', async ({ page }) => {

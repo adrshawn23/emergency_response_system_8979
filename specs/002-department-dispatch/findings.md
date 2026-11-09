@@ -188,12 +188,34 @@ edge cases, then converge against it.
 - `DEFAULT_PAGE_ROLES` + `page_permissions` grant dept_admin queue/profile.
 - Build green (`npm run build`, c587474).
 
-## Suggested order
+## Resolution status (2026-11-09)
 
-1. D-01 (one-clause fix, closes the dispatcher-gate bypass)
-2. D-04 + D-06 (one migration — tighten both CHECKs)
-3. D-02 (two-line view swap, big payload win)
-4. D-03 (function patch — decide cancel semantics on reassign)
-5. D-05 (needs a decision: trigger vs RPC)
-6. D-08 (needs a decision: exclusive vs broadcast+label)
-7. D-07 Playwright, then D-09..D-15
+**Fixed — migration `20261109090000_dispatch_audit_fixes.sql` (applied):**
+- D-01 `IS NULL` dropped from `dept_admin_update_reports` — owned rows only
+- D-03 function cancels stale pending CDA rows on main-dept reassignment
+- D-04 `cda_staff_update` CHECK validates `responder_id` dept-membership
+- D-05 `dept_admin_report_column_guard` trigger — assigned_to/status only
+- D-06 both assignee CHECKs require `role='responder' AND status='active'`
+
+**Fixed — code:**
+- D-02 queue lists read `emergency_reports_list` (3 fetches)
+- D-08 responder-view: assigned CDA rows exclusive to assignee
+  (`responder_id.is.null OR eq.me`), unassigned still broadcast
+- D-13 unique realtime channel suffixes
+- D-14 CDA responder select stays visible for reassignment
+- D-11 (re-check) already handled — assist modal filters main dept
+- D-12 NULL-department banner for dept_admin
+
+**Tests added:** `e2e/department_dispatch.spec.js` (gate + auto-dispatch +
+env-gated dept-admin flow via `E2E_DEPT_ADMIN_EMAIL/PASSWORD`);
+`workflow.spec.js` Phase 2 updated for dept-only dispatcher modal +
+Phase 2.5 API responder assignment (`assignResponderToReport` helper).
+
+**Documented decisions (no change):**
+- D-09 `responded_by` = the acting dept admin — kept deliberately; the
+  column records *who acted*, admin or responder
+- D-10 `assigned` with no responder — accepted as cosmetic for now
+- D-15 process note only
+
+**Remaining:** D-07 partially met (dept-admin UI path needs the env-gated
+account to actually run); no other open findings.

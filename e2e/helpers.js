@@ -52,6 +52,45 @@ export function client() {
 }
 
 /**
+ * Assigns a responder (and their department) to the newest report matching
+ * `content`. Signed in as admin — the UI responder-assignment path belongs
+ * to department_admins (no seed account), so tests set the same fields the
+ * dept_admin flow would write.
+ */
+export async function assignResponderToReport(
+  content,
+  responderEmail = 'responder@emergency.gov'
+) {
+  const sb = client();
+  await signInWithRetry(sb, 'admin@emergency.gov', 'admin123');
+  const { data: profiles } = await sb
+    .from('user_profiles')
+    .select('id, department_id')
+    .eq('email', responderEmail)
+    .limit(1);
+  const responder = profiles?.[0];
+  const { data: reports } = await sb
+    .from('emergency_reports')
+    .select('id')
+    .eq('content', content)
+    .order('created_at', { ascending: false })
+    .limit(1);
+  const report = reports?.[0];
+  if (responder?.department_id && report) {
+    await sb
+      .from('emergency_reports')
+      .update({
+        assigned_to: responder.id,
+        assigned_department_id: responder.department_id,
+      })
+      .eq('id', report.id);
+  } else {
+    console.warn(`seed: could not assign responder — responder dept or report missing for "${content}"`);
+  }
+  await sb.auth.signOut();
+}
+
+/**
  * Signs in with retries — Supabase auth occasionally fails transiently
  * (rate limits, network blips), after which getUser() returns null and
  * downstream code crashes on `me.user.id`.
