@@ -7,7 +7,8 @@ import Select from '../../../components/ui/Select';
 const CreateDepartmentModal = ({ isOpen, onClose, onCreateDepartment }) => {
   const [formData, setFormData] = useState({
     name: '',
-    description: ''
+    description: '',
+    type: ''
   });
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -39,6 +40,12 @@ const CreateDepartmentModal = ({ isOpen, onClose, onCreateDepartment }) => {
       newErrors.description = 'Description is required';
     }
 
+    // type drives auto-dispatch — an untyped department never receives
+    // automatic assistance requests.
+    if (!formData?.type) {
+      newErrors.type = 'Department type is required';
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors)?.length === 0;
   };
@@ -53,7 +60,8 @@ const CreateDepartmentModal = ({ isOpen, onClose, onCreateDepartment }) => {
     try {
       const departmentData = {
         name: formData.name,
-        description: formData.description
+        description: formData.description,
+        type: formData.type
       };
 
       await onCreateDepartment(departmentData);
@@ -61,7 +69,8 @@ const CreateDepartmentModal = ({ isOpen, onClose, onCreateDepartment }) => {
       // Reset form
       setFormData({
         name: '',
-        description: ''
+        description: '',
+        type: ''
       });
       
       onClose();
@@ -75,7 +84,8 @@ const CreateDepartmentModal = ({ isOpen, onClose, onCreateDepartment }) => {
   const handleClose = () => {
     setFormData({
       name: '',
-      description: ''
+      description: '',
+      type: ''
     });
     setErrors({});
     onClose();
@@ -121,6 +131,17 @@ const CreateDepartmentModal = ({ isOpen, onClose, onCreateDepartment }) => {
             value={formData?.name}
             onChange={(e) => handleInputChange('name', e?.target?.value)}
             error={errors?.name}
+            required
+            disabled={isSubmitting}
+          />
+
+          <Select
+            label="Department Type"
+            placeholder="Select department type"
+            options={typeOptions}
+            value={formData?.type}
+            onChange={(value) => handleInputChange('type', value)}
+            error={errors?.type}
             required
             disabled={isSubmitting}
           />

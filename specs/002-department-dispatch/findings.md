@@ -32,6 +32,23 @@ RLS is the boundary and it permits the claim.
 owned by the admin's dept). Claiming unassigned incidents is dispatcher
 work. Playwright: dept admin API-calls update on a pending report -> 0 rows.
 
+### D-16 · Live `departments` table has NO `type` column — `contradicts` (III)
+**Where**: live schema probe vs `auto_dispatch_assistance()`
+(`20261109050000`/`20261109090000`) and `CreateDepartmentModal.jsx`.
+**Evidence**: live columns are `id, name, description,
+parent_department_id, status, permissions, created_at, updated_at` — the
+original schema's `type public.department_type NOT NULL` was never applied.
+The auto-dispatch function queries `d.type = ANY(v_types)`, so every
+`assigned_department_id` write throws `column d.type does not exist` and
+rolls back the dispatcher's whole update — **the dispatch gate is broken
+in production**. Confirmed via REST probe: insert with `type` → PGRST204.
+The create-department modal even has a dormant `typeOptions` array — dead
+code proving the field was dropped mid-refactor.
+**Fix shape**: migration `20261109100000` adds `type` (nullable — untyped
+depts simply receive no auto-dispatch) + name-pattern backfill; modal
+wires the select through to the insert. Responder assignment unaffected
+(dept membership is `user_profiles.department_id`, not type-driven).
+
 ### D-02 · Incident queue reads full `emergency_reports` — `contradicts` (IV)
 **Where**: `src/pages/dashboard/index.jsx:268-270` and `:1879-1882`
 (both queue components), plus post-submit refresh `:1088`.
@@ -196,6 +213,10 @@ edge cases, then converge against it.
 - D-04 `cda_staff_update` CHECK validates `responder_id` dept-membership
 - D-05 `dept_admin_report_column_guard` trigger — assigned_to/status only
 - D-06 both assignee CHECKs require `role='responder' AND status='active'`
+
+**Fixed — migration `20261109100000_departments_type_column.sql`:**
+- D-16 adds missing `departments.type` column + name-pattern backfill;
+  `CreateDepartmentModal` type select wired through (was dormant UI code)
 
 **Fixed — code:**
 - D-02 queue lists read `emergency_reports_list` (3 fetches)

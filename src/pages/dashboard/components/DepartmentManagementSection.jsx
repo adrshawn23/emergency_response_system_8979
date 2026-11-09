@@ -65,7 +65,8 @@ const DepartmentManagementSection = () => {
         .from('departments')
         .insert({
           name: departmentData.name,
-          description: departmentData.description
+          description: departmentData.description,
+          type: departmentData.type
         })
         .select()
         .single();
