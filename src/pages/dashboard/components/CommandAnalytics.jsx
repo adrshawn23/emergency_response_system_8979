@@ -1,9 +1,10 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis,
   CartesianGrid, Tooltip, Legend,
 } from 'recharts';
 import Icon from '../../../components/AppIcon';
+import { supabase } from '../../../lib/supabase';
 
 const DAY_MS = 86400000;
 const TYPE_COLORS = ['#0e7490', '#dc2626', '#d97706']; // cyan / red / amber for top-3 type lines
@@ -73,7 +74,7 @@ const trendPoints = (points) => {
   return points.map((p, x) => ({ ...p, trend: Math.max(0, +(slope * x + intercept).toFixed(2)) }));
 };
 
-const summarize = (reports, period) => {
+const summarize = (reports, period, resolvedAt) => {
   const days = period === 'week' ? 7 : period === 'month' ? 30 : 365;
   const cutoff = Date.now() - days * DAY_MS;
   const rows = (reports || []).filter(r => {
@@ -82,10 +83,12 @@ const summarize = (reports, period) => {
   });
 
   const resolved = rows.filter(r => r.status === 'resolved');
-  // Approx resolution time: created_at -> last update on resolved reports.
-  // Durations beyond 30 days are treated as stale edits, not resolution lag.
+  // Exact resolution time: created_at -> 'resolved' transition recorded in
+  // incident_status_history. Rows missing history (pre-migration resolves)
+  // fall back to the updated_at approximation. >30d durations are dropped
+  // as stale edits, not resolution lag.
   const durations = resolved
-    .map(r => new Date(r.updated_at).getTime() - when(r))
+    .map(r => (resolvedAt[r.id] ?? new Date(r.updated_at).getTime()) - when(r))
     .filter(ms => ms > 0 && ms < 30 * DAY_MS);
   const avgMs = durations.length
     ? durations.reduce((a, b) => a + b, 0) / durations.length
@@ -163,7 +166,28 @@ const Breakdown = ({ title, icon, rows }) => {
 
 const CommandAnalytics = ({ reports }) => {
   const [period, setPeriod] = useState('week'); // 'week' | 'month' | 'year'
-  const stats = useMemo(() => summarize(reports, period), [reports, period]);
+  // report_id -> latest 'resolved' transition time (ms) from the audit table.
+  const [resolvedAt, setResolvedAt] = useState({});
+
+  useEffect(() => {
+    let live = true;
+    supabase
+      .from('incident_status_history')
+      .select('report_id, created_at')
+      .eq('to_status', 'resolved')
+      .then(({ data }) => {
+        if (!live || !data) return;
+        const map = {};
+        data.forEach(row => {
+          const t = new Date(row.created_at).getTime();
+          if (!map[row.report_id] || t > map[row.report_id]) map[row.report_id] = t;
+        });
+        setResolvedAt(map);
+      });
+    return () => { live = false; };
+  }, []);
+
+  const stats = useMemo(() => summarize(reports, period, resolvedAt), [reports, period, resolvedAt]);
 
   const headline = [
     ['Total incidents', stats.total, 'Siren'],

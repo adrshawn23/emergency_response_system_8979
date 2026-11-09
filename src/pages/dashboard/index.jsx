@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Icon from '../../components/AppIcon';
 import { useAuth } from '../../contexts/AuthContext';
@@ -6,7 +6,9 @@ import { useMockData } from '../../contexts/MockDataContext';
 import NotificationBell from '../../components/NotificationBell';
 import { supabase } from '../../lib/supabase';
 import DepartmentManagementSection from './components/DepartmentManagementSection';
-import CommandAnalytics from './components/CommandAnalytics';
+// Lazy-loaded so recharts (~200kB) only downloads for admin sessions
+// that actually render the command-center analytics card.
+const CommandAnalytics = lazy(() => import('./components/CommandAnalytics'));
 import UserAccessManager from './components/UserAccessManager';
 import PageAccessMatrix from './components/PageAccessMatrix';
 import PendingRegistrations from '../user-management/components/PendingRegistrations';
@@ -2007,7 +2009,11 @@ export default function Dashboard({ section = 'command' }) {
           <section className="grid gap-4 sm:grid-cols-2">
             {[['Active incidents', openCount], ['Awaiting verification review', pendingCount]].map(([label, value]) => <div key={label} className="rounded-lg border border-slate-200/70 bg-white p-5"><p className="text-sm font-medium text-slate-500">{label}</p><p className="mt-2 text-3xl tabular-nums">{value}</p></div>)}
           </section>
-          {profile?.role === 'admin' && <CommandAnalytics reports={reports} />}
+          {profile?.role === 'admin' && (
+            <Suspense fallback={<div className="h-40 animate-pulse rounded-lg border border-slate-200/70 bg-white" />}>
+              <CommandAnalytics reports={reports} />
+            </Suspense>
+          )}
           {cdaRequests.length > 0 && (
             <section className="rounded-lg border border-amber-200 bg-amber-50 p-4">
               <p className="text-xs font-bold uppercase text-amber-700">Assistance requests ({cdaRequests.length})</p>
