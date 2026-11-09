@@ -265,7 +265,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
     const fetchReports = async () => {
       setLoading(true);
       const { data, error } = await supabase
-        .from('emergency_reports')
+        .from('emergency_reports_list')
         .select('*')
         .order('created_at', { ascending: false });
       
@@ -315,7 +315,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
       setCdaRequests(data || []);
     };
     fetchAssistance();
-    const cdaChannel = supabase.channel('workspace_cda_changes')
+    const cdaChannel = supabase.channel(`workspace_cda_changes_${Math.random().toString(36).slice(2, 8)}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'cross_department_assistance' }, () => fetchAssistance())
       .subscribe();
     return () => { supabase.removeChannel(cdaChannel); };
@@ -1085,7 +1085,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
       
       // Refresh reports list to show the new incident
       const { data: refreshedReports } = await supabase
-        .from('emergency_reports')
+        .from('emergency_reports_list')
         .select('*')
         .order('created_at', { ascending: false });
       
@@ -1178,17 +1178,15 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
                       : <span className="text-xs text-slate-500">requested by {row.requester?.full_name || 'staff'}</span>}
                     <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${row.status === 'accepted' ? 'bg-emerald-100 text-emerald-700' : row.status === 'declined' ? 'bg-red-100 text-red-700' : 'bg-amber-200 text-amber-800'}`}>{row.status}</span>
                     {profile?.role === 'department_admin' && row.assisting_department_id === profile?.department_id && row.status !== 'declined' && (
-                      row.responder_id
-                        ? <span className="text-xs text-slate-600">→ responder {row.responder?.full_name || 'assigned'}</span>
-                        : <select
-                            defaultValue=""
-                            onClick={e => e.stopPropagation()}
-                            onChange={e => e.target.value && handleCdaResponderAssign(row.id, e.target.value)}
-                            className="rounded-lg border border-slate-200 bg-white px-2 py-0.5 text-xs"
-                          >
-                            <option value="">Assign responder…</option>
-                            {responders.map(r => <option key={r.id} value={r.id}>{r.full_name || r.email}</option>)}
-                          </select>
+                      <select
+                        value={row.responder_id || ''}
+                        onClick={e => e.stopPropagation()}
+                        onChange={e => e.target.value && e.target.value !== row.responder_id && handleCdaResponderAssign(row.id, e.target.value)}
+                        className="rounded-lg border border-slate-200 bg-white px-2 py-0.5 text-xs"
+                      >
+                        <option value="">Assign responder…</option>
+                        {responders.map(r => <option key={r.id} value={r.id}>{r.full_name || r.email}</option>)}
+                      </select>
                     )}
                   </li>
                 );
@@ -1877,7 +1875,7 @@ export default function Dashboard({ section = 'command' }) {
   useEffect(() => {
     const fetchReports = async () => {
       const { data, error } = await supabase
-        .from('emergency_reports')
+        .from('emergency_reports_list')
         .select('*')
         .order('created_at', { ascending: false });
       
@@ -1920,7 +1918,7 @@ export default function Dashboard({ section = 'command' }) {
       setCdaRequests(data || []);
     };
     fetchAssistance();
-    const cdaChannel = supabase.channel('dashboard_cda_changes')
+    const cdaChannel = supabase.channel(`dashboard_cda_changes_${Math.random().toString(36).slice(2, 8)}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'cross_department_assistance' }, () => fetchAssistance())
       .subscribe();
     return () => { supabase.removeChannel(cdaChannel); };

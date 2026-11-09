@@ -111,6 +111,9 @@ export default function ResponderView() {
         .from('cross_department_assistance')
         .select('*, report:emergency_reports(*), requester:user_profiles!requested_by(full_name)')
         .eq('assisting_department_id', profile.department_id)
+        // Unassigned requests broadcast to the whole dept; once the dept
+        // admin picks a responder it is exclusive to them.
+        .or(`responder_id.is.null,responder_id.eq.${profile.id}`)
         .in('status', ['pending', 'accepted'])
         .order('created_at', { ascending: false });
       if (!error && data) setAssistanceRequests(data);
