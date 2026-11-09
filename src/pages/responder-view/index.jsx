@@ -13,6 +13,7 @@ import useDrivingRoutes from '../../hooks/useDrivingRoutes';
 import useResponderLocations from '../../hooks/useResponderLocations';
 import { reportCoords } from '../../utils/reportCoords';
 import AppSidebar from '../../components/AppSidebar';
+import ServiceAreaBadge from '../../components/ServiceAreaBadge';
 import useEscapeKey from '../../hooks/useEscapeKey';
 
 // Extra pages appear only when granted in Access control — canAccessPage
@@ -557,12 +558,7 @@ export default function ResponderView() {
                   <p className="mt-1 text-sm text-slate-700">{selectedReport.attachments?.contact_name || 'N/A'}</p>
                   <p className="text-xs text-slate-500">{selectedReport.attachments?.contact_phone || ''}</p>
                 </div>
-                {selectedReport.attachments?.service_area_status && (
-                  <div>
-                    <p className="text-xs font-bold  text-slate-500">Service area</p>
-                    <p className="mt-1 text-sm capitalize text-slate-700">{selectedReport.attachments.service_area_status}</p>
-                  </div>
-                )}
+                <ServiceAreaBadge report={selectedReport} />
               </div>
 
               {selectedReport.assigned_to === profile?.id && (

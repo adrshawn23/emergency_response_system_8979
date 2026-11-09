@@ -16,6 +16,7 @@ import { MapContainer, TileLayer, Polygon, Polyline, Marker, Popup, useMapEvents
 import 'leaflet/dist/leaflet.css';
 import '../../utils/leafletIcon';
 import BoundaryMap from '../../components/BoundaryMap';
+import ServiceAreaBadge from '../../components/ServiceAreaBadge';
 import AppSidebar from '../../components/AppSidebar';
 import useServiceBoundary from '../../hooks/useServiceBoundary';
 import useResponderLocation from '../../hooks/useResponderLocation';
@@ -1590,14 +1591,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
                   <p className="text-sm font-mono">{selectedReport.attachments.latitude}, {selectedReport.attachments.longitude}</p>
                 </div>
               )}
-              {selectedReport.attachments?.service_area_status && (
-                <div>
-                  <p className="text-xs font-bold  text-slate-400">Service Area</p>
-                  <p className={`text-sm capitalize ${selectedReport.attachments.service_area_status === 'outside' ? 'text-amber-600' : 'text-emerald-600'}`}>
-                    {selectedReport.attachments.service_area_status}
-                  </p>
-                </div>
-              )}
+              <ServiceAreaBadge report={selectedReport} />
               {selectedReport.attachments?.images && selectedReport.attachments.images.length > 0 && (
                 <div>
                   <p className="text-xs font-bold  text-slate-400 mb-2">Evidence Images</p>
