@@ -101,10 +101,10 @@ test.describe.serial('Department dispatch gate', () => {
     await page.click('button[type="submit"]');
     await page.waitForURL('/', { timeout: 30000 });
 
-    // Nav label carries a pending-count badge ("Incident queue 2"), so match
-    // by role + regex and wait for the queue's status-filter bar to render.
-    await page.getByRole('button', { name: /Incident queue/ }).first().click();
-    await expect(page.getByRole('button', { name: 'pending', exact: true })).toBeVisible();
+    // Navigate by URL — the sidebar click races the dashboard's initial
+    // render. 'Status / action' is the queue table header, queue-only.
+    await page.goto('/report-management');
+    await expect(page.getByText('Status / action')).toBeVisible({ timeout: 30000 });
     const row = page.locator('div.cursor-pointer').filter({ hasText: uniqueDesc });
     await expect(row).toBeVisible({ timeout: 30000 });
     await row.locator('button', { hasText: 'Assign' }).click();
@@ -159,8 +159,8 @@ test.describe.serial('Department dispatch gate', () => {
     await page.click('button[type="submit"]');
     await page.waitForURL('/', { timeout: 30000 });
 
-    await page.getByRole('button', { name: /Incident queue/ }).first().click();
-    await expect(page.getByRole('button', { name: 'pending', exact: true })).toBeVisible();
+    await page.goto('/report-management');
+    await expect(page.getByText('Status / action')).toBeVisible({ timeout: 30000 });
     const row = page.locator('div.cursor-pointer').filter({ hasText: uniqueDesc });
     await expect(row).toBeVisible({ timeout: 30000 });
     await row.locator('button', { hasText: 'Assign responder' }).click();
