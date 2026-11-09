@@ -1,13 +1,23 @@
--- department_admin role: a per-department operator who sees the incident
--- queue and assigns responders — but ONLY responders inside their own
--- department. Pairs with auto-dispatch: the system pings the departments,
--- each department_admin picks who goes.
+-- department_admin — part 2 of 2: policies + permission rows.
+-- PREREQUISITE: run 20261109055900_department_admin_enum.sql FIRST and let
+-- it commit on its own (the SQL editor wraps each script in one
+-- transaction; the new enum value can't be used inside that transaction).
 --
--- Apply via Supabase SQL editor (migrations are applied manually).
--- NOTE: ALTER TYPE must run outside the transaction (new enum value can
--- only be referenced after it commits).
+-- A per-department operator who sees the incident queue and assigns
+-- responders — but ONLY responders inside their own department. Pairs with
+-- auto-dispatch: the system pings the departments, each department_admin
+-- picks who goes.
 
-ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'department_admin';
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_enum e
+        JOIN pg_type t ON t.oid = e.enumtypid
+        WHERE t.typname = 'user_role' AND e.enumlabel = 'department_admin'
+    ) THEN
+        RAISE EXCEPTION 'Run 20261109055900_department_admin_enum.sql first — user_role lacks department_admin';
+    END IF;
+END $$;
 
 BEGIN;
 
