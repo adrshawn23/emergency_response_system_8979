@@ -89,7 +89,7 @@ export default function PageAccessMatrix() {
                 );
               })}
               <td className="py-2.5 text-center">
-                <Icon name="Lock" size={14} className="text-slate-400" />
+                <Icon name="Lock" size={14} className="mx-auto text-slate-400" />
               </td>
             </tr>
           ))}
@@ -101,11 +101,11 @@ export default function PageAccessMatrix() {
               </td>
               {EDITABLE_ROLES.map(role => (
                 <td key={role} className="py-2.5 text-center">
-                  <Icon name="Lock" size={14} className="text-slate-300" />
+                  <Icon name="Lock" size={14} className="mx-auto text-slate-300" />
                 </td>
               ))}
               <td className="py-2.5 text-center">
-                <Icon name="Lock" size={14} className="text-slate-400" />
+                <Icon name="Lock" size={14} className="mx-auto text-slate-400" />
               </td>
             </tr>
           ))}
