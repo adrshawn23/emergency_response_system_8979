@@ -13,6 +13,7 @@ export const DEFAULT_PAGE_ROLES = {
   residents: ['admin'],
   access: ['admin'],
   departments: ['admin'],
+  reports: ['admin', 'dispatcher'],
   profile: ['admin', 'dispatcher', 'responder', 'resident', 'department_admin'],
 };
 

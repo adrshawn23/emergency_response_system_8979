@@ -108,6 +108,11 @@ const Routes = () => {
                   <RoleRoute pageKey="new"><Dashboard section="new" /></RoleRoute>
                 </ProtectedRoute>
               } />
+              <Route path="/reports" element={
+                <ProtectedRoute>
+                  <RoleRoute pageKey="reports"><Dashboard section="reports" /></RoleRoute>
+                </ProtectedRoute>
+              } />
               <Route path="/profile" element={
                 <ProtectedRoute>
                   <Dashboard section="profile" />

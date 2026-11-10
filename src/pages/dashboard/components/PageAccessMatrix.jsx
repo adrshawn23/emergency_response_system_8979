@@ -8,6 +8,7 @@ import { useAuth } from '../../../contexts/AuthContext';
 const EDITABLE_PAGES = [
   { key: 'queue', label: 'Incident queue' },
   { key: 'new', label: 'New incident' },
+  { key: 'reports', label: 'Reports' },
   { key: 'residents', label: 'Residents & review' },
   { key: 'departments', label: 'Departments' },
 ];

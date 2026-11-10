@@ -37,6 +37,7 @@ INSERT INTO public.page_permissions (page_key, allowed_roles) VALUES
     ('new',         ARRAY['admin','dispatcher','responder','resident']),
     ('residents',   ARRAY['admin']),
     ('departments', ARRAY['admin']),
+    ('reports',     ARRAY['admin','dispatcher']),
     ('settings',    ARRAY['admin'])
 ON CONFLICT (page_key) DO NOTHING;
 
