@@ -672,6 +672,17 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
     setReports(items => items.map(item => item.report_id === id ? { ...item, status: nextStatus } : item));
   };
 
+  // Busy = primary or backup on any incident that isn't closed. The assign
+  // selects disable them; they free up the moment their incident resolves.
+  const CLOSED_STATUSES = ['resolved', 'declined', 'cancelled'];
+  const busyResponderIds = new Set();
+  reports?.forEach(r => {
+    if (!CLOSED_STATUSES.includes(r.status)) {
+      if (r.assigned_to) busyResponderIds.add(r.assigned_to);
+      if (r.backup_responder_id) busyResponderIds.add(r.backup_responder_id);
+    }
+  });
+
   const handleAssignClick = (report) => {
     setSelectedReport(report);
     // department_admin only assigns inside their own department — the
@@ -711,6 +722,10 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
       ? { assigned_department_id: selectedDepartment, status: 'assigned' }
       : { assigned_to: selectedResponder, assigned_department_id: selectedDepartment, status: 'assigned' };
     if (profile?.role !== 'dispatcher' && !selectedResponder) return;
+    if (profile?.role !== 'dispatcher' && busyResponderIds.has(selectedResponder)) {
+      setAssignError('That responder is already on another incident — pick someone available.');
+      return;
+    }
 
     const { error } = await supabase
       .from('emergency_reports')
@@ -1883,7 +1898,9 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
                   {responders
                     .filter(r => !selectedDepartment || r.department_id === selectedDepartment)
                     .map(responder => (
-                      <option key={responder.id} value={responder.id}>{responder.full_name || responder.email}</option>
+                      <option key={responder.id} value={responder.id} disabled={busyResponderIds.has(responder.id)}>
+                        {responder.full_name || responder.email}{busyResponderIds.has(responder.id) ? ' — on another incident' : ''}
+                      </option>
                     ))}
                 </select>
               </div>
@@ -2048,7 +2065,9 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
                   <select value={backupPick} onChange={e => { setBackupPick(e.target.value); setBackupReviewError(''); }} className="mt-1.5 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm">
                     <option value="">Choose a responder…</option>
                     {responders.map(r => (
-                      <option key={r.id} value={r.id}>{r.full_name}</option>
+                      <option key={r.id} value={r.id} disabled={busyResponderIds.has(r.id)}>
+                        {r.full_name}{busyResponderIds.has(r.id) ? ' — on another incident' : ''}
+                      </option>
                     ))}
                   </select>
                   <label className="mt-3 block text-sm font-semibold">Note <span className="font-normal text-slate-400">(optional)</span></label>

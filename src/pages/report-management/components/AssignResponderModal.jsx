@@ -18,6 +18,7 @@ const AssignResponderModal = ({
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
   const [responders, setResponders] = useState([]);
+  const [busyIds, setBusyIds] = useState(new Set());
 
   useEffect(() => {
     const fetchResponders = async () => {
@@ -33,6 +34,19 @@ const AssignResponderModal = ({
         
         if (error) throw error;
         setResponders(data || []);
+
+        // A responder is "busy" while they're primary or backup on any
+        // incident that isn't resolved — they free up when it resolves.
+        const { data: open } = await supabase
+          .from('emergency_reports')
+          .select('assigned_to, backup_responder_id')
+          .in('status', ['pending', 'assigned', 'in-progress']);
+        const busy = new Set();
+        (open || []).forEach(r => {
+          if (r.assigned_to) busy.add(r.assigned_to);
+          if (r.backup_responder_id) busy.add(r.backup_responder_id);
+        });
+        setBusyIds(busy);
       } catch (error) {
         console.error('Error fetching responders:', error);
       }
@@ -67,14 +81,14 @@ const AssignResponderModal = ({
   const responderOptions = filteredResponders?.map(responder => ({
     value: responder?.id,
     label: `${responder?.first_name} ${responder?.last_name}`,
-    description: `${responder?.department?.name || 'Unassigned'} • ${responder?.role}`,
-    disabled: false
+    description: `${responder?.department?.name || 'Unassigned'} • ${responder?.role}${busyIds.has(responder?.id) ? ' • On another incident' : ''}`,
+    disabled: busyIds.has(responder?.id)
   }));
 
   const selectedResponderData = responders?.find(r => r?.id === selectedResponder);
 
   const handleAssign = async () => {
-    if (!selectedResponder) return;
+    if (!selectedResponder || busyIds.has(selectedResponder)) return;
 
     setLoading(true);
     try {
