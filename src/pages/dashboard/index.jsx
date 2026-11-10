@@ -208,12 +208,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
   }, [draft, draftKey]);
 
   const [isBoundaryModalOpen, setIsBoundaryModalOpen] = useState(false);
-  const [assistingDepartments, setAssistingDepartments] = useState([]);
-  const [isAssistanceModalOpen, setIsAssistanceModalOpen] = useState(false);
-  const [selectedAssistanceReport, setSelectedAssistanceReport] = useState(null);
-  const [selectedAssistanceDepts, setSelectedAssistanceDepts] = useState([]);
   const [cdaRequests, setCdaRequests] = useState([]);
-  const [assistError, setAssistError] = useState('');
   const [assignError, setAssignError] = useState('');
 
   const [imageFiles, setImageFiles] = useState([]);
@@ -243,7 +238,6 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
   // TDZ ReferenceError.
   useEscapeKey(() => setIsContactModalOpen(false), isContactModalOpen);
   useEscapeKey(() => setIsBoundaryModalOpen(false), isBoundaryModalOpen);
-  useEscapeKey(() => setIsAssistanceModalOpen(false), isAssistanceModalOpen);
   useEscapeKey(() => setIsReviewModalOpen(false), isReviewModalOpen);
   useEscapeKey(() => setIsAssignModalOpen(false), isAssignModalOpen);
   useEscapeKey(() => setIsReportDetailModalOpen(false), isReportDetailModalOpen);
@@ -694,70 +688,6 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
     }
     setIsBoundaryModalOpen(false);
   };
-
-  const handleRequestAssistance = async (reportId, departmentIds) => {
-    if (!reportId || !departmentIds?.length) return;
-
-    // One row per requested department; responders of that department see the
-    // request in their responder view and accept/decline it there.
-    const rows = departmentIds.map(deptId => ({
-      report_id: reportId,
-      assisting_department_id: deptId,
-      requested_by: profile?.id,
-      status: 'pending',
-    }));
-    setAssistError('');
-    const { error } = await supabase
-      .from('cross_department_assistance')
-      .upsert(rows, { onConflict: 'report_id,assisting_department_id' });
-    if (error) {
-      console.error('Assistance request failed:', error);
-      setAssistError('Failed to send assistance request. Please try again.');
-      return;
-    }
-
-    setAssistingDepartments(prev => {
-      const rest = prev.filter(a => a.reportId !== reportId);
-      return [...rest, { reportId, departmentIds: [...new Set([...(prev.find(a => a.reportId === reportId)?.departmentIds || []), ...departmentIds])] }];
-    });
-    setIsAssistanceModalOpen(false);
-    setSelectedAssistanceReport(null);
-    setSelectedAssistanceDepts([]);
-  };
-
-  const handleAssistanceClick = async (report) => {
-    try {
-      setAssistError('');
-      if (!report) {
-        setAssistError('No incident selected.');
-        return;
-      }
-      // Departments are only fetched when the assign modal opens; fetch on demand here
-      let available = departments;
-      if (!available || available.length === 0) {
-        const { data } = await supabase.from('departments').select('*');
-        available = data || [];
-        setDepartments(available);
-      }
-      if (available.length === 0) {
-        setAssistError('No departments available — create a department first.');
-        return;
-      }
-      setSelectedAssistanceReport(report);
-      setSelectedAssistanceDepts([]);
-      setIsAssistanceModalOpen(true);
-    } catch (error) {
-      console.error('Error opening assistance modal:', error);
-      setAssistError('Failed to open assistance modal. Please try again.');
-    }
-  };
-
-  // Unique assisting departments per report — merges locally-staged requests
-  // with persisted rows so responder-initiated requests count too.
-  const assistCount = (reportId) => new Set([
-    ...(assistingDepartments.find(a => a.reportId === reportId)?.departmentIds || []),
-    ...cdaRequests.filter(c => c.report_id === reportId && c.status !== 'declined').map(c => c.assisting_department_id),
-  ]).size;
 
   const handleReviewClick = (verification) => {
     setReviewRemark('');
@@ -1211,7 +1141,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
             <span className={`w-fit rounded-full px-2 py-1 text-[10px] font-bold uppercase ${priorityStyles[report.priority]}`}>{report.priority}</span>
             <div className="flex min-w-0 items-center gap-2">
               <span className={`inline-flex h-8 min-w-[84px] items-center justify-center rounded-full px-2 text-xs font-medium capitalize ${statusStyles[report.status] || 'bg-slate-100 text-slate-700'}`}>{formatStatus(report.status)}</span>
-              {(profile?.role === 'dispatcher' || profile?.role === 'admin') && (report.status) !== 'resolved' && <div className="flex gap-1"><button onClick={(e) => { e.stopPropagation(); (report.status) === 'pending' ? handleAssignClick(report) : setReportStatus(report.report_id || report.id, 'resolved'); }} className="inline-flex h-8 min-w-[72px] items-center justify-center rounded-lg border border-taste-200 bg-taste-50 px-3 text-xs font-bold text-taste-600 transition hover:border-taste-300 hover:bg-taste-100 focus:outline-none focus:ring-2 focus:ring-taste-500 focus:ring-offset-2">{(report.status) === 'pending' ? 'Assign' : 'Resolve'}</button>{report.assigned_department_id && <button onClick={(e) => { e.stopPropagation(); handleAssistanceClick(report); }} className="inline-flex h-8 items-center justify-center gap-1 rounded-lg border border-amber-200 bg-amber-50 px-3 text-xs font-bold text-amber-700 transition hover:border-amber-300 hover:bg-amber-100" title="Request cross-department assistance"><Icon name="Users" size={14}/>{assistCount(report.id) > 0 && <span className="rounded-full bg-amber-200 px-1.5 text-[10px]">{assistCount(report.id)}</span>}</button>}</div>}
+              {(profile?.role === 'dispatcher' || profile?.role === 'admin') && (report.status) !== 'resolved' && <div className="flex gap-1"><button onClick={(e) => { e.stopPropagation(); (report.status) === 'pending' ? handleAssignClick(report) : setReportStatus(report.report_id || report.id, 'resolved'); }} className="inline-flex h-8 min-w-[72px] items-center justify-center rounded-lg border border-taste-200 bg-taste-50 px-3 text-xs font-bold text-taste-600 transition hover:border-taste-300 hover:bg-taste-100 focus:outline-none focus:ring-2 focus:ring-taste-500 focus:ring-offset-2">{(report.status) === 'pending' ? 'Assign' : 'Resolve'}</button></div>}
               {profile?.role === 'department_admin' && report.assigned_department_id === profile?.department_id && report.status !== 'resolved' && (
                 <button onClick={(e) => { e.stopPropagation(); handleAssignClick(report); }} className="inline-flex h-8 items-center justify-center rounded-lg border border-taste-200 bg-taste-50 px-3 text-xs font-bold text-taste-600 transition hover:border-taste-300 hover:bg-taste-100">{report.assigned_to ? 'Reassign' : 'Assign responder'}</button>
               )}
@@ -1394,65 +1324,6 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
                     Save Boundary
                   </button>
                 </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-      
-      {/* Cross-Department Assistance Modal */}
-      {isAssistanceModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-1050 p-4">
-          <div className="bg-white rounded-2xl ring-1 ring-slate-900/5 shadow-2xl w-full max-w-md">
-            <div className="flex items-center justify-between p-4 border-b border-slate-200">
-              <h3 className="font-bold text-lg">Request Assistance</h3>
-              <button onClick={() => setIsAssistanceModalOpen(false)} className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700" aria-label="Close">
-                <Icon name="X" size={20} />
-              </button>
-            </div>
-            <div className="p-4 space-y-4">
-              <p className="text-sm text-slate-600">Select departments to assist with this incident:</p>
-              <div className="space-y-2 max-h-48 overflow-y-auto">
-                {departments
-                  .filter(d => d.id !== selectedAssistanceReport?.assigned_department_id)
-                  .map(dept => (
-                    <label key={dept.id} className="flex items-center gap-2 p-2 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer">
-                      <input 
-                        type="checkbox"
-                        checked={selectedAssistanceDepts.includes(dept.id)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedAssistanceDepts([...selectedAssistanceDepts, dept.id]);
-                          } else {
-                            setSelectedAssistanceDepts(selectedAssistanceDepts.filter(id => id !== dept.id));
-                          }
-                        }}
-                        className="rounded border-slate-200"
-                      />
-                      <span className="text-sm">{dept.name}</span>
-                    </label>
-                  ))}
-              </div>
-              {assistError && (
-                <div className="mt-3 flex items-start justify-between gap-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
-                  <span>{assistError}</span>
-                  <button onClick={() => setAssistError('')} aria-label="Dismiss" className="shrink-0 font-bold">×</button>
-                </div>
-              )}
-              <div className="flex justify-end gap-2 pt-4">
-                <button 
-                  onClick={() => setIsAssistanceModalOpen(false)}
-                  className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold hover:bg-slate-50"
-                >
-                  Cancel
-                </button>
-                <button 
-                  onClick={() => handleRequestAssistance(selectedAssistanceReport?.id, selectedAssistanceDepts)}
-                  disabled={selectedAssistanceDepts.length === 0}
-                  className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Request
-                </button>
               </div>
             </div>
           </div>
@@ -1833,17 +1704,12 @@ export default function Dashboard({ section = 'command' }) {
   const { reports, setReports } = useMockData();
   const [pendingUsers] = usePendingRegistrations(profile);
   const [activeReport, setActiveReport] = useState(null);
-  const [showBroadcast, setShowBroadcast] = useState(false);
-  const [selectedDepartments, setSelectedDepartments] = useState([]);
-  const [sent, setSent] = useState(false);
   const [activeSection, setActiveSection] = useState(section);
   const [currentDate, setCurrentDate] = useState('');
-  const [departments, setDepartments] = useState([]);
   const [cdaRequests, setCdaRequests] = useState([]);
   const [isBoundaryModalOpen, setIsBoundaryModalOpen] = useState(false);
 
   // Esc closes overlays (audit U-05).
-  useEscapeKey(() => { setShowBroadcast(false); setSent(false); }, showBroadcast);
   useEscapeKey(() => setIsBoundaryModalOpen(false), isBoundaryModalOpen);
 
   // Active service boundary: Supabase geofence_boundaries first,
@@ -1863,24 +1729,6 @@ export default function Dashboard({ section = 'command' }) {
     const now = new Date();
     const dateOptions = { weekday: 'long', month: 'long', day: 'numeric' };
     setCurrentDate(now.toLocaleDateString('en-US', dateOptions));
-  }, []);
-
-  // Fetch departments for broadcast modal
-  useEffect(() => {
-    const fetchDepartments = async () => {
-      const { data, error } = await supabase
-        .from('departments')
-        .select('*');
-      
-      if (error) {
-        console.error('Error fetching departments:', error);
-        return;
-      }
-      
-      if (data) setDepartments(data.filter(d => d.is_active !== false));
-    };
-
-    fetchDepartments();
   }, []);
 
   // Fetch reports initially and set up real-time subscription
@@ -2052,7 +1900,6 @@ export default function Dashboard({ section = 'command' }) {
     setReports(current => current.map(item => item.report_id === report.report_id ? { ...item, status } : item));
     setActiveReport(current => current?.report_id === report.report_id ? { ...current, status } : current);
   };
-  const toggleDepartment = id => setSelectedDepartments(ids => ids.includes(id) ? ids.filter(item => item !== id) : [...ids, id]);
 
   const sidebarLinks = [
     { label: 'Command center', icon: 'LayoutDashboard', path: '/', roles: ['admin', 'dispatcher', 'department_admin'], key: 'command' },
@@ -2074,7 +1921,7 @@ export default function Dashboard({ section = 'command' }) {
         </header>
         <div className="mx-auto max-w-[1600px] space-y-6 p-5 sm:p-8">
           <section className="overflow-hidden rounded-2xl bg-slate-900 px-6 py-6 text-white  sm:px-8">
-            <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-center"><div><div className="mb-3 flex items-center gap-2 text-xs font-semibold  text-red-300"><span className="h-2 w-2  rounded-full bg-red-400"/>Live response operations</div><h2 className="text-2xl font-bold tracking-tight sm:text-3xl">Barangay Kalubihan Command Center</h2><p className="mt-2 max-w-xl text-sm leading-6 text-slate-300">Coordinate incidents, monitor the official service boundary, and request only the assistance your response needs.</p></div><div className="flex flex-wrap gap-3">{profile?.role !== 'admin' && <button onClick={() => navigate('/emergency-report')} className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-3 text-sm font-semibold hover:bg-red-700"><Icon name="Siren" size={18}/>Report emergency</button>}<button onClick={() => setShowBroadcast(true)} className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm font-semibold hover:bg-taste-600"><Icon name="Radio" size={18}/>Request assistance</button></div></div>
+            <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-center"><div><div className="mb-3 flex items-center gap-2 text-xs font-semibold  text-red-300"><span className="h-2 w-2  rounded-full bg-red-400"/>Live response operations</div><h2 className="text-2xl font-bold tracking-tight sm:text-3xl">Barangay Kalubihan Command Center</h2><p className="mt-2 max-w-xl text-sm leading-6 text-slate-300">Coordinate incidents, monitor the official service boundary, and request only the assistance your response needs.</p></div><div className="flex flex-wrap gap-3">{profile?.role !== 'admin' && <button onClick={() => navigate('/emergency-report')} className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-3 text-sm font-semibold hover:bg-red-700"><Icon name="Siren" size={18}/>Report emergency</button>}</div></div>
           </section>
           <section className="grid gap-4 sm:grid-cols-2">
             {[['Active incidents', openCount], ['Awaiting verification review', pendingCount]].map(([label, value]) => <div key={label} className="rounded-lg border border-slate-200/70 bg-white p-5"><p className="text-sm font-medium text-slate-500">{label}</p><p className="mt-2 text-3xl tabular-nums">{value}</p></div>)}
@@ -2134,61 +1981,10 @@ export default function Dashboard({ section = 'command' }) {
               </div>
             </div>
           </section>
-          {activeReport && <section className="rounded-lg border border-slate-200/70 bg-white p-5 "><div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-center"><div className="flex gap-4"><div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-red-50 text-red-600"><Icon name="Flame" size={23}/></div><div><div className="flex flex-wrap items-center gap-2"><h3 className="font-bold capitalize">{activeReport.report_type || activeReport.emergency_type || activeReport.incident_type} response · {activeReport.report_id}</h3><span className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase ring-1 ${priorityStyles[activeReport.priority]}`}>{activeReport.priority}</span></div><p className="mt-1 text-sm text-slate-500">{activeReport.content || activeReport.description}</p><p className="mt-2 flex items-center gap-1 text-xs font-medium text-slate-400"><Icon name="MapPin" size={13}/>{activeReport.attachments?.location || activeReport.location} <span className="mx-1">•</span> GPS location captured</p></div></div><div className="flex flex-wrap gap-2"><button onClick={() => updateStatus(activeReport, 'assigned')} className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold hover:bg-slate-50">Assign team</button><button onClick={() => setShowBroadcast(true)} className="rounded-xl bg-taste-500 px-3 py-2 text-sm font-semibold text-white hover:bg-taste-600">Request assistance</button>{profile?.role !== 'admin' && <button onClick={() => navigate('/report-management')} className="rounded-xl border border-slate-200 p-2 text-slate-500 hover:bg-slate-50" aria-label="View incident details"><Icon name="ArrowUpRight" size={18}/></button>}</div></div></section>}
+          {activeReport && <section className="rounded-lg border border-slate-200/70 bg-white p-5 "><div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-center"><div className="flex gap-4"><div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-red-50 text-red-600"><Icon name="Flame" size={23}/></div><div><div className="flex flex-wrap items-center gap-2"><h3 className="font-bold capitalize">{activeReport.report_type || activeReport.emergency_type || activeReport.incident_type} response · {activeReport.report_id}</h3><span className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase ring-1 ${priorityStyles[activeReport.priority]}`}>{activeReport.priority}</span></div><p className="mt-1 text-sm text-slate-500">{activeReport.content || activeReport.description}</p><p className="mt-2 flex items-center gap-1 text-xs font-medium text-slate-400"><Icon name="MapPin" size={13}/>{activeReport.attachments?.location || activeReport.location} <span className="mx-1">•</span> GPS location captured</p></div></div><div className="flex flex-wrap gap-2"><button onClick={() => updateStatus(activeReport, 'assigned')} className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold hover:bg-slate-50">Assign team</button>{profile?.role !== 'admin' && <button onClick={() => navigate('/report-management')} className="rounded-xl border border-slate-200 p-2 text-slate-500 hover:bg-slate-50" aria-label="View incident details"><Icon name="ArrowUpRight" size={18}/></button>}</div></div></section>}
         </div>
       </main>
     </div>
-    {showBroadcast && (
-      <div className="fixed inset-0 z-1050 grid place-items-center bg-slate-900/50 p-4">
-        <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl">
-          <div className="flex items-center justify-between border-b border-slate-100 p-6">
-            <div>
-              <div className="mb-2 grid h-10 w-10 place-items-center rounded-xl bg-taste-50 text-taste-600">
-                <Icon name="Radio" size={20}/>
-              </div>
-              <h2 className="text-lg font-bold">Request department assistance</h2>
-              <p className="mt-1 text-sm text-slate-500">Targeted only to selected, on-duty departments.</p>
-            </div>
-            <button onClick={() => {setShowBroadcast(false);setSent(false)}} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100">
-              <Icon name="X"/>
-            </button>
-          </div>
-          <div className="space-y-5 p-6">
-            {sent ? (
-              <div className="rounded-xl bg-emerald-50 p-5 text-center">
-                <Icon name="CheckCircle2" size={32} className="mx-auto text-emerald-600"/>
-                <p className="mt-3 font-semibold text-emerald-900">Assistance request sent</p>
-                <p className="mt-1 text-sm text-emerald-700">The incident timeline now records this targeted request.</p>
-                <button onClick={() => {setShowBroadcast(false);setSent(false)}} className="mt-4 text-sm font-semibold text-emerald-700">Done</button>
-              </div>
-            ) : (
-              <>
-                <div>
-                  <label className="block text-sm font-semibold mb-2">Select departments</label>
-                  <div className="max-h-48 overflow-y-auto rounded-lg border border-slate-200/70 bg-white p-2 space-y-1">
-                    {(departments || []).length === 0 ? (
-                      <p className="text-sm text-slate-500 py-4 text-center">No departments available</p>
-                    ) : (
-                      (departments || []).map(dept => (
-                        <label key={dept.id} className={`flex items-center gap-3 rounded-lg p-3 cursor-pointer transition ${selectedDepartments.includes(dept.id) ? 'bg-taste-50 border border-taste-200' : 'hover:bg-slate-50'}`}>
-                          <input type="checkbox" checked={selectedDepartments.includes(dept.id)} onChange={() => toggleDepartment(dept.id)} className="h-4 w-4 rounded border-slate-300 text-taste-500 focus:ring-taste-100"/>
-                          <div className="flex-1">
-                            <p className="text-sm font-medium">{dept.name}</p>
-                            <p className="text-xs text-slate-500">{dept.type}</p>
-                          </div>
-                        </label>
-                      ))
-                    )}
-                  </div>
-                  <p className="mt-2 text-xs text-slate-500">{selectedDepartments.length} department(s) selected</p>
-                </div>
-                <button onClick={() => setSent(true)} disabled={selectedDepartments.length === 0} className="w-full rounded-xl bg-taste-500 px-4 py-3 text-sm font-semibold text-white hover:bg-taste-600 disabled:opacity-50 disabled:cursor-not-allowed">Send request</button>
-              </>
-            )}
-          </div>
-        </div>
-      </div>
-    )}
     {isBoundaryModalOpen && (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-1050 p-4">
         <div className="bg-white rounded-2xl ring-1 ring-slate-900/5 shadow-2xl w-full max-w-2xl">

@@ -255,3 +255,14 @@ un-staling (sign-out flake, New-incident label, queue nav, and a live-data
 fix: `page_permissions.new` had `dispatcher` unchecked while the sidebar
 still offered him "New incident" — restored to match the sidebar roles).
 **Remaining:** none open. D-07 fully met including the dept-admin UI path.
+
+**Manual request-assistance UI removed (2026-11-10):** the dispatcher's
+per-report "Request assistance" checkbox modal (real CDA upserts) and the
+command-center "Request department assistance" broadcast modal (never wrote
+to the DB — cosmetic stub) were deleted with all orphaned state/handlers;
+auto-dispatch on main-department assignment covers the fan-out, and dept
+admins still pick responders on inbound CDA rows. `page_permissions` drifted
+a second time (`new` dropped to `[admin, resident]`; `queue` lost
+`responder`), breaking `workflow.spec.js` Phase 2 — restored to matrix
+defaults. `department_dispatch.spec.js` 3/3 + `workflow.spec.js` 4/4 green
+after removal.
