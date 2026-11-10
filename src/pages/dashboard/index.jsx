@@ -1540,17 +1540,6 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
           )}
         </div>
 
-        <div className="mt-7 grid gap-5 lg:grid-cols-2">
-          <div className="rounded-lg border border-slate-200/70 bg-white p-6">
-            <h3 className="font-bold">Account access</h3>
-            <p className="mt-1 text-sm text-slate-500">Department access cannot be self-granted.</p>
-            <div className="mt-5 text-sm text-slate-500">Manage departments via the Department Management page.</div>
-          </div>
-          <div className="rounded-lg border border-slate-200/70 bg-white p-6">
-            <div><h3 className="font-bold">Duplicate prevention</h3><p className="text-sm text-slate-500">Active — reporter-side warning</p></div>
-            <p className="mt-5 text-sm leading-6 text-slate-500">When a resident submits a report, the system checks for an open same-type incident within ~150 m. If responders are already dispatched the report is blocked outright; a still-pending match only warns — the reporter can cancel or still submit if it is a different incident.</p>
-          </div>
-        </div>
       </>}
       {section === 'departments' && <DepartmentManagementSection />}
       {section === 'reports' && <Suspense fallback={<div className="mt-7 h-40 animate-pulse rounded-lg border border-slate-200/70 bg-white" />}><ReportsSection /></Suspense>}
