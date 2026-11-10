@@ -188,6 +188,13 @@ const DepartmentManagementSection = () => {
     }
   };
 
+  // Assign-modal candidates: responders + department admins only.
+  // Users in ANOTHER department are hidden — showing them would imply a
+  // silent transfer; members of THIS department stay (that's the Remove path).
+  const assignModalUsers = users?.filter(u =>
+    ['responder', 'department_admin'].includes(u?.role)
+    && (!u?.department_id || u?.department_id === selectedDepartment?.id));
+
   if (loading) {
     return <div className="mt-7 text-center text-slate-500">Loading departments...</div>;
   }
@@ -304,7 +311,10 @@ const DepartmentManagementSection = () => {
               </button>
             </div>
             <div className="p-4 space-y-3 max-h-96 overflow-y-auto">
-              {users?.map(user => (
+              {assignModalUsers?.length === 0 && (
+                <p className="py-6 text-center text-xs text-slate-500">No available responders or department admins — everyone is already assigned to a department.</p>
+              )}
+              {assignModalUsers?.map(user => (
                 <div
                   key={user?.id}
                   className="flex items-center justify-between p-3 border border-slate-200 rounded-lg"

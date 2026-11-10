@@ -47,6 +47,36 @@ DELETE FROM auth.users
 WHERE email LIKE 'test.%@yopmail.com'
    OR email LIKE 'shawnmichaeldagatan+%@gmail.com';
 
--- 5. Review what remains (expect only real accounts/reports).
+-- 6. E2E-seeded operational data. Seed helpers stamp content with 'E2E'
+--    (e.g. "E2E assist 1234") and CDA rows with notes = 'e2e seed'.
+--    Children first; incident_status_history also cascades on report delete.
+DELETE FROM public.notifications n
+USING public.emergency_reports er
+WHERE n.incident_id = er.id
+  AND er.content ILIKE 'E2E%';
+
+DELETE FROM public.cross_department_assistance cda
+USING public.emergency_reports er
+WHERE cda.report_id = er.id
+  AND (er.content ILIKE 'E2E%' OR cda.notes = 'e2e seed');
+
+DELETE FROM public.responder_backup_requests rbr
+USING public.emergency_reports er
+WHERE rbr.report_id = er.id
+  AND er.content ILIKE 'E2E%';
+
+DELETE FROM public.incident_status_history h
+USING public.emergency_reports er
+WHERE h.report_id = er.id
+  AND er.content ILIKE 'E2E%';
+
+DELETE FROM public.emergency_reports
+WHERE content ILIKE 'E2E%';
+
+-- 7. Stale responder pins left by location/arrival seeds — rows re-write
+--    automatically the next time a responder goes on duty.
+DELETE FROM public.responder_locations;
+
+-- 8. Review what remains (expect only real accounts/reports).
 -- SELECT email, role, account_status FROM public.user_profiles;
 -- SELECT content, status FROM public.emergency_reports;
