@@ -7,7 +7,7 @@ const AuthContext = createContext({})
 // admin Access control page) override these live. Pages missing from both
 // are treated as open, matching the old hardcoded-gate semantics.
 export const DEFAULT_PAGE_ROLES = {
-  command: ['admin', 'dispatcher', 'responder', 'resident', 'department_admin'],
+  command: ['admin', 'dispatcher'],
   queue: ['admin', 'dispatcher', 'responder', 'department_admin'],
   new: ['admin', 'dispatcher', 'responder', 'resident'],
   residents: ['admin'],

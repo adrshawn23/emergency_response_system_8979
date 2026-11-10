@@ -156,6 +156,7 @@ const sectionCopy = {
 // matrix, so the "admin sees only 5 pages" rule must live here. Reporting
 // and triage stay with dispatchers/responders/residents who own them.
 const SECTION_ROLES = {
+  command: ['admin', 'dispatcher'],
   queue: ['dispatcher', 'responder', 'department_admin'],
   new: ['dispatcher', 'responder', 'resident'],
   residents: ['admin'],
@@ -2452,7 +2453,11 @@ export default function Dashboard({ section = 'command' }) {
   // RBAC: role-gated sections must not render for other roles even if a
   // route guard is bypassed (direct URL, role change mid-session). The
   // editable page_permissions matrix overrides the built-in defaults.
-  if (profile?.role && (!sectionAllowed(activeSection, profile.role) || !canAccessPage(activeSection, profile.role))) return <Navigate to="/" replace />;
+  if (profile?.role && (!sectionAllowed(activeSection, profile.role) || !canAccessPage(activeSection, profile.role))) {
+    // A role denied the command section at '/' would redirect back onto
+    // itself — send them to their real home (the incident queue) instead.
+    return <Navigate to={activeSection === 'command' ? '/report-management' : '/'} replace />;
+  }
   if (activeSection !== 'command') return <WorkspacePage section={activeSection} profile={profile} signOut={signOut} onSectionChange={setActiveSection} />;
 
   const pendingCount = reports.filter(r => r.status === 'pending').length;
@@ -2462,7 +2467,7 @@ export default function Dashboard({ section = 'command' }) {
   };
 
   const sidebarLinks = [
-    { label: 'Command center', icon: 'LayoutDashboard', path: '/', roles: ['admin', 'dispatcher', 'department_admin'], key: 'command' },
+    { label: 'Command center', icon: 'LayoutDashboard', path: '/', roles: ['admin', 'dispatcher'], key: 'command' },
     { label: 'Incident queue', icon: 'Siren', path: '/report-management', badge: pendingCount, roles: ['dispatcher', 'responder', 'department_admin'], key: 'queue' },
     { label: 'New incident', icon: 'PlusCircle', path: '/emergency-report', roles: ['dispatcher', 'responder', 'resident'], key: 'new' },
     { label: 'Residents & review', icon: 'Users', path: '/user-management', badge: pendingUsers.length, roles: ['admin'], key: 'residents' },

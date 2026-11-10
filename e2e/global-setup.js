@@ -12,7 +12,7 @@ import { client, signInWithRetry } from './helpers.js';
  * permissions outage is better surfaced by the specs themselves.
  */
 const CANONICAL = {
-  command: ['admin', 'dispatcher', 'responder', 'resident', 'department_admin'],
+  command: ['admin', 'dispatcher'],
   queue: ['admin', 'dispatcher', 'responder', 'department_admin'],
   new: ['admin', 'dispatcher', 'responder', 'resident'],
   residents: ['admin'],

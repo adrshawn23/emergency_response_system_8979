@@ -73,6 +73,11 @@ realtime checks.
 
 ## Phase 2 — Dispatcher dispatches to a department
 
+0. **Command center is admin + dispatcher only** — log in as
+   `deptadmin.fire` → landing goes straight to **Incident queue**, no
+   Command center link in the sidebar (needs
+   `20261110200000_command_admin_dispatcher.sql` applied). Responder and
+   resident keep their own home views.
 1. Login as `dispatcher` (second browser) → **Command center** (`/`).
 2. Alarm: a new incoming incident triggers the audio alert — the browser
    needs one click first (gesture-unlock).
@@ -174,6 +179,8 @@ realtime checks.
   acts on the request; the reason is mandatory and visible.
 - Responder backup: reason required, dept admin approves (picks the
   backup) or declines with a visible remark; backup sees the incident live.
+- Command center: admin + dispatcher only; dept admin lands on the
+  incident queue — no command-center link or loop.
 - Responder pin is live only during an active assignment; the geofence
   blocks far-away arrival.
 - All views update without refresh (realtime).
