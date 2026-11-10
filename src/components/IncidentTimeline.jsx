@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Icon from './AppIcon';
 import useIncidentHistory from '../hooks/useIncidentHistory';
+import { supabase } from '../lib/supabase';
 
 /**
  * Parcel-tracking-style incident timeline shared by every role's detail view.
@@ -30,6 +31,47 @@ const fmtTime = (iso) => {
   const d = new Date(iso);
   return Number.isNaN(d.getTime()) ? null : d.toLocaleString();
 };
+
+// Actor names for step subtexts. Reports that come through supabaseService
+// embed reporter/assigned_responder/assigned_department — slim-view callers
+// don't, so fetch the ≤3 names once per report. Failures just mean a step
+// renders without a name (never blocks the timeline).
+function useIncidentActors(report) {
+  const [actors, setActors] = useState({ reporterName: null, responderName: null, deptName: null });
+  useEffect(() => {
+    if (!report?.id) {
+      setActors({ reporterName: null, responderName: null, deptName: null });
+      return undefined;
+    }
+    let alive = true;
+    const base = {
+      reporterName: report.reporter?.full_name || report.reporter_name || null,
+      responderName: report.assigned_responder?.full_name || report.responder_name || report.assigned_to_name || null,
+      deptName: report.assigned_department?.name || report.department_name || null,
+    };
+    const jobs = [];
+    if (!base.reporterName && report.reporter_id) {
+      jobs.push(supabase.from('user_profiles').select('full_name').eq('id', report.reporter_id).maybeSingle()
+        .then(({ data }) => ['reporterName', data?.full_name || null]));
+    }
+    if (!base.responderName && report.assigned_to) {
+      jobs.push(supabase.from('user_profiles').select('full_name').eq('id', report.assigned_to).maybeSingle()
+        .then(({ data }) => ['responderName', data?.full_name || null]));
+    }
+    if (!base.deptName && report.assigned_department_id) {
+      jobs.push(supabase.from('departments').select('name').eq('id', report.assigned_department_id).maybeSingle()
+        .then(({ data }) => ['deptName', data?.name || null]));
+    }
+    if (!jobs.length) setActors(base);
+    else Promise.all(jobs).then((pairs) => {
+      if (alive) setActors(pairs.reduce((acc, [k, v]) => ({ ...acc, [k]: v }), base));
+    });
+    return () => { alive = false; };
+  // Keyed on report identity — refetch when a different incident opens.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [report?.id]);
+  return actors;
+}
 
 function buildSteps(report, rows) {
   const status = report?.status || 'pending';
@@ -92,16 +134,34 @@ function buildSteps(report, rows) {
   return steps;
 }
 
-function stepSubtext(step) {
+function stepSubtext(step, actors) {
   const meta = step.row?.meta || {};
+  const actor = step.row?.actor_name;
+  if (step.key === 'pending') {
+    const who = actors?.reporterName || actor;
+    return who ? `by ${who}` : null;
+  }
   if (step.key === 'assigned') {
-    const who = meta.responder_name || step.row?.actor_name;
-    return who ? `to ${who}${meta.dept ? ` · ${meta.dept}` : ''}` : null;
+    const who = meta.responder_name || actors?.responderName || actor;
+    const dept = meta.dept || actors?.deptName;
+    const parts = [dept, who].filter(Boolean);
+    return parts.length ? `to ${parts.join(' · ')}` : null;
+  }
+  if (step.key === 'in-progress') {
+    const who = actors?.responderName || actor || meta.responder_name;
+    return who ? `by ${who}` : null;
   }
   if (step.key === 'arrived') {
-    if (meta.method === 'manual') return meta.marked_by_name ? `Marked by ${meta.marked_by_name}` : 'Marked by staff';
-    if (meta.method === 'gps') return 'GPS-verified';
-    return null;
+    const who = actors?.responderName || meta.responder_name || actor;
+    const method = meta.method === 'manual'
+      ? (meta.marked_by_name ? `marked by ${meta.marked_by_name}` : 'marked by staff')
+      : meta.method === 'gps' ? 'GPS-verified' : null;
+    const parts = [who, method].filter(Boolean);
+    return parts.length ? parts.join(' · ') : null;
+  }
+  if (step.key === 'resolved') {
+    const who = actor || actors?.responderName;
+    return who ? `by ${who}` : null;
   }
   if (step.key === 'declined' && meta.reason) return meta.reason;
   return null;
@@ -117,6 +177,7 @@ const TONES = {
 
 export default function IncidentTimeline({ report }) {
   const { rows } = useIncidentHistory(report?.id, !!report?.id);
+  const actors = useIncidentActors(report);
   const steps = report ? buildSteps(report, rows) : [];
 
   return (
@@ -125,7 +186,7 @@ export default function IncidentTimeline({ report }) {
       <ol aria-live="polite" className="mt-2 space-y-0">
         {steps.map((step, i) => {
           const tone = TONES[step.state] || TONES.upcoming;
-          const sub = stepSubtext(step);
+          const sub = stepSubtext(step, actors);
           const last = i === steps.length - 1;
           return (
             <li key={step.key} className="relative flex gap-3">
