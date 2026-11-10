@@ -38,10 +38,14 @@ export const markAllAnnouncementsSeen = (uid, ids) => {
  *   staff     → advisories only (live incidents aren't shown to them)
  * Items the user already opened are excluded via localStorage seen-ids.
  */
+// Route changes remount every nav list — seeding from the last count keeps
+// the badge stable instead of flashing 0 → N on each page switch.
+const countCache = {};
+
 export default function useAnnouncementBadge(profile, enabled = true) {
-  const [count, setCount] = useState(0);
   const uid = profile?.id;
   const role = profile?.role;
+  const [count, setCount] = useState(() => countCache[uid] ?? 0);
 
   useEffect(() => {
     // Admins publish the advisories themselves — no unread badge for them.
@@ -66,7 +70,11 @@ export default function useAnnouncementBadge(profile, enabled = true) {
       const seen = getSeenIds(uid);
       const unseen = ids.filter(id => !seen.has(id));
       const key = unseen.join('|');
-      if (key !== lastKey) { lastKey = key; setCount(unseen.length); }
+      if (key !== lastKey) {
+        lastKey = key;
+        countCache[uid] = unseen.length;
+        setCount(unseen.length);
+      }
     };
 
     load();
