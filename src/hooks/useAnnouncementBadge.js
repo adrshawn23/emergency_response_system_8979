@@ -33,7 +33,8 @@ export default function useAnnouncementBadge(profile, enabled = true) {
   const role = profile?.role;
 
   useEffect(() => {
-    if (!enabled || !uid) return undefined;
+    // Admins publish the advisories themselves — no unread badge for them.
+    if (!enabled || !uid || role === 'admin') return undefined;
     let alive = true;
 
     const load = async () => {
