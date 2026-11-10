@@ -152,7 +152,6 @@ const sectionCopy = {
   access: { eyebrow: 'Administration', title: 'Access control', description: 'Change user roles and suspend or reactivate accounts. Changes apply to live sessions immediately.' },
   departments: { eyebrow: 'Administration', title: 'Departments & memberships', description: 'Only administrators can change department access, roles, and memberships.' },
   reports: { eyebrow: 'Monitoring', title: 'Reports & system activity', description: 'Review incident records, export data, and audit operational activity.' },
-  metrics: { eyebrow: 'Monitoring', title: 'Response times', description: 'How long each department takes to respond and arrive, per incident and on average.' },
   announcements: { eyebrow: 'Community', title: 'Announcements', description: 'Emergency advisories and live incident progress for the barangay.' },
   contacts: { eyebrow: 'Community', title: 'Emergency contacts', description: 'Hotlines and department contact information, managed by administrators.' },
   profile: { eyebrow: 'Account', title: 'Your profile', description: 'Review your command-center account and operational availability.' }
@@ -647,7 +646,6 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
     { key: 'access', label: 'Access control', icon: 'ShieldCheck', path: '/access-control' },
     { key: 'departments', label: 'Departments', icon: 'Building2', path: '/department-management' },
     { key: 'reports', label: 'Reports', icon: 'BarChart3', path: '/reports' },
-    { key: 'metrics', label: 'Response times', icon: 'Gauge', path: '/response-metrics' },
     { key: 'announcements', label: 'Announcements', icon: 'Megaphone', path: '/announcements' },
     { key: 'contacts', label: 'Contacts', icon: 'Phone', path: '/contacts' },
     { key: 'profile', label: 'Profile', icon: 'User', path: '/profile' }
@@ -1591,7 +1589,6 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
       </>}
       {section === 'departments' && <DepartmentManagementSection />}
       {section === 'reports' && <Suspense fallback={<div className="mt-7 h-40 animate-pulse rounded-lg border border-slate-200/70 bg-white" />}><ReportsSection /></Suspense>}
-      {section === 'metrics' && <Suspense fallback={<div className="mt-7 h-40 animate-pulse rounded-lg border border-slate-200/70 bg-white" />}><MetricsSection /></Suspense>}
       {section === 'announcements' && <Suspense fallback={<div className="mt-7 h-40 animate-pulse rounded-lg border border-slate-200/70 bg-white" />}><AnnouncementsSection /></Suspense>}
       {section === 'contacts' && <Suspense fallback={<div className="mt-7 h-40 animate-pulse rounded-lg border border-slate-200/70 bg-white" />}><ContactsSection /></Suspense>}
       {section === 'access' && <div className="mt-7 max-w-4xl space-y-5"><UserAccessManager /><PageAccessMatrix /></div>}
@@ -2529,7 +2526,6 @@ export default function Dashboard({ section = 'command' }) {
     { label: 'Departments', icon: 'Building2', path: '/department-management', roles: ['admin'], key: 'departments' },
     { label: 'Reports', icon: 'BarChart3', path: '/reports', roles: ['admin', 'dispatcher'], key: 'reports' },
     // Open role lists — canAccessPage (the Access control matrix) decides.
-    { label: 'Response times', icon: 'Gauge', path: '/response-metrics', roles: ['admin', 'dispatcher', 'responder', 'department_admin'], key: 'metrics' },
     { label: 'Announcements', icon: 'Megaphone', path: '/announcements', roles: ['admin', 'dispatcher', 'responder', 'resident', 'department_admin'], key: 'announcements' },
     { label: 'Contacts', icon: 'Phone', path: '/contacts', roles: ['admin', 'dispatcher', 'responder', 'resident', 'department_admin'], key: 'contacts' },
     { label: 'Profile', icon: 'User', path: '/profile', roles: ['admin', 'dispatcher', 'department_admin'], key: 'profile' }
@@ -2551,6 +2547,15 @@ export default function Dashboard({ section = 'command' }) {
             {[['Active incidents', openCount], ['Awaiting verification review', pendingCount]].map(([label, value]) => <div key={label} className="rounded-lg border border-slate-200/70 bg-white p-5"><p className="text-sm font-medium text-slate-500">{label}</p><p className="mt-2 text-3xl tabular-nums">{value}</p></div>)}
           </section>
           <CommandOps reports={reports} />
+          {/* Response times lives here (not a separate page) — the 'metrics'
+             row in Access control still gates who sees it. */}
+          {canAccessPage('metrics', profile?.role) && (
+            <section className="rounded-lg border border-slate-200/70 bg-white p-5">
+              <Suspense fallback={<div className="h-40 animate-pulse rounded-lg bg-slate-50" />}>
+                <MetricsSection />
+              </Suspense>
+            </section>
+          )}
           {cdaRequests.length > 0 && (
             <section className="rounded-lg border border-amber-200 bg-amber-50 p-4">
               <p className="text-xs font-bold uppercase text-amber-700">Assistance requests ({cdaRequests.length})</p>
