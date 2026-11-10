@@ -133,6 +133,16 @@ const formatTimeAgo = (dateString) => {
 // Normalizes free-text comparisons (case/whitespace-insensitive) for the
 // OCR-vs-registration auto-check and the review modal's match chips.
 const normText = s => (s ?? '').toString().toLowerCase().replace(/\s+/g, ' ').trim();
+
+// Stale-assignment flag: still 'assigned' and untouched past 10m —
+// updated_at is the last write, i.e. roughly when it was assigned.
+const STALE_ASSIGNED_MS = 10 * 60 * 1000;
+const staleAssignedMinutes = (report) => {
+  if (report?.status !== 'assigned') return null;
+  const t = new Date(report?.updated_at || report?.created_at || 0).getTime();
+  const age = Date.now() - t;
+  return t && age > STALE_ASSIGNED_MS ? Math.floor(age / 60000) : null;
+};
 const sectionCopy = {
   queue: { eyebrow: 'Live operations', title: 'Incident queue', description: 'Review, prioritize, and assign incoming emergency reports.' },
   new: { eyebrow: 'Live operations', title: 'New incident report', description: 'Create a report now. Dispatch sees urgent reports immediately, even while verification is pending.' },
@@ -1140,7 +1150,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
         <div className="mt-5 overflow-x-auto rounded-lg border border-slate-200/70 bg-white">
           <div className="grid min-w-[640px] grid-cols-[minmax(0,1.2fr)_minmax(0,1.3fr)_minmax(110px,.7fr)_minmax(170px,.8fr)] gap-4 border-b border-slate-100 bg-slate-50 px-5 py-3 text-xs font-bold  text-slate-400"><span>Incident</span><span>Location</span><span>Priority</span><span>Status / action</span></div>
           {visibleReports.map(report => <div key={report.id || report.report_id} onClick={() => handleReportClick(report)} className="grid min-w-[640px] grid-cols-[minmax(0,1.2fr)_minmax(0,1.3fr)_minmax(110px,.7fr)_minmax(170px,.8fr)] items-center gap-4 border-b border-slate-100 px-5 py-4 last:border-0 cursor-pointer hover:bg-slate-50 transition">
-            <div className="min-w-0"><p className="font-semibold capitalize">{report.report_type || report.incident_type} <span className="font-mono text-xs text-slate-400">{report.report_id || report.id?.slice(0, 8)}</span></p><p className="mt-1 truncate text-xs text-slate-500">{report.content || report.description}</p></div>
+            <div className="min-w-0"><p className="font-semibold capitalize">{report.report_type || report.incident_type} <span className="font-mono text-xs text-slate-400">{report.report_id || report.id?.slice(0, 8)}</span></p><p className="mt-1 truncate text-xs text-slate-500">{report.content || report.description}</p>{staleAssignedMinutes(report) != null && (<p className="mt-1 flex w-fit items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-700"><Icon name="ClockAlert" size={11}/> No response {staleAssignedMinutes(report)}m</p>)}</div>
             <p className="truncate text-sm text-slate-600">{report.attachments?.location || report.location}</p>
             <span className={`w-fit rounded-full px-2 py-1 text-[10px] font-bold uppercase ${priorityStyles[report.priority]}`}>{report.priority}</span>
             <div className="flex min-w-0 items-center gap-2">

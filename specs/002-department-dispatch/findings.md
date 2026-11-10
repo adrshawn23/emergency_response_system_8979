@@ -285,3 +285,15 @@ transitions + `cross_department_assistance` events, actor-attributed).
 Wired through `SECTION_ROLES`, `sectionCopy`, both nav link lists,
 `RoleRoute`, `DEFAULT_PAGE_ROLES`, and the access matrix; live
 `page_permissions` row seeded and both seed SQLs updated.
+
+## Post-spec shipped work (tracked outside spec flow — 2026-11-10)
+
+Applied directly without spec/plan artifacts; covered by e2e `e2e/reports-and-notifications.spec.js`:
+
+- Reports page: `page_permissions` row for `reports` — NOTE: dispatcher was toggled off via Access Control and restored to `['admin','dispatcher']` on 2026-11-10.
+- `/reports` route + `ReportsSection` (incident records, CSV export, merged activity feed from `incident_status_history` + `cross_department_assistance`).
+- Migration `20261110130000_assignment_notification_details.sql` — report-ref/location details in assignment + status notifications; new `notify_cda_assignment` trigger.
+- `CommandOps` live-ops snapshot on command center (replaces duplicate analytics; analytics now Reports-only).
+- `useIncidentAlarm` — Web Audio chirp on new incident INSERT, staff roles only, gesture-unlocked.
+- Stale-assignment flags (>10m `assigned` untouched): CommandOps "no response" pill + dashboard queue row badge. `updated_at` is trigger-managed on UPDATE but preserved on INSERT.
+- `supabase/cleanup_notifications.sql` — preview + transactional purge of dead incident/user references only.
