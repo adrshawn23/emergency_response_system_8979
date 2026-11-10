@@ -46,11 +46,22 @@ realtime checks.
 3. Negative: submit with empty location/description → blocked.
 4. Submit → success → incident appears in the dispatcher view within
    seconds (realtime, no refresh needed).
-5. **Duplicate warning:** file a second report with the SAME type and GPS
-   within ~150 m of the first → a **"This incident may already be
-   reported"** modal lists the matching incident (distance + how long
-   ago) — **Cancel** aborts, **Submit anyway** files it. (Needs the
-   `20261110180000_duplicate_incident_check.sql` migration applied.)
+5. **Duplicate warning** — needs the
+   `20261110180000_duplicate_incident_check.sql` migration applied:
+   a. File a **Fire** report with GPS (**Use my location**) → submitted.
+   b. Immediately file a **second Fire** report at the same GPS → a
+      **"This incident may already be reported"** modal lists the first
+      report (~Xm away · reported N min ago).
+   c. **Cancel** → nothing files; the dispatcher queue still shows only
+      one incident.
+   d. Repeat → **Submit anyway** → files (different incidents on the same
+      street stay possible — never a hard block).
+   e. Same GPS, **different type** (e.g. Medical) → **no** modal — fires
+      and medicals at one spot aren't duplicates.
+   f. Same GPS, **text-only location** (type the location, no **Use my
+      location**) → check is skipped — no coords to compare.
+   g. After the first incident is **resolved**, a new same-type report at
+      the same spot warns **not** — resolved incidents don't count.
 
 ## Phase 2 — Dispatcher dispatches to a department
 
