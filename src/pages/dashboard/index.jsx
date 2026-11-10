@@ -11,6 +11,9 @@ import UserAccessManager from './components/UserAccessManager';
 import PageAccessMatrix from './components/PageAccessMatrix';
 // Reports pulls in recharts via CommandAnalytics — lazy like the analytics card.
 const ReportsSection = lazy(() => import('./components/ReportsSection'));
+const AnnouncementsSection = lazy(() => import('./components/AnnouncementsSection'));
+const ContactsSection = lazy(() => import('./components/ContactsSection'));
+const MetricsSection = lazy(() => import('./components/MetricsSection'));
 import useIncidentAlarm from '../../hooks/useIncidentAlarm';
 import { isPointInBoundary } from '../../utils/geofence';
 import ResidentHome from '../resident-home';
@@ -149,6 +152,9 @@ const sectionCopy = {
   access: { eyebrow: 'Administration', title: 'Access control', description: 'Change user roles and suspend or reactivate accounts. Changes apply to live sessions immediately.' },
   departments: { eyebrow: 'Administration', title: 'Departments & memberships', description: 'Only administrators can change department access, roles, and memberships.' },
   reports: { eyebrow: 'Monitoring', title: 'Reports & system activity', description: 'Review incident records, export data, and audit operational activity.' },
+  metrics: { eyebrow: 'Monitoring', title: 'Response times', description: 'How long each department takes to respond and arrive, per incident and on average.' },
+  announcements: { eyebrow: 'Community', title: 'Announcements', description: 'Emergency advisories and live incident progress for the barangay.' },
+  contacts: { eyebrow: 'Community', title: 'Emergency contacts', description: 'Hotlines and department contact information, managed by administrators.' },
   profile: { eyebrow: 'Account', title: 'Your profile', description: 'Review your command-center account and operational availability.' }
 };
 
@@ -163,6 +169,9 @@ const SECTION_ROLES = {
   access: ['admin'],
   departments: ['admin'],
   reports: ['admin', 'dispatcher'],
+  metrics: ['admin', 'dispatcher'],
+  announcements: ['admin', 'dispatcher', 'responder', 'resident', 'department_admin'],
+  contacts: ['admin', 'dispatcher', 'responder', 'resident', 'department_admin'],
   profile: ['admin', 'dispatcher', 'responder', 'resident', 'department_admin'],
 };
 const sectionAllowed = (key, role) => !SECTION_ROLES[key] || SECTION_ROLES[key].includes(role);
@@ -638,6 +647,9 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
     { key: 'access', label: 'Access control', icon: 'ShieldCheck', path: '/access-control' },
     { key: 'departments', label: 'Departments', icon: 'Building2', path: '/department-management' },
     { key: 'reports', label: 'Reports', icon: 'BarChart3', path: '/reports' },
+    { key: 'metrics', label: 'Response times', icon: 'Gauge', path: '/response-metrics' },
+    { key: 'announcements', label: 'Announcements', icon: 'Megaphone', path: '/announcements' },
+    { key: 'contacts', label: 'Contacts', icon: 'Phone', path: '/contacts' },
     { key: 'profile', label: 'Profile', icon: 'User', path: '/profile' }
   ]
     .filter(link => sectionAllowed(link.key, profile?.role) && canAccessPage(link.key, profile?.role))
@@ -864,7 +876,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
     if (busyResponderIds.has(responderId)) return;
     const { error } = await supabase
       .from('cross_department_assistance')
-      .update({ responder_id: responderId, status: 'accepted', responded_by: profile?.id })
+      .update({ responder_id: responderId, status: 'accepted', responded_by: profile?.id, assigned_at: new Date().toISOString() })
       .eq('id', cdaId);
     if (error) {
       console.error('CDA responder assign error:', error);
@@ -1275,6 +1287,9 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
     {
       setSubmittedReportId(data.id);
       setSubmitted(true);
+      // Resident-wide "incident reported" email — fire-and-forget (FR-007/010).
+      supabase.functions.invoke('broadcast-incident', { body: { kind: 'reported', report_id: data.id } })
+        .catch(e => console.warn('broadcast-incident failed:', e?.message ?? e));
       try { localStorage.removeItem(draftKey); } catch {}
       setDraft({ type: 'fire', priority: 'high', location: '', description: '', latitude: null, longitude: null, serviceAreaStatus: 'manual' });
       setImageFiles([]);
@@ -1572,6 +1587,9 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
       </>}
       {section === 'departments' && <DepartmentManagementSection />}
       {section === 'reports' && <Suspense fallback={<div className="mt-7 h-40 animate-pulse rounded-lg border border-slate-200/70 bg-white" />}><ReportsSection /></Suspense>}
+      {section === 'metrics' && <Suspense fallback={<div className="mt-7 h-40 animate-pulse rounded-lg border border-slate-200/70 bg-white" />}><MetricsSection /></Suspense>}
+      {section === 'announcements' && <Suspense fallback={<div className="mt-7 h-40 animate-pulse rounded-lg border border-slate-200/70 bg-white" />}><AnnouncementsSection /></Suspense>}
+      {section === 'contacts' && <Suspense fallback={<div className="mt-7 h-40 animate-pulse rounded-lg border border-slate-200/70 bg-white" />}><ContactsSection /></Suspense>}
       {section === 'access' && <div className="mt-7 max-w-4xl space-y-5"><UserAccessManager /><PageAccessMatrix /></div>}
       {section === 'profile' && <div className="mt-7 max-w-3xl"><div className="mb-6 border-b border-slate-200"><nav className="-mb-px flex space-x-8" aria-label="Tabs"><button onClick={() => setProfileTab('info')} className={`py-2 px-1 border-b-2 font-medium text-sm transition ${profileTab === 'info' ? 'border-taste-500 text-taste-500' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-taste-500'}`}>Profile Information</button><button onClick={() => setProfileTab('security')} className={`py-2 px-1 border-b-2 font-medium text-sm transition ${profileTab === 'security' ? 'border-taste-500 text-taste-500' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-taste-500'}`}>Security</button></nav></div>{profileTab === 'info' && <div className="rounded-lg border border-slate-200/70 bg-white p-6 "><div className="flex items-center gap-4">{profile?.avatar_url ? <img src={profile.avatar_url} alt="" className="h-14 w-14 rounded-full object-cover"/> : <div className="grid h-14 w-14 place-items-center rounded-full bg-taste-500 text-lg font-bold text-white">{profile?.first_name?.[0] || 'U'}</div>}<div><h3 className="text-lg font-bold">{profile?.full_name || 'User'}</h3><p className="text-sm capitalize text-slate-500">{profile?.role || 'user'} account</p><label className="mt-1 inline-flex cursor-pointer items-center gap-1 text-xs font-semibold text-taste-500 hover:underline"><Icon name="Camera" size={13}/>{avatarUploading ? 'Uploading…' : 'Change picture'}<input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleAvatarUpload} disabled={avatarUploading}/></label></div></div><div className="mt-7 grid gap-4 border-t border-slate-100 pt-5 sm:grid-cols-2"><div><label className="text-xs font-bold  text-slate-400">First name</label><input value={profileForm.first_name} onChange={e => setProfileForm({...profileForm, first_name: e.target.value})} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"/></div><div><label className="text-xs font-bold  text-slate-400">Last name</label><input value={profileForm.last_name} onChange={e => setProfileForm({...profileForm, last_name: e.target.value})} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"/></div><div><label className="text-xs font-bold  text-slate-400">Phone number</label><input value={profileForm.phone} onChange={e => setProfileForm({...profileForm, phone: e.target.value})} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"/></div><div><p className="text-xs font-bold  text-slate-400">Email</p><p className="mt-2.5 text-sm">{profile?.email}</p></div><div><p className="text-xs font-bold  text-slate-400">Account status</p><p className="mt-2.5 text-sm capitalize">{(profile?.account_status || 'active')}{profile?.status === 'active' ? ' · on duty' : ''}</p></div></div>{profileMsg && <p className="mt-3 text-sm text-taste-600">{profileMsg}</p>}<button onClick={handleProfileSave} className="mt-4 rounded-lg bg-taste-500 px-4 py-2 text-sm font-semibold text-white hover:bg-taste-600">Save profile</button><div className="mt-7 border-t border-slate-100 pt-5"><div className="flex items-center justify-between mb-4"><h4 className="font-bold">Emergency Contacts</h4><button onClick={() => setIsContactModalOpen(true)} className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold hover:bg-slate-50">Add Contact</button></div>{contactError && !isContactModalOpen && <div className="mb-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{contactError}</div>}{emergencyContacts.length === 0 ? <p className="text-sm text-slate-500">No emergency contacts added.</p> : <div className="space-y-3">{emergencyContacts.map(contact => <div key={contact.id} className="flex items-center justify-between rounded-lg border border-slate-200 p-3"><div><p className="font-medium text-sm">{contact.name} {contact.is_primary && <span className="ml-2 rounded-full bg-taste-100 px-2 py-0.5 text-xs text-taste-600">Primary</span>}</p><p className="text-xs text-slate-500">{contact.relationship} · {contact.phone_number}</p></div><button onClick={() => handleDeleteContact(contact.id)} className="text-slate-400 hover:text-red-600"><Icon name="Trash2" size={16}/></button></div>)}</div>}</div></div>}{profileTab === 'security' && <div className="rounded-lg border border-slate-200/70 bg-white p-6 "><div className="mb-6"><h3 className="font-bold">Change password</h3><p className="text-sm text-slate-500">Update your account password</p></div>{passwordSuccess && <div className="mb-4 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">{passwordSuccess}</div>}{Object.keys(passwordErrors).length > 0 && <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{Object.values(passwordErrors).join('. ')}</div>}<form onSubmit={handlePasswordChange} className="space-y-4"><div><label className="block text-sm font-medium mb-2">Current Password</label><input type="password" value={passwordForm.currentPassword} onChange={e => setPasswordForm({...passwordForm, currentPassword: e.target.value})} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"/></div><div><label className="block text-sm font-medium mb-2">New Password</label><input type="password" value={passwordForm.newPassword} onChange={e => setPasswordForm({...passwordForm, newPassword: e.target.value})} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"/></div><div><label className="block text-sm font-medium mb-2">Confirm New Password</label><input type="password" value={passwordForm.confirmPassword} onChange={e => setPasswordForm({...passwordForm, confirmPassword: e.target.value})} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"/></div><div className="flex gap-2"><button type="submit" disabled={isSubmitting} className="rounded-lg bg-taste-500 px-4 py-2 text-sm font-semibold text-white hover:bg-taste-600 disabled:opacity-50">Change Password</button><button type="button" onClick={() => {setPasswordForm({currentPassword: '', newPassword: '', confirmPassword: ''}); setPasswordErrors({}); setPasswordSuccess('');}} className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold hover:bg-slate-50">Cancel</button></div></form></div>}</div>}
       

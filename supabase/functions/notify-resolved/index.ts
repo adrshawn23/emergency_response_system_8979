@@ -216,6 +216,19 @@ Deno.serve(async (req: Request) => {
     if (hist?.[0]?.created_at) resolvedAt = hist[0].created_at;
 
     const atts = collectPhotoAttachments(report);
+    // Every assisting department's own resolution proof, labeled by dept.
+    const { data: units } = await admin
+      .from('cross_department_assistance')
+      .select('resolution_proof, dept:departments!assisting_department_id(name)')
+      .eq('report_id', reportId)
+      .not('resolution_proof', 'is', null);
+    (units ?? []).forEach((u: any, i: number) => {
+      const dept = String(u.dept?.name ?? `assisting-unit-${i + 1}`)
+        .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      const m = String(u.resolution_proof).match(/^data:(image\/[\w+.-]+);base64,([\s\S]+)$/);
+      if (m) atts.push({ name: `${dept}-proof.${m[1].split('/')[1].replace('jpeg', 'jpg')}`, content: m[2] });
+      else if (/^https?:\/\//.test(u.resolution_proof)) atts.push({ name: `${dept}-proof.jpg`, url: u.resolution_proof });
+    });
     const at = report.attachments ?? {};
     const location = at.location || [at.latitude, at.longitude].filter(Boolean).join(', ') || 'See report';
 

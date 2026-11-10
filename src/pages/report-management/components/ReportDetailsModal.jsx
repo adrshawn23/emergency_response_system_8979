@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
 import Image from '../../../components/AppImage';
 import IncidentTimeline from '../../../components/IncidentTimeline';
+import { supabase } from '../../../lib/supabase';
 
 const ReportDetailsModal = ({ 
   report, 
@@ -12,6 +13,23 @@ const ReportDetailsModal = ({
   className = "" 
 }) => {
   const [activeTab, setActiveTab] = useState('details');
+  const [priorIncidents, setPriorIncidents] = useState(null);
+
+  // Resident-history lookup (spec 004 US5): every other incident this
+  // reporter filed — repeat alarms and pattern triage at a glance.
+  useEffect(() => {
+    if (!isOpen || activeTab !== 'history' || !report?.reporter_id || priorIncidents !== null) return;
+    let live = true;
+    supabase
+      .from('emergency_reports')
+      .select('id, report_type, status, created_at, attachments')
+      .eq('reporter_id', report.reporter_id)
+      .neq('id', report.id)
+      .order('created_at', { ascending: false })
+      .limit(10)
+      .then(({ data }) => { if (live) setPriorIncidents(data ?? []); });
+    return () => { live = false; };
+  }, [isOpen, activeTab, report?.reporter_id, report?.id, priorIncidents]);
 
   if (!isOpen || !report) return null;
 
@@ -270,6 +288,35 @@ const ReportDetailsModal = ({
                   <IncidentTimeline report={report} />
                 </div>
               </div>
+
+              {report?.reporter_id && (
+                <div>
+                  <label className="text-sm font-medium text-foreground">
+                    Previous incidents by {report?.contact_name || 'this resident'}
+                  </label>
+                  <div className="mt-2 space-y-2">
+                    {priorIncidents === null ? (
+                      <p className="text-xs text-muted-foreground">Loading…</p>
+                    ) : priorIncidents.length === 0 ? (
+                      <p className="text-xs text-muted-foreground">No other reports from this resident.</p>
+                    ) : (
+                      priorIncidents.map(p => (
+                        <div key={p.id} className="flex items-center justify-between rounded-md border border-border bg-muted/50 px-3 py-2">
+                          <div className="flex items-center space-x-2">
+                            <Icon name={getIncidentIcon(p.report_type)} size={14} className="text-muted-foreground" />
+                            <span className="text-sm capitalize text-foreground">{p.report_type || 'incident'}</span>
+                            <span className="text-xs text-muted-foreground">{p.attachments?.location || ''}</span>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <span className={`text-xs font-medium capitalize ${getStatusColor(p.status)?.split(' ')?.[0]}`}>{p.status?.replace('-', ' ')}</span>
+                            <span className="text-xs text-muted-foreground">{new Date(p.created_at).toLocaleDateString()}</span>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

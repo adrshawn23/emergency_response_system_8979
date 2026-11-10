@@ -188,7 +188,8 @@ export default function ResponderView() {
     assignedReports.some(r => !['resolved', 'declined'].includes(r.status)) ||
     assistanceRequests.some(a =>
       a.status === 'accepted' &&
-      a.responded_by === profile?.id &&
+      // Dept-admin-picked units set responder_id; self-accepted set responded_by
+      (a.responder_id === profile?.id || a.responded_by === profile?.id) &&
       !['resolved', 'declined'].includes(a.report?.status));
 
   // Selected incident coords + the responder's own live pin — the same two
@@ -346,6 +347,67 @@ export default function ResponderView() {
     // Fire-and-forget — mail delivery must never block or fail the resolve.
     supabase.functions.invoke('notify-resolved', { body: { report_id: report.id } })
       .catch(e => console.warn('notify-resolved failed:', e?.message ?? e));
+    // Resident-wide resolved email incl. every dept's proof — fire-and-forget.
+    supabase.functions.invoke('broadcast-incident', { body: { kind: 'resolved', report_id: report.id } })
+      .catch(e => console.warn('broadcast-incident failed:', e?.message ?? e));
+  };
+
+  // Assisting-unit progress — the CDA responder updates THEIR unit's chain
+  // (their department's task), not the main incident's status.
+  const myCdaUnit = (reportId) => assistanceRequests.find(a =>
+    a.report?.id === reportId && a.responder_id === profile?.id && a.status === 'accepted');
+
+  const markUnitStep = async (cdaId, field) => {
+    const at = new Date().toISOString();
+    const { error } = await supabase
+      .from('cross_department_assistance')
+      .update({ [field]: at })
+      .eq('id', cdaId);
+    if (error) { console.error('Unit step failed:', error); return; }
+    setAssistanceRequests(prev => prev.map(a => a.id === cdaId ? { ...a, [field]: at } : a));
+  };
+
+  // Unit arrival is geofenced like the main unit's — the RPC re-verifies
+  // our live position server-side before stamping arrived_at.
+  const [unitArriving, setUnitArriving] = useState(false);
+  const [unitArriveMsg, setUnitArriveMsg] = useState('');
+  const markUnitArrived = async (cdaId) => {
+    if (unitArriving) return;
+    setUnitArriving(true);
+    setUnitArriveMsg('');
+    const { data, error } = await supabase.rpc('mark_cda_arrived', { p_cda_id: cdaId });
+    setUnitArriving(false);
+    const code = data?.error || error?.code;
+    if (error || !data?.ok) {
+      setUnitArriveMsg(
+        code === 'too_far' ? `You're ~${Math.round(data.distance_m)} m away — move within ${Math.round(data.radius_m)} m.`
+        : code === 'location_unavailable' ? 'Location unavailable — enable GPS.'
+        : code === 'unauthorized' ? 'Only the assigned responder can mark arrival.'
+        : code === 'already_arrived' || code === 'invalid_state' ? 'Arrival already recorded.'
+        : 'Could not record arrival — try again.');
+      return;
+    }
+    setUnitArriveMsg('Arrival recorded — the reporter can see it now.');
+    setAssistanceRequests(prev => prev.map(a =>
+      a.id === cdaId ? { ...a, arrived_at: data.arrived_at || new Date().toISOString() } : a));
+  };
+
+  // Unit resolve needs a photo like the main resolver — proof the unit's
+  // task was actually done, kept on the CDA row for documentation.
+  const [unitResolving, setUnitResolving] = useState(false);
+  const resolveUnit = async (unit) => {
+    if (!resolutionPhoto || unitResolving) return;
+    setUnitResolving(true);
+    const at = new Date().toISOString();
+    const { error } = await supabase
+      .from('cross_department_assistance')
+      .update({ resolved_at: at, resolution_proof: resolutionPhoto })
+      .eq('id', unit.id);
+    setUnitResolving(false);
+    if (error) { console.error('Unit resolve failed:', error); return; }
+    setAssistanceRequests(prev => prev.map(a =>
+      a.id === unit.id ? { ...a, resolved_at: at, resolution_proof: resolutionPhoto } : a));
+    setResolutionPhoto(null);
   };
 
   return (
@@ -670,6 +732,59 @@ export default function ResponderView() {
                   {myBackupReq(selectedReport.id)?.status === 'pending' ? 'Backup requested' : 'Request backup'}
                 </button>
               )}
+              {(() => {
+                // Assisting unit controls — separate from the main unit's
+                // buttons above; they write the CDA row, not the report.
+                const unit = myCdaUnit(selectedReport.id);
+                if (!unit || unit.resolved_at) return null;
+                if (!unit.acknowledged_at) {
+                  return (
+                    <button
+                      onClick={() => markUnitStep(unit.id, 'acknowledged_at')}
+                      className="flex-1 rounded-lg bg-amber-600 px-3 py-2 text-sm font-semibold text-white hover:bg-amber-700"
+                    >
+                      Start responding
+                    </button>
+                  );
+                }
+                if (!unit.arrived_at) {
+                  return (
+                    <div className="flex-1 space-y-1">
+                      <button
+                        onClick={() => markUnitArrived(unit.id)}
+                        disabled={unitArriving || !!arriveBlock}
+                        className="w-full rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {unitArriving ? 'Recording…' : 'Arrived on scene'}
+                      </button>
+                      {(arriveBlock || unitArriveMsg) && (
+                        <p className={`text-center text-xs ${unitArriveMsg && !arriveBlock ? 'text-emerald-700' : 'text-slate-500'}`}>
+                          {arriveBlock || unitArriveMsg}
+                        </p>
+                      )}
+                    </div>
+                  );
+                }
+                return (
+                  <div className="flex-1 space-y-2">
+                    <label className={`flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed px-3 py-2 text-sm font-semibold transition ${resolutionPhoto ? 'border-amber-300 bg-amber-50 text-amber-700' : 'border-slate-300 text-slate-600 hover:bg-slate-50'}`}>
+                      <Icon name="Camera" size={15}/>
+                      {resolutionPhoto ? 'Proof photo attached' : 'Attach photo proof'}
+                      <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleProofChange}/>
+                    </label>
+                    {resolutionPhoto && (
+                      <img src={resolutionPhoto} alt="Unit proof preview" className="h-20 w-full rounded-lg border border-slate-200 object-cover"/>
+                    )}
+                    <button
+                      onClick={() => resolveUnit(unit)}
+                      disabled={!resolutionPhoto || unitResolving}
+                      className="w-full rounded-lg bg-amber-600 px-3 py-2 text-sm font-semibold text-white hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {unitResolving ? 'Resolving…' : resolutionPhoto ? 'Resolve unit task' : 'Resolve unit task (photo required)'}
+                    </button>
+                  </div>
+                );
+              })()}
               <button onClick={() => setSelectedReport(null)} className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50">
                 Close
               </button>

@@ -317,6 +317,8 @@ const ReportManagement = () => {
         if (resolvedRow?.id) {
           supabase.functions.invoke('notify-resolved', { body: { report_id: resolvedRow.id } })
             .catch(e => console.warn('notify-resolved failed:', e?.message ?? e));
+          supabase.functions.invoke('broadcast-incident', { body: { kind: 'resolved', report_id: resolvedRow.id } })
+            .catch(e => console.warn('broadcast-incident failed:', e?.message ?? e));
         }
       }
       setShowTurnoverModal(false);

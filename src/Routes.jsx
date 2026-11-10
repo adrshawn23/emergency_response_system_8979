@@ -121,6 +121,21 @@ const Routes = () => {
                   <RoleRoute pageKey="reports"><Dashboard section="reports" /></RoleRoute>
                 </ProtectedRoute>
               } />
+              <Route path="/response-metrics" element={
+                <ProtectedRoute>
+                  <RoleRoute pageKey="metrics"><Dashboard section="metrics" /></RoleRoute>
+                </ProtectedRoute>
+              } />
+              <Route path="/announcements" element={
+                <ProtectedRoute>
+                  <RoleRoute pageKey="announcements"><Dashboard section="announcements" /></RoleRoute>
+                </ProtectedRoute>
+              } />
+              <Route path="/contacts" element={
+                <ProtectedRoute>
+                  <RoleRoute pageKey="contacts"><Dashboard section="contacts" /></RoleRoute>
+                </ProtectedRoute>
+              } />
               <Route path="/profile" element={
                 <ProtectedRoute>
                   <Dashboard section="profile" />

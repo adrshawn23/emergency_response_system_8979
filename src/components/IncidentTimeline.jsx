@@ -167,6 +167,39 @@ function stepSubtext(step, actors) {
   return null;
 }
 
+// Assisting units for this report — one row per department with its own
+// step timestamps (assigned/ack/arrive/resolve on the CDA row). Realtime
+// refetch keeps an open modal live. Reporters read via cda_reporter_select.
+function useCdaUnits(reportId) {
+  const [units, setUnits] = useState([]);
+  useEffect(() => {
+    if (!reportId) { setUnits([]); return undefined; }
+    let alive = true;
+    const fetchUnits = async () => {
+      const { data } = await supabase
+        .from('cross_department_assistance')
+        .select('id, status, assigned_at, acknowledged_at, arrived_at, resolved_at, resolution_proof, responder:user_profiles!responder_id(full_name), dept:departments!assisting_department_id(name)')
+        .eq('report_id', reportId)
+        .in('status', ['pending', 'accepted']);
+      if (alive && data) setUnits(data);
+    };
+    fetchUnits();
+    const ch = supabase
+      .channel(`cda_units_${reportId}_${Math.random().toString(36).slice(2, 8)}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cross_department_assistance', filter: `report_id=eq.${reportId}` }, () => fetchUnits())
+      .subscribe();
+    return () => { alive = false; supabase.removeChannel(ch); };
+  }, [reportId]);
+  return units;
+}
+
+const UNIT_STEPS = (u) => [
+  { label: 'Assigned',   at: u.status === 'accepted' ? (u.assigned_at || true) : null },
+  { label: 'Responding', at: u.acknowledged_at || null },
+  { label: 'Arrived',    at: u.arrived_at || null },
+  { label: 'Resolved',   at: u.resolved_at || null },
+];
+
 const TONES = {
   done:     { ring: 'bg-emerald-500 text-white', text: 'text-slate-900', sub: 'text-slate-500' },
   current:  { ring: 'bg-taste-500 text-white ring-4 ring-taste-100', text: 'text-taste-600 font-semibold', sub: 'text-slate-500' },
@@ -178,6 +211,7 @@ const TONES = {
 export default function IncidentTimeline({ report }) {
   const { rows } = useIncidentHistory(report?.id, !!report?.id);
   const actors = useIncidentActors(report);
+  const units = useCdaUnits(report?.id);
   const steps = report ? buildSteps(report, rows) : [];
 
   return (
@@ -207,6 +241,39 @@ export default function IncidentTimeline({ report }) {
           );
         })}
       </ol>
+
+      {units.length > 0 && (
+        <div className="mt-1 border-t border-slate-100 pt-3">
+          <p className="text-xs font-bold text-slate-500">Responding units</p>
+          <ul className="mt-2 space-y-2.5">
+            {units.map((u) => (
+              <li key={u.id}>
+                <p className="text-sm font-medium text-slate-700">
+                  {u.dept?.name || 'Assisting department'}
+                  {u.responder?.full_name ? ` · ${u.responder.full_name}` : ''}
+                  {u.status === 'pending' && <span className="ml-1.5 text-xs font-normal text-amber-600">(awaiting responder)</span>}
+                </p>
+                <ol className="mt-1 flex flex-wrap gap-1">
+                  {UNIT_STEPS(u).map((s) => (
+                    <li
+                      key={s.label}
+                      title={s.at && s.at !== true ? fmtTime(s.at) : undefined}
+                      className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${s.at ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-400'}`}
+                    >
+                      {s.label}{s.at && s.at !== true ? ` · ${new Date(s.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : ''}
+                    </li>
+                  ))}
+                </ol>
+                {u.resolution_proof && (
+                  <a href={u.resolution_proof} target="_blank" rel="noreferrer">
+                    <img src={u.resolution_proof} alt="Unit resolution proof" className="mt-1.5 h-16 w-24 rounded-md border border-slate-200 object-cover"/>
+                  </a>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }
