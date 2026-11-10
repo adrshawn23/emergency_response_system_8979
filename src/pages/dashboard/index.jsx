@@ -2528,6 +2528,10 @@ export default function Dashboard({ section = 'command' }) {
     { label: 'Access control', icon: 'ShieldCheck', path: '/access-control', roles: ['admin'], key: 'access' },
     { label: 'Departments', icon: 'Building2', path: '/department-management', roles: ['admin'], key: 'departments' },
     { label: 'Reports', icon: 'BarChart3', path: '/reports', roles: ['admin', 'dispatcher'], key: 'reports' },
+    // Open role lists — canAccessPage (the Access control matrix) decides.
+    { label: 'Response times', icon: 'Gauge', path: '/response-metrics', roles: ['admin', 'dispatcher', 'responder', 'department_admin'], key: 'metrics' },
+    { label: 'Announcements', icon: 'Megaphone', path: '/announcements', roles: ['admin', 'dispatcher', 'responder', 'resident', 'department_admin'], key: 'announcements' },
+    { label: 'Contacts', icon: 'Phone', path: '/contacts', roles: ['admin', 'dispatcher', 'responder', 'resident', 'department_admin'], key: 'contacts' },
     { label: 'Profile', icon: 'User', path: '/profile', roles: ['admin', 'dispatcher', 'department_admin'], key: 'profile' }
   ].filter(link => link.roles?.includes(profile?.role) && canAccessPage(link.key, profile?.role));
 

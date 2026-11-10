@@ -35,6 +35,9 @@ const RESIDENT_LINKS = [
   { key: 'queue', label: 'Incident queue', icon: 'ListChecks', path: '/report-management' },
   { key: 'residents', label: 'Residents & review', icon: 'Users', path: '/user-management' },
   { key: 'departments', label: 'Departments', icon: 'Building2', path: '/department-management' },
+  { key: 'metrics', label: 'Response times', icon: 'Gauge', path: '/response-metrics' },
+  { key: 'announcements', label: 'Announcements', icon: 'Megaphone', path: '/announcements' },
+  { key: 'contacts', label: 'Contacts', icon: 'Phone', path: '/contacts' },
   { key: 'profile', label: 'Profile', icon: 'User', path: '/profile' }
 ];
 
