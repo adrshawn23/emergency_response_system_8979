@@ -75,7 +75,7 @@ const FitToBoundary = ({ positions }) => {
 
 const CommandCenterMap = ({ boundaryPoints, activeReport, responderMarkers = [], incidentMarkers = [], routes = [] }) => {
   return (
-    <MapContainer center={[10.3172, 123.8951]} zoom={13} style={{ height: '100%', width: '100%' }}>
+    <MapContainer center={[10.3172, 123.8951]} zoom={13} zoomAnimation={false} style={{ height: '100%', width: '100%' }}>
       <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"/>
       {boundaryPoints.length > 2 && (
         <Polygon 
@@ -1640,7 +1640,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
             <div className="p-4">
               <p className="text-sm text-slate-600 mb-4">Click on the map to add boundary points. The polygon defines your service area for automatic incident routing.</p>
               <div className="h-80 rounded-lg border border-slate-200 overflow-hidden mb-4">
-                <MapContainer center={[10.3172, 123.8951]} zoom={13} style={{ height: '100%', width: '100%' }}>
+                <MapContainer center={[10.3172, 123.8951]} zoom={13} zoomAnimation={false} style={{ height: '100%', width: '100%' }}>
                   <TileLayer
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -2581,7 +2581,7 @@ export default function Dashboard({ section = 'command' }) {
           <div className="p-4">
             <p className="text-sm text-slate-600 mb-4">Click on the map to add boundary points. The polygon defines your service area for automatic incident routing.</p>
             <div className="h-80 rounded-lg border border-slate-200 overflow-hidden mb-4">
-              <MapContainer center={[10.3172, 123.8951]} zoom={13} style={{ height: '100%', width: '100%' }}>
+              <MapContainer center={[10.3172, 123.8951]} zoom={13} zoomAnimation={false} style={{ height: '100%', width: '100%' }}>
                 <TileLayer
                   attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

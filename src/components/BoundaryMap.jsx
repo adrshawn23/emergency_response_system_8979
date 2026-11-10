@@ -49,7 +49,9 @@ const BoundaryMap = ({ marker = null, markers = [], route = null, radius = null,
 
   return (
     <div className={className}>
-      <MapContainer center={KALUBIHAN_CENTER} zoom={14} style={{ height: '100%', width: '100%' }}>
+      {/* zoomAnimation={false}: kills the zoom-end transition that crashes
+          (_leaflet_pos) when the modal unmounts the map mid-animation */}
+      <MapContainer center={KALUBIHAN_CENTER} zoom={14} zoomAnimation={false} style={{ height: '100%', width: '100%' }}>
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
