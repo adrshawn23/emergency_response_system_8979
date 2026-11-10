@@ -207,7 +207,7 @@ const AnnouncementsSection = () => {
             {announcements.map(a => {
               const sev = SEVERITY[a.severity] || SEVERITY.info;
               return (
-                <div key={a.id} onClick={() => markSeen(a.id)} className={`cursor-pointer rounded-lg border border-border border-l-4 ${sev.bar} bg-card p-4`}>
+                <div key={a.id} className={`rounded-lg border border-border border-l-4 ${sev.bar} bg-card p-4`}>
                   <div className="flex items-center justify-between">
                     <span className="flex items-center gap-2 font-semibold text-foreground">
                       {a.title}
