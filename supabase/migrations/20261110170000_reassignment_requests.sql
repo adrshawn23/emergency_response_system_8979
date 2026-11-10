@@ -36,14 +36,16 @@ create policy rr_dept_admin_insert on public.reassignment_requests
   for insert to authenticated
   with check (
     requested_by = auth.uid()
-    and department_id = (select department_id from public.user_profiles
+    and department_id = (select department_id::uuid from public.user_profiles
                          where id = auth.uid())
-    and (select role from public.user_profiles where id = auth.uid())
+    and (select role::text from public.user_profiles where id = auth.uid())
         = 'department_admin'
+    -- Outer refs must be table-qualified: inside the EXISTS, bare
+    -- `report_id` binds to r.report_id (text) not the row being checked.
     and exists (
       select 1 from public.emergency_reports r
-      where r.id = report_id
-        and r.assigned_department_id = department_id
+      where r.id = reassignment_requests.report_id
+        and r.assigned_department_id::uuid = reassignment_requests.department_id
         and r.status <> 'resolved'
     )
   );
@@ -54,9 +56,9 @@ drop policy if exists rr_staff_select on public.reassignment_requests;
 create policy rr_staff_select on public.reassignment_requests
   for select to authenticated
   using (
-    (select role from public.user_profiles where id = auth.uid())
+    (select role::text from public.user_profiles where id = auth.uid())
       in ('dispatcher', 'admin')
-    or department_id = (select department_id from public.user_profiles
+    or department_id = (select department_id::uuid from public.user_profiles
                         where id = auth.uid())
   );
 
@@ -66,7 +68,7 @@ drop policy if exists rr_staff_update on public.reassignment_requests;
 create policy rr_staff_update on public.reassignment_requests
   for update to authenticated
   using (
-    (select role from public.user_profiles where id = auth.uid())
+    (select role::text from public.user_profiles where id = auth.uid())
       in ('dispatcher', 'admin')
     or (
       requested_by = auth.uid()
