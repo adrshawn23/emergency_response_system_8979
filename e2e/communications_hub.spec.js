@@ -8,9 +8,9 @@ import { client, signInWithRetry } from './helpers.js';
  */
 
 const ADMIN = { email: 'admin@emergency.gov', password: 'admin123' };
-// No resident auth account exists in the suite — dispatcher is a verified
-// non-admin account and sees the same read-only view residents do.
-const RESIDENT = { email: 'dispatcher@emergency.gov', password: 'dispatcher123' };
+// Real verified resident — Announcements/Contacts are resident-facing only
+// (staff are excluded; they get incident/advisory emails instead).
+const RESIDENT = { email: 'resident@example.com', password: 'resident123' };
 
 async function login(page, email, password) {
   await page.goto('/');

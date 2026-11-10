@@ -169,8 +169,8 @@ const SECTION_ROLES = {
   access: ['admin'],
   departments: ['admin'],
   reports: ['admin', 'dispatcher'],
-  metrics: ['admin', 'dispatcher'],
-  announcements: ['admin', 'dispatcher', 'responder', 'resident', 'department_admin'],
+  metrics: ['admin'],
+  announcements: ['admin', 'resident'],
   contacts: ['admin', 'dispatcher', 'responder', 'resident', 'department_admin'],
   profile: ['admin', 'dispatcher', 'responder', 'resident', 'department_admin'],
 };
