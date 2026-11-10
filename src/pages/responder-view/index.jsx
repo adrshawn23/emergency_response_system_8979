@@ -24,6 +24,8 @@ const RESPONDER_LINKS = [
   { key: 'queue', label: 'Incident queue', icon: 'ListChecks', path: '/report-management' },
   { key: 'new', label: 'New incident', icon: 'PlusCircle', path: '/emergency-report' },
   { key: 'departments', label: 'Departments', icon: 'Building2', path: '/department-management' },
+  { key: 'announcements', label: 'Announcements', icon: 'Megaphone', path: '/announcements' },
+  { key: 'contacts', label: 'Contacts', icon: 'Phone', path: '/contacts' },
   { key: 'profile', label: 'Profile', icon: 'User', path: '/profile' }
 ];
 
