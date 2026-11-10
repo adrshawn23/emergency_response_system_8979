@@ -1237,6 +1237,10 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
       setSubmitError('Waiting for GPS — your location is captured automatically.');
       return;
     }
+    if (profile?.role === 'resident' && imageFiles.length === 0) {
+      setSubmitError('Photo evidence is required — attach at least one image.');
+      return;
+    }
     if (!draft.description.trim()) return;
     if (!profile?.id) {
       setSubmitError('Profile is still loading. Try again in a moment.');
