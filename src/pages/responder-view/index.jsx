@@ -10,7 +10,6 @@ import BoundaryMap from '../../components/BoundaryMap';
 import IncidentChat from '../../components/IncidentChat';
 import { RESPONDER_ICON, responderDeptIcon } from '../../utils/leafletIcon';
 import useDrivingRoutes from '../../hooks/useDrivingRoutes';
-import useResponderLocations from '../../hooks/useResponderLocations';
 import { reportCoords } from '../../utils/reportCoords';
 import AppSidebar from '../../components/AppSidebar';
 import ServiceAreaBadge from '../../components/ServiceAreaBadge';
@@ -41,19 +40,12 @@ export default function ResponderView() {
   const [resolving, setResolving] = useState(false);
   const [assistanceRequests, setAssistanceRequests] = useState([]);
   const [departments, setDepartments] = useState([]);
-  const [assistDeptIds, setAssistDeptIds] = useState([]);
-  const [assistSending, setAssistSending] = useState(false);
-  const [assistMsg, setAssistMsg] = useState('');
   const [myPosition, setMyPosition] = useState(null);
-  const [myRequests, setMyRequests] = useState([]);
-  const [requestedDepts, setRequestedDepts] = useState({});
 
   // Fresh proof requirement per incident — clear any staged photo when the
   // modal opens, closes, or switches to a different report.
   useEffect(() => {
     setResolutionPhoto(null);
-    setAssistDeptIds([]);
-    setAssistMsg('');
   }, [selectedReport?.id]);
 
   // Esc closes the incident modal (audit U-05).
@@ -129,36 +121,6 @@ export default function ResponderView() {
     return () => { supabase.removeChannel(channel); };
   }, [profile?.id, profile?.department_id]);
 
-  // My OUTGOING assistance requests — readable now via the
-  // assistance_requester_read policy, so I can see who accepted and track
-  // their live position.
-  useEffect(() => {
-    if (!profile?.id) return undefined;
-    const fetchMine = async () => {
-      const { data } = await supabase
-        .from('cross_department_assistance')
-        .select('id, report_id, status, responded_by, assisting_department_id, department:departments!assisting_department_id(name), accepter:user_profiles!responded_by(full_name)')
-        .eq('requested_by', profile.id)
-        .order('created_at', { ascending: false });
-      if (data) {
-        setMyRequests(data);
-        setRequestedDepts(prev => {
-          const next = { ...prev };
-          data.forEach(r => {
-            next[r.report_id] = Array.from(new Set([...(next[r.report_id] || []), r.assisting_department_id]));
-          });
-          return next;
-        });
-      }
-    };
-    fetchMine();
-    const ch = supabase
-      .channel(`my_assistance_${Math.random().toString(36).slice(2, 8)}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'cross_department_assistance', filter: `requested_by=eq.${profile.id}` }, () => fetchMine())
-      .subscribe();
-    return () => { supabase.removeChannel(ch); };
-  }, [profile?.id]);
-
   // Publish live GPS while carrying an open assignment OR an accepted
   // assistance request on a non-terminal incident — the reporter watches the
   // responder approach on the incident map. Writes are throttled to ≥20 m
@@ -175,31 +137,7 @@ export default function ResponderView() {
   const incidentPos = reportCoords(selectedReport);
   const myDept = departments.find(d => d.id === profile?.department_id)?.name;
   const selfMarkers = myPosition ? [{ position: myPosition, icon: responderDeptIcon(myDept) }] : [];
-  // Accepted assistance on the selected report — the requester sees who
-  // accepted, that responder's live pin (dept-badged), and their amber
-  // street route to the incident (staff read all responder_locations).
-  const myReqsForSel = myRequests.filter(r => r.report_id === selectedReport?.id);
-  const assistAccepted = myReqsForSel.filter(r => r.status === 'accepted' && r.responded_by);
-  const allLocs = useResponderLocations(!!selectedReport && assistAccepted.length > 0);
-  const assistMarkers = assistAccepted
-    .map(a => {
-      const loc = allLocs[a.responded_by];
-      return loc?.latitude && loc?.longitude
-        ? { position: [loc.latitude, loc.longitude], icon: responderDeptIcon(loc.dept) }
-        : null;
-    })
-    .filter(Boolean);
-  const approachPairs = [
-    ...(myPosition && incidentPos ? [{ id: 'me', from: myPosition, to: incidentPos }] : []),
-    ...assistAccepted
-      .map(a => {
-        const loc = allLocs[a.responded_by];
-        return loc?.latitude && incidentPos
-          ? { id: `assist-${a.id}`, from: [loc.latitude, loc.longitude], to: incidentPos, color: '#d97706' }
-          : null;
-      })
-      .filter(Boolean),
-  ];
+  const approachPairs = myPosition && incidentPos ? [{ id: 'me', from: myPosition, to: incidentPos }] : [];
   const approachRoutes = useDrivingRoutes(approachPairs);
   const approachRoute = approachRoutes.length ? approachRoutes : null;
 
@@ -276,36 +214,6 @@ export default function ResponderView() {
     );
     return () => navigator.geolocation.clearWatch(watchId);
   }, [profile?.id, hasOpenAssignment]);
-
-  // Responder-originated assistance request — allowed by the
-  // responders_request_assistance INSERT policy only on incidents assigned
-  // to this responder. Departments already asked are tracked locally.
-  const requestAssistance = async (report) => {
-    if (!assistDeptIds.length || !report || assistSending) return;
-    setAssistSending(true);
-    setAssistMsg('');
-    const rows = assistDeptIds.map(deptId => ({
-      report_id: report.id,
-      assisting_department_id: deptId,
-      requested_by: profile.id,
-      status: 'pending',
-    }));
-    const { error } = await supabase
-      .from('cross_department_assistance')
-      .insert(rows);
-    if (error) {
-      setAssistMsg(error.code === '23505'
-        ? 'One or more selected departments were already requested.'
-        : 'Could not send the request. The assistance policy may not be applied yet.');
-    } else {
-      setRequestedDepts(prev => ({ ...prev, [report.id]: [...(prev[report.id] || []), ...assistDeptIds] }));
-      setAssistMsg(assistDeptIds.length === 1
-        ? `Request sent to ${departments.find(d => d.id === assistDeptIds[0])?.name || 'the department'}.`
-        : `Request sent to ${assistDeptIds.length} departments.`);
-      setAssistDeptIds([]);
-    }
-    setAssistSending(false);
-  };
 
   const respondAssistance = async (request, nextStatus) => {
     const { error } = await supabase
@@ -558,16 +466,14 @@ export default function ResponderView() {
                     <div className="mt-2 h-56 overflow-hidden rounded-lg border border-slate-200">
                       <BoundaryMap
                         marker={incidentPos}
-                        markers={[...selfMarkers, ...assistMarkers]}
+                        markers={selfMarkers}
                         route={approachRoute}
                       />
                     </div>
-                    {(myPosition || assistMarkers.length > 0) && (
+                    {myPosition && (
                       <p className="mt-1.5 flex items-center gap-1.5 text-xs text-slate-500">
                         <Icon name="Navigation" size={12} className="text-blue-600"/>
-                        {assistMarkers.length > 0
-                          ? 'Amber route is the assisting responder — badge letters show departments.'
-                          : 'Blue pin is your live location — the resident sees you approach too.'}
+                        Blue pin is your live location — the resident sees you approach too.
                       </p>
                     )}
                     <a
@@ -613,62 +519,6 @@ export default function ResponderView() {
               </div>
 
               <IncidentTimeline report={selectedReport} />
-
-              {selectedReport.assigned_to === profile?.id && (
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                  <div className="flex items-center gap-2">
-                    <Icon name="Users" size={15} className="text-amber-600"/>
-                    <p className="text-xs font-bold text-slate-500">Request assistance</p>
-                  </div>
-                  {myReqsForSel.length > 0 && (
-                    <div className="mt-2 space-y-1">
-                      {myReqsForSel.map(r => (
-                        <div key={r.id} className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-1.5">
-                          <span className="text-sm text-slate-700">{r.department?.name || 'Department'}</span>
-                          <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
-                            r.status === 'accepted' ? 'bg-emerald-50 text-emerald-700'
-                            : r.status === 'declined' ? 'bg-slate-100 text-slate-500'
-                            : 'bg-amber-50 text-amber-700'}`}>
-                            {r.status === 'accepted' && <Icon name="CheckCircle" size={11}/>}
-                            {r.status}{r.status === 'accepted' && r.accepter?.full_name ? ` · ${r.accepter.full_name}` : ''}
-                          </span>
-                        </div>
-                      ))}
-                      {assistAccepted.length > 0 && (
-                        <p className="flex items-center gap-1 text-xs text-emerald-700">
-                          <Icon name="MapPin" size={11}/> Assisting responder is broadcasting — see their amber route on the map above.
-                        </p>
-                      )}
-                    </div>
-                  )}
-                  <div className="mt-2 max-h-32 space-y-1.5 overflow-y-auto">
-                    {departments
-                      .filter(d => d.id !== profile?.department_id && !(requestedDepts[selectedReport.id] || []).includes(d.id))
-                      .map(d => (
-                        <label key={d.id} className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 hover:bg-slate-50">
-                          <input
-                            type="checkbox"
-                            checked={assistDeptIds.includes(d.id)}
-                            onChange={(e) => setAssistDeptIds(prev => e.target.checked ? [...prev, d.id] : prev.filter(id => id !== d.id))}
-                            className="rounded border-slate-300"
-                          />
-                          <span className="text-sm text-slate-700">{d.name}</span>
-                        </label>
-                      ))}
-                    {departments.filter(d => d.id !== profile?.department_id && !(requestedDepts[selectedReport.id] || []).includes(d.id)).length === 0 && (
-                      <p className="py-1 text-xs text-slate-400">All departments have already been requested.</p>
-                    )}
-                  </div>
-                  <button
-                    onClick={() => requestAssistance(selectedReport)}
-                    disabled={!assistDeptIds.length || assistSending}
-                    className="mt-2 w-full rounded-lg bg-amber-600 px-3 py-2 text-sm font-semibold text-white hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {assistSending ? 'Sending…' : `Request assistance${assistDeptIds.length > 1 ? ` (${assistDeptIds.length})` : ''}`}
-                  </button>
-                  {assistMsg && <p className="mt-2 text-xs text-slate-500">{assistMsg}</p>}
-                </div>
-              )}
 
               {selectedReport.assigned_to === profile?.id && (
                 <IncidentChat reportId={selectedReport.id} title="Message the reporter"/>
