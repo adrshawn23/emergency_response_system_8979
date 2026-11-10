@@ -1374,7 +1374,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
               />
               <Icon name="Search" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             </div>
-            {profile?.role !== 'dispatcher' && (
+            {sectionAllowed('new', profile?.role) && (
               <button onClick={() => navigate('/emergency-report')} className="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white  transition hover:brightness-110"><Icon name="Plus" size={16} className="mr-1 inline"/>New incident</button>
             )}
           </div>
