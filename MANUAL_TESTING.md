@@ -15,6 +15,20 @@ tracking, and notifications.
 | Responder | `responder@emergency.gov` | `responder123` |
 | Resident | `resident@example.com` | `resident123` |
 
+**Per-department seeded accounts** (from `supabase/seed_department_responders.sql`
+— every department gets 1 dept admin + 2 responders, already assigned to
+their department):
+
+| Role | Email pattern | Password | Example |
+|---|---|---|---|
+| Dept admin | `deptadmin.<slug>@emergency.gov` | `deptadmin123` | `deptadmin.police@emergency.gov` |
+| Responder 1 | `<slug>.responder1@emergency.gov` | `responder123` | `ems.responder1@emergency.gov` |
+| Responder 2 | `<slug>.responder2@emergency.gov` | `responder123` | `ems.responder2@emergency.gov` |
+
+`<slug>` = department name lowercased, "Department" dropped, non-letters
+stripped ("Emergency Medical Services" → `emergencymedicalservices`).
+The script's trailing `SELECT` prints the exact emails it created.
+
 > `deptadmin.fire` only exists after running
 > `supabase/create_deptadmin_fire.sql` in the SQL editor.
 
