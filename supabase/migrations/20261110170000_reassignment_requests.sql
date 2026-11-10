@@ -76,3 +76,20 @@ create policy rr_staff_update on public.reassignment_requests
     )
   )
   with check (true);
+
+-- Realtime: the dashboard's queue/command banners subscribe to this table —
+-- without publication membership, inserts never reach the channel.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime')
+     AND NOT EXISTS (
+       SELECT 1 FROM pg_publication_tables
+       WHERE pubname = 'supabase_realtime' AND schemaname = 'public'
+         AND tablename = 'reassignment_requests'
+     ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.reassignment_requests;
+  END IF;
+EXCEPTION WHEN OTHERS THEN
+  RAISE NOTICE 'Could not add reassignment_requests to realtime publication: %', SQLERRM;
+END;
+$$;

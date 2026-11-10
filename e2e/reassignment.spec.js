@@ -31,12 +31,15 @@ test.beforeAll(async () => {
   // deptadmin.fire@emergency.gov only exists after running
   // supabase/create_deptadmin_fire.sql — skip gracefully until then
   // (same gating as department_dispatch.spec.js, but auto-detected).
-  const sb = client();
-  await signInWithRetry(sb, DISPATCHER.email, DISPATCHER.password);
-  const { data: prof } = await sb.from('user_profiles')
-    .select('department_id').eq('email', DEPT_ADMIN.email).maybeSingle();
-  deptAdminDeptId = prof?.department_id || null;
-  await sb.auth.signOut();
+  // Sign in as the dept admin: user_profiles RLS only exposes your own row.
+  try {
+    const sb = client();
+    await signInWithRetry(sb, DEPT_ADMIN.email, DEPT_ADMIN.password);
+    const { data: prof } = await sb.from('user_profiles')
+      .select('department_id').eq('email', DEPT_ADMIN.email).maybeSingle();
+    deptAdminDeptId = prof?.department_id || null;
+    await sb.auth.signOut();
+  } catch { deptAdminDeptId = null; }
 });
 
 test.describe.serial('Reassignment requests', () => {
@@ -58,7 +61,7 @@ test.describe.serial('Reassignment requests', () => {
     await login(page, DEPT_ADMIN.email, DEPT_ADMIN.password);
     await page.goto('/report-management');
 
-    const row = page.locator('div', { hasText: DESC }).last();
+    const row = page.locator('div.cursor-pointer', { hasText: DESC }).last();
     const reqBtn = row.getByRole('button', { name: 'Request reassign' });
     await expect(reqBtn).toBeVisible({ timeout: 15000 });
     await reqBtn.click();
