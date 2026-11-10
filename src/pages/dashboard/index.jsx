@@ -1933,11 +1933,7 @@ export default function Dashboard({ section = 'command' }) {
           <section className="grid gap-4 sm:grid-cols-2">
             {[['Active incidents', openCount], ['Awaiting verification review', pendingCount]].map(([label, value]) => <div key={label} className="rounded-lg border border-slate-200/70 bg-white p-5"><p className="text-sm font-medium text-slate-500">{label}</p><p className="mt-2 text-3xl tabular-nums">{value}</p></div>)}
           </section>
-          {profile?.role === 'admin' && (
-            <Suspense fallback={<div className="h-40 animate-pulse rounded-lg border border-slate-200/70 bg-white" />}>
-              <CommandAnalytics reports={reports} />
-            </Suspense>
-          )}
+          <CommandOps reports={reports} />
           {cdaRequests.length > 0 && (
             <section className="rounded-lg border border-amber-200 bg-amber-50 p-4">
               <p className="text-xs font-bold uppercase text-amber-700">Assistance requests ({cdaRequests.length})</p>
