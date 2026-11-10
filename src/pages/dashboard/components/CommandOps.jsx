@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import Icon from '../../../components/AppIcon';
 import { supabase } from '../../../lib/supabase';
 
+const STALE_ASSIGNED_MS = 10 * 60 * 1000; // assigned >10m with no response = stale
+
 const fmtAge = ms => {
   if (ms == null) return '—';
   const mins = Math.floor(ms / 60000);
@@ -45,6 +47,12 @@ const CommandOps = ({ reports }) => {
       return t && t < (m ?? Infinity) ? t : m;
     }, null);
     const deployed = new Set(open.map(r => r.assigned_to).filter(Boolean)).size;
+    // Stale = still 'assigned' and untouched longer than the threshold —
+    // updated_at is the last write, i.e. roughly when it was assigned.
+    const stale = open.filter(r =>
+      r.status === 'assigned'
+      && Date.now() - new Date(r.updated_at || r.created_at || 0).getTime() > STALE_ASSIGNED_MS
+    ).length;
     const today = new Date(); today.setHours(0, 0, 0, 0);
     const resolvedToday = rows.filter(r =>
       r.status === 'resolved' && new Date(r.updated_at || r.created_at || 0) >= today
@@ -53,7 +61,7 @@ const CommandOps = ({ reports }) => {
     return {
       open: open.length, pending: pending.length, assigned: assigned.length,
       inProg: inProg.length, oldest: oldest ? Date.now() - oldest : null,
-      deployed, resolvedToday, highOpen,
+      deployed, resolvedToday, highOpen, stale,
     };
   }, [reports]);
 
@@ -75,11 +83,18 @@ const CommandOps = ({ reports }) => {
           <h3 className="font-bold">Live operations</h3>
           <p className="mt-0.5 text-xs text-slate-500">Current workload — historical trends live under Reports</p>
         </div>
-        {s.highOpen > 0 && (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-2.5 py-1 text-xs font-bold text-red-700">
-            <Icon name="AlertTriangle" size={13} /> {s.highOpen} high-priority open
-          </span>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          {s.stale > 0 && (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700">
+              <Icon name="ClockAlert" size={13} /> {s.stale} assigned — no response
+            </span>
+          )}
+          {s.highOpen > 0 && (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-2.5 py-1 text-xs font-bold text-red-700">
+              <Icon name="AlertTriangle" size={13} /> {s.highOpen} high-priority open
+            </span>
+          )}
+        </div>
       </div>
       <div className="grid gap-3 p-5 grid-cols-2 sm:grid-cols-4">
         {tiles.map(t => (

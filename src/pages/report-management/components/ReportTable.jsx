@@ -3,6 +3,17 @@ import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
 import { Checkbox } from '../../../components/ui/Checkbox';
 
+const STALE_ASSIGNED_MS = 10 * 60 * 1000;
+
+// Assigned but untouched past the threshold — updated_at is the last write,
+// which is roughly when the assignment happened.
+const staleAssignedMinutes = (report) => {
+  if (report?.status !== 'assigned') return null;
+  const t = new Date(report?.updated_at || report?.created_at || report?.timestamp || 0).getTime();
+  const age = Date.now() - t;
+  return t && age > STALE_ASSIGNED_MS ? Math.floor(age / 60000) : null;
+};
+
 const ReportTable = ({ 
   reports = [], 
   selectedReports = [], 
@@ -284,6 +295,12 @@ const ReportTable = ({
             )}
           </tbody>
         </table>
+      </div>
+    </div>
+  );
+};
+
+export default ReportTable;
       </div>
     </div>
   );

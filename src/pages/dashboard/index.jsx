@@ -12,6 +12,7 @@ import PageAccessMatrix from './components/PageAccessMatrix';
 // Reports pulls in recharts via CommandAnalytics — lazy like the analytics card.
 const ReportsSection = lazy(() => import('./components/ReportsSection'));
 import PendingRegistrations from '../user-management/components/PendingRegistrations';
+import useIncidentAlarm from '../../hooks/useIncidentAlarm';
 import { isPointInBoundary } from '../../utils/geofence';
 import ResidentHome from '../resident-home';
 import ResponderView from '../responder-view';
@@ -2053,4 +2054,5 @@ export default function Dashboard({ section = 'command' }) {
       </div>
     )}
   </div>;
+}
 }
