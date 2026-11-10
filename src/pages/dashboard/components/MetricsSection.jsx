@@ -53,7 +53,7 @@ const MetricsSection = () => {
       const [{ data: h }, { data: c }, { data: r }] = await Promise.all([hq, cq, rq]);
       setHistory(h ?? []);
       setUnits(c ?? []);
-      setReports(r ?? {});
+      setReports(r ?? []);
       const { data: depts } = await supabase.from('departments').select('id, name');
       setDepartments(Object.fromEntries((depts ?? []).map(d => [d.id, d.name])));
       setLoading(false);
@@ -74,7 +74,7 @@ const MetricsSection = () => {
       return {
         reportId,
         dept: rep?.dept?.name || departments[rep?.assigned_department_id] || 'Unassigned',
-        report,
+        report: rep,
         respondMs: t('assigned') != null && t('in-progress') != null ? t('in-progress') - t('assigned') : null,
         arriveMs: t('in-progress') != null && t('arrived') != null ? t('arrived') - t('in-progress') : null,
       };
