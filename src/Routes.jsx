@@ -13,12 +13,17 @@ import NotificationsPage from './pages/notifications';
 import Dashboard from './pages/dashboard';
 
 const SuspendedScreen = () => {
-  const { signOut } = useAuth();
+  const { signOut, profile } = useAuth();
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-50 p-6">
       <div className="w-full max-w-sm rounded-2xl bg-white p-8 text-center shadow-xl ring-1 ring-slate-900/5">
         <h1 className="text-lg font-bold text-slate-900">Account suspended</h1>
         <p className="mt-2 text-sm text-slate-500">Your access has been suspended by an administrator. Contact the barangay office if you believe this is a mistake.</p>
+        {profile?.suspension_reason && (
+          <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-left text-xs text-red-700">
+            <span className="font-semibold">Reason:</span> {profile.suspension_reason}
+          </p>
+        )}
         <button onClick={signOut} className="mt-6 w-full rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-700">Sign out</button>
       </div>
     </div>

@@ -160,6 +160,12 @@ realtime checks.
   `no response` / stale badge on the queue row.
 - **Reports page** (`/reports`) → the incident detail modal shows the
   timeline, location, and responder.
+- **Suspension** — admin → Access control → **Suspend** on any account
+  (not self): reason is **required** (needs
+  `20261110210000_suspension_reason.sql`). The user instantly lands on
+  the suspended screen showing the reason (realtime — even mid-session),
+  and gets a suspension email (`notify-suspension` edge fn deployed).
+  **Reactivate** clears the reason and restores access.
 - **Direct-URL guard:** log in as resident and hit `/report-management` →
   redirected (route guard).
 - **CDA flow:** assisting departments see the assistance request →
@@ -181,6 +187,8 @@ realtime checks.
   backup) or declines with a visible remark; backup sees the incident live.
 - Command center: admin + dispatcher only; dept admin lands on the
   incident queue — no command-center link or loop.
+- Suspend needs a remark; suspended users see only the locked screen
+  with the reason + an email; reactivate clears it.
 - Responder pin is live only during an active assignment; the geofence
   blocks far-away arrival.
 - All views update without refresh (realtime).

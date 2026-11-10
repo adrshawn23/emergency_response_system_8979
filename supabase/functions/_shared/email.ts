@@ -86,12 +86,14 @@ export const decisionEmail = (
     pending: 'You will receive another email once a decision is made — usually within 24 hours.',
     rejected: 'If you believe this was a mistake, contact the barangay office to appeal.',
     correction_required: 'Fix the issue above, then submit a corrected or clearer ID photo.',
+    suspended: 'If you believe this was a mistake, contact the barangay office to appeal.',
   }[status];
 
   // Numbered guide shown when the user must act — mirrors the resident-home flow.
   const steps = {
     approved: null,
     pending: null,
+    suspended: null,
     rejected: [
       'Sign in with the email and password you registered.',
       'Open your Resident Home — the verification card shows what went wrong.',

@@ -14,11 +14,15 @@ const UserAccessManager = () => {
   const [users, setUsers] = useState([]);
   const [busyId, setBusyId] = useState(null);
   const [message, setMessage] = useState('');
+  // Suspension must carry a reason — shown to the user + emailed to them
+  const [suspendFor, setSuspendFor] = useState(null);
+  const [suspendReason, setSuspendReason] = useState('');
+  const [suspendError, setSuspendError] = useState('');
 
   const fetchUsers = useCallback(async () => {
     const { data, error } = await supabase
       .from('user_profiles')
-      .select('id, first_name, last_name, full_name, email, role, status, account_status')
+      .select('id, first_name, last_name, full_name, email, role, status, account_status, suspension_reason')
       .order('created_at', { ascending: false });
     if (error) {
       setMessage(`Could not load users: ${error.message}`);
@@ -47,6 +51,25 @@ const UserAccessManager = () => {
       setUsers(prev => prev.map(u => (u.id === id ? { ...u, ...patch } : u)));
     }
     setBusyId(null);
+  };
+
+  const submitSuspend = async () => {
+    const reason = suspendReason.trim();
+    if (!suspendFor || !reason) {
+      setSuspendError('A reason is required — the user sees this on the suspended screen and in the email.');
+      return;
+    }
+    const { error } = await supabase
+      .from('user_profiles')
+      .update({ account_status: 'suspended', suspension_reason: reason })
+      .eq('id', suspendFor.id);
+    if (error) { setSuspendError(error.message); return; }
+    setUsers(prev => prev.map(u => (u.id === suspendFor.id ? { ...u, account_status: 'suspended', suspension_reason: reason } : u)));
+    const targetId = suspendFor.id;
+    setSuspendFor(null); setSuspendReason(''); setSuspendError('');
+    // Best-effort notify — suspension already landed even if email fails.
+    supabase.functions.invoke('notify-suspension', { body: { user_id: targetId } })
+      .catch(e => console.error('notify-suspension invoke failed:', e));
   };
 
   return (
@@ -78,7 +101,13 @@ const UserAccessManager = () => {
                   {ROLE_OPTIONS.map(r => <option key={r} value={r}>{r}</option>)}
                 </select>
                 <button
-                  onClick={() => updateUser(u.id, { account_status: suspended ? 'active' : 'suspended' })}
+                  onClick={() => {
+                    if (suspended) {
+                      updateUser(u.id, { account_status: 'active', suspension_reason: null });
+                    } else {
+                      setSuspendFor(u); setSuspendReason(''); setSuspendError('');
+                    }
+                  }}
                   disabled={isSelf || busyId === u.id}
                   className={`rounded-lg px-3 py-1.5 text-xs font-semibold disabled:opacity-50 ${suspended ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : 'bg-red-100 text-red-700 hover:bg-red-200'}`}
                 >
@@ -89,6 +118,35 @@ const UserAccessManager = () => {
           );
         })}
       </div>
+
+      {/* Suspension reason — required; the user sees it on their suspended
+          screen and in the notification email */}
+      {suspendFor && (
+        <div className="fixed inset-0 z-1050 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true">
+          <div className="w-full max-w-md rounded-2xl bg-white ring-1 ring-slate-900/5 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-200 p-4">
+              <h3 className="text-lg font-bold">Suspend {suspendFor.full_name || suspendFor.email}</h3>
+              <button onClick={() => setSuspendFor(null)} aria-label="Close" className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100">✕</button>
+            </div>
+            <div className="p-4">
+              <p className="text-sm text-slate-600">The account is locked immediately — they can't report, respond, or sign in past a suspended screen. Tell them why.</p>
+              <label className="mt-4 block text-sm font-semibold">Reason <span className="text-red-500">*</span></label>
+              <textarea
+                value={suspendReason}
+                onChange={e => { setSuspendReason(e.target.value); setSuspendError(''); }}
+                rows={3}
+                placeholder="e.g. False reports filed repeatedly after warning…"
+                className="mt-1.5 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+              />
+              {suspendError && <p className="mt-2 rounded-lg border border-red-200 bg-red-50 p-2.5 text-xs text-red-700">{suspendError}</p>}
+              <div className="mt-4 flex justify-end gap-2">
+                <button onClick={() => setSuspendFor(null)} className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold hover:bg-slate-50">Cancel</button>
+                <button onClick={submitSuspend} disabled={!suspendReason.trim()} className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50">Suspend account</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
