@@ -50,7 +50,7 @@ as $$
         )
       ) as distance_m
     from public.emergency_reports r
-    where r.status not in ('resolved', 'cancelled', 'duplicate')
+    where r.status in ('pending', 'assigned', 'in-progress')
       and r.report_type::text = p_report_type
       and r.created_at > now() - interval '12 hours'
       and r.attachments->>'latitude' is not null
