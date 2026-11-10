@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import Icon from '../../components/AppIcon';
 import { useAuth } from '../../contexts/AuthContext';
 import { useMockData } from '../../contexts/MockDataContext';
@@ -29,7 +28,6 @@ const RESPONDER_LINKS = [
 ];
 
 export default function ResponderView() {
-  const navigate = useNavigate();
   const { profile, signOut, canAccessPage } = useAuth();
   const { reports: allReports, setReports } = useMockData();
   const links = RESPONDER_LINKS.filter(l => canAccessPage(l.key, profile?.role));
@@ -370,7 +368,6 @@ export default function ResponderView() {
               const viaCda = assistanceRequests.find(a => a.report?.id === id)?.report;
               if (viaCda) setSelectedReport(viaCda);
             }}/>
-            <button onClick={() => navigate('/report-management')} className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold">Incident queue</button>
             <SidebarProfile profile={profile} signOut={signOut} compact/>
           </div>
         </div>
