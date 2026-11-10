@@ -303,7 +303,11 @@ export default function ResponderView() {
           <div className="flex items-center gap-2">
             <NotificationBell userId={profile?.id} onOpenIncident={async (id) => {
               const { data } = await supabase.from('emergency_reports').select('*').eq('id', id).single();
-              if (data) setSelectedReport(data);
+              if (data) { setSelectedReport(data); return; }
+              // Assistance-only assignments may sit outside the responder's
+              // direct report scope — the inbound list already joins the row.
+              const viaCda = assistanceRequests.find(a => a.report?.id === id)?.report;
+              if (viaCda) setSelectedReport(viaCda);
             }}/>
             <button onClick={() => navigate('/report-management')} className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold">Incident queue</button>
             <SidebarProfile profile={profile} signOut={signOut} compact/>

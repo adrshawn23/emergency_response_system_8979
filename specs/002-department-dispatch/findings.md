@@ -276,3 +276,12 @@ state, silently restoring roles the first toggle removed. Fixed by
 read-before-write (`select` the live row, then `upsert`). The responder-side
 request-assistance card and its outgoing-request flow were also removed in
 the same pass (auto-dispatch covers fan-out; inbound accept/decline stays).
+
+**Reports feature (2026-11-10):** new `/reports` workspace section (page key
+`reports`, default `[admin, dispatcher]`) — embeds `CommandAnalytics` for
+monitoring, an incident-records table with search/status/type filters plus
+CSV export, and a merged "system activity" feed (`incident_status_history`
+transitions + `cross_department_assistance` events, actor-attributed).
+Wired through `SECTION_ROLES`, `sectionCopy`, both nav link lists,
+`RoleRoute`, `DEFAULT_PAGE_ROLES`, and the access matrix; live
+`page_permissions` row seeded and both seed SQLs updated.
