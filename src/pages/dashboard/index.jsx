@@ -1971,16 +1971,37 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
                   : <>An open <span className="capitalize font-semibold">{draft.type}</span> incident is already on record near your location — responders may already be on the way.</>}
               </p>
               <ul className="mt-3 space-y-2">
-                {dupMatches.map(m => (
-                  <li key={m.id} className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm">
-                    <span className="capitalize font-semibold text-amber-800">{m.report_type}</span>
-                    {m.location ? <span className="text-amber-800"> · {m.location}</span> : null}
-                    <span className="ml-1.5 rounded-full bg-amber-200/60 px-2 py-0.5 text-[10px] font-bold capitalize text-amber-900">{formatStatus(m.status)}</span>
-                    <span className="block text-xs text-amber-700 mt-0.5">
-                      ~{Math.round(m.distance_m)} m away · reported {formatTimeAgo(m.created_at)}
-                    </span>
-                  </li>
-                ))}
+                {dupMatches.map(m => {
+                  // That exact nearby incident — its live progress so the
+                  // reporter can see help is already moving.
+                  const STEPS = ['pending', 'assigned', 'in-progress', 'resolved'];
+                  const LABELS = ['Reported', 'Assigned', 'Responding', 'Resolved'];
+                  const at = STEPS.indexOf(m.status);
+                  return (
+                    <li key={m.id} className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="capitalize font-semibold text-amber-800">{m.report_type} incident</span>
+                        <span className="rounded-full bg-amber-200/60 px-2 py-0.5 text-[10px] font-bold capitalize text-amber-900">{formatStatus(m.status)}</span>
+                      </div>
+                      {m.location ? <p className="text-xs text-amber-800 mt-0.5">{m.location}</p> : null}
+                      {/* Progress of that incident */}
+                      <div className="mt-2 flex items-center">
+                        {STEPS.map((s, i) => (
+                          <React.Fragment key={s}>
+                            <div className="flex flex-col items-center">
+                              <span className={`h-2.5 w-2.5 rounded-full ${i <= at ? 'bg-emerald-500' : 'bg-amber-300/70'}`}/>
+                              <span className={`mt-0.5 text-[9px] font-semibold ${i <= at ? 'text-emerald-700' : 'text-amber-700/70'}`}>{LABELS[i]}</span>
+                            </div>
+                            {i < STEPS.length - 1 && <div className={`mx-1 mb-3 h-0.5 flex-1 rounded ${i < at ? 'bg-emerald-400' : 'bg-amber-300/50'}`}/>}
+                          </React.Fragment>
+                        ))}
+                      </div>
+                      <p className="text-xs text-amber-700 mt-1.5">
+                        ~{Math.round(m.distance_m)} m away · reported {formatTimeAgo(m.created_at)}
+                      </p>
+                    </li>
+                  );
+                })}
               </ul>
               {dupMatches.some(m => m.status !== 'pending') ? (
                 <div className="mt-4 flex justify-end">
