@@ -50,15 +50,20 @@ realtime checks.
    `20261110180000_duplicate_incident_check.sql` migration applied:
    a. File a **Fire** report with GPS (**Use my location**) → submitted.
    b. Immediately file a **second Fire** report at the same GPS → a
-      **"This incident may already be reported"** modal lists the first
-      report (~Xm away · reported N min ago).
+      **"This incident may already be reported"** modal pops up the
+      **matched incident card** — type, live status chip, location, ~Xm
+      away, reported N min ago — plus a **progress stepper**
+      (Reported → Assigned → Responding → Resolved) filled to where
+      that incident actually is.
    c. **Cancel** → nothing files; the dispatcher queue still shows only
       one incident.
    d. Repeat → **Submit anyway** → files (different incidents on the same
       street stay possible while the first is still pending).
    e. **Dispatcher assigns** the first incident → file a third same-type
       report at the same GPS → **"This incident is already being
-      handled"** — hard block, no submit button; only **Got it** closes.
+      handled"** — the match card's stepper shows it moving
+      (Assigned/Responding) — hard block, no submit button; only
+      **Got it** closes.
    f. Same GPS, **different type** (e.g. Medical) → **no** modal — fires
       and medicals at one spot aren't duplicates.
    g. Same GPS, **text-only location** (type the location, no **Use my
@@ -120,6 +125,9 @@ realtime checks.
    → the dispatcher's map pin + driving route update in near-realtime
    (move >~20 m to see it). **An idle responder's pin freezes** — tracking
    is assignment-gated by design.
+   - The incident modal's map shows a **dashed red 150 m ring** around
+     the incident pin — the same radius the duplicate check uses. The
+     queue/detail modal map shows it too.
 4. **Mark arrived** → geofence check:
    - Far from the incident → blocked with a distance message
      ("~Xm away — move within Rm").
@@ -158,6 +166,8 @@ realtime checks.
 
 - Duplicate submit: pending match warns (Cancel / Submit anyway);
   dispatched match hard-blocks "already being handled" — no submit path.
+  The matched incident pops up with its status + progress stepper.
+- Incident maps draw the dashed red 150 m duplicate-check ring.
 - Registration gates the department requirement + approval.
 - Incident → dispatch → dept-admin responder assignment works end to end.
 - Dept admin **requests** but never **directly reassigns**; the dispatcher
