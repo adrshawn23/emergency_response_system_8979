@@ -58,10 +58,13 @@ const IncidentCard = ({ report }) => {
 const AnnouncementsSection = () => {
   const { profile } = useAuth();
   const isAdmin = profile?.role === 'admin';
+  // Live incident cards (maps + unit progress) are a resident-facing view;
+  // staff track the same data on their own queue/command pages.
+  const showLiveIncidents = profile?.role === 'resident';
 
   const [announcements, setAnnouncements] = useState([]);
   const [incidents, setIncidents] = useState([]);
-  const [form, setForm] = useState({ title: '', body: '', severity: 'info', report_id: '' });
+  const [form, setForm] = useState({ title: '', body: '', severity: 'info', report_id: '', audience: 'residents' });
   const [posting, setPosting] = useState(false);
   const [msg, setMsg] = useState('');
 
@@ -105,11 +108,12 @@ const AnnouncementsSection = () => {
       .single();
     setPosting(false);
     if (error) { setMsg(error.message); return; }
-    // Advisory email to all residents — fire-and-forget (FR-009/010).
-    supabase.functions.invoke('broadcast-incident', { body: { kind: 'announcement', announcement_id: data.id } })
+    // Advisory email to the chosen audience — fire-and-forget (FR-009/010).
+    supabase.functions.invoke('broadcast-incident', { body: { kind: 'announcement', announcement_id: data.id, audience: form.audience } })
       .catch(err => console.warn('broadcast-incident failed:', err?.message ?? err));
-    setForm({ title: '', body: '', severity: 'info', report_id: '' });
-    setMsg('Advisory published and emailed to all residents.');
+    const label = { residents: 'all residents', staff: 'staff', everyone: 'residents and staff' }[form.audience] || 'all residents';
+    setForm({ title: '', body: '', severity: 'info', report_id: '', audience: form.audience });
+    setMsg(`Advisory published and emailed to ${label}.`);
     load();
   };
 
@@ -148,6 +152,18 @@ const AnnouncementsSection = () => {
             required
           />
           <div className="flex flex-wrap items-center gap-3">
+            <label className="text-xs font-semibold text-slate-500">
+              Email to
+              <select
+                className="ml-2 rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                value={form.audience}
+                onChange={e => setForm({ ...form, audience: e.target.value })}
+              >
+                <option value="residents">All residents</option>
+                <option value="staff">Staff only</option>
+                <option value="everyone">Residents + staff</option>
+              </select>
+            </label>
             <select
               className="rounded-lg border border-slate-200 px-3 py-2 text-sm max-w-xs"
               value={form.report_id}
@@ -165,7 +181,7 @@ const AnnouncementsSection = () => {
               disabled={posting}
               className="rounded-lg bg-taste-500 px-4 py-2 text-sm font-semibold text-white hover:bg-taste-600 disabled:opacity-50"
             >
-              {posting ? 'Publishing…' : 'Publish + email residents'}
+              {posting ? 'Publishing…' : 'Publish + email'}
             </button>
             {msg && <span className="text-sm text-taste-600">{msg}</span>}
           </div>
@@ -197,18 +213,20 @@ const AnnouncementsSection = () => {
         )}
       </section>
 
-      <section>
-        <h3 className="mb-3 flex items-center gap-2 font-semibold text-foreground">
-          <Icon name="Activity" size={16} className="text-primary" /> Live incidents
-        </h3>
-        {incidents.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">No open incidents right now.</p>
-        ) : (
-          <div className="space-y-4">
-            {incidents.map(r => <IncidentCard key={r.id} report={r} />)}
-          </div>
-        )}
-      </section>
+      {showLiveIncidents && (
+        <section>
+          <h3 className="mb-3 flex items-center gap-2 font-semibold text-foreground">
+            <Icon name="Activity" size={16} className="text-primary" /> Live incidents
+          </h3>
+          {incidents.length === 0 ? (
+            <p className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">No open incidents right now.</p>
+          ) : (
+            <div className="space-y-4">
+              {incidents.map(r => <IncidentCard key={r.id} report={r} />)}
+            </div>
+          )}
+        </section>
+      )}
     </div>
   );
 };

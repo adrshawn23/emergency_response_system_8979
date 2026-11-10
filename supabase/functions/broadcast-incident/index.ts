@@ -6,7 +6,8 @@
 //   { kind: 'resolved',     report_id }       → every active resident: outcome
 //     + main resolution photo + every assisting department's resolution_proof
 //     labeled by department.
-//   { kind: 'announcement', announcement_id } → every active resident: advisory
+//   { kind: 'announcement', announcement_id, audience? } → advisory to the
+//     chosen audience: 'residents' (default), 'staff', or 'everyone'
 //     (+ linked-incident map when report_id is set on the announcement).
 //
 // Auth: 'reported' — the reporter themselves or staff;
@@ -38,6 +39,9 @@ const esc = (s: unknown) =>
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'unit';
 
 const STAFF = ['admin', 'dispatcher', 'department_admin'];
+// Advisory email audience ('staff') — every staff role incl. responders;
+// separate from STAFF which gates who may call 'resolved'.
+const STAFF_ROLES = ['admin', 'dispatcher', 'responder', 'department_admin'];
 
 // Static map image for the incident pin — attached by URL so providers fetch
 // it (data-URI <img> doesn't render in Gmail/Outlook).
@@ -236,12 +240,16 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // ---- Recipients: every active resident --------------------------------
-    const { data: residents } = await admin
-      .from('user_profiles')
-      .select('email')
-      .eq('role', 'resident')
-      .eq('account_status', 'active');
+    // ---- Recipients -------------------------------------------------------
+    // Lifecycle emails always go to residents. Advisories honor the admin's
+    // audience choice: 'residents' (default), 'staff', or 'everyone'.
+    const audience = kind === 'announcement'
+      ? ['residents', 'staff', 'everyone'].includes(body?.audience) ? body.audience : 'residents'
+      : 'residents';
+    let rq = admin.from('user_profiles').select('email').eq('account_status', 'active');
+    if (audience === 'residents') rq = rq.eq('role', 'resident');
+    else if (audience === 'staff') rq = rq.in('role', STAFF_ROLES);
+    const { data: residents } = await rq;
     const emails = [...new Set((residents ?? []).map((r: any) => r.email).filter(Boolean))];
     if (!emails.length) return json({ sent: 0, skipped: true, reason: 'no resident recipients' });
 

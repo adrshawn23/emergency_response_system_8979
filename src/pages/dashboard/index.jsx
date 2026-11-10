@@ -169,9 +169,9 @@ const SECTION_ROLES = {
   access: ['admin'],
   departments: ['admin'],
   reports: ['admin', 'dispatcher'],
-  metrics: ['admin'],
-  announcements: ['admin', 'resident'],
-  contacts: ['admin', 'dispatcher', 'responder', 'resident', 'department_admin'],
+  // metrics / announcements / contacts are intentionally absent — the Access
+  // control matrix (page_permissions, mirrored by DEFAULT_PAGE_ROLES) governs
+  // them so admins can grant or revoke visibility live.
   profile: ['admin', 'dispatcher', 'responder', 'resident', 'department_admin'],
 };
 const sectionAllowed = (key, role) => !SECTION_ROLES[key] || SECTION_ROLES[key].includes(role);

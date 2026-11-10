@@ -9,6 +9,9 @@ const EDITABLE_PAGES = [
   { key: 'queue', label: 'Incident queue' },
   { key: 'new', label: 'New incident' },
   { key: 'reports', label: 'Reports' },
+  { key: 'metrics', label: 'Response times' },
+  { key: 'announcements', label: 'Announcements' },
+  { key: 'contacts', label: 'Contacts' },
   { key: 'residents', label: 'Residents & review' },
   { key: 'departments', label: 'Departments' },
 ];
