@@ -59,7 +59,12 @@ const NotificationBell = ({ userId, onOpenIncident }) => {
         aria-label={`Notifications${unreadCount ? `, ${unreadCount} unread` : ''}`}
         aria-expanded={open}
         aria-haspopup="menu"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => setOpen((v) => {
+          // Facebook-style: opening the panel clears the unread badge; the
+          // next notification that arrives re-badges it.
+          if (!v && unreadCount > 0) markAllRead();
+          return !v;
+        })}
         className="relative rounded-xl border border-slate-200 p-2 text-slate-500 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-taste-500"
       >
         <Icon name="Bell" size={18}/>

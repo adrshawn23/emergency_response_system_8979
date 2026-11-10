@@ -4,7 +4,7 @@ import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../../contexts/AuthContext';
 import BoundaryMap from '../../../components/BoundaryMap';
 import IncidentTimeline from '../../../components/IncidentTimeline';
-import { getSeenIds, markAnnouncementSeen } from '../../../hooks/useAnnouncementBadge';
+import { getSeenIds, markAnnouncementSeen, markAllAnnouncementsSeen } from '../../../hooks/useAnnouncementBadge';
 
 /**
  * Announcements (specs/004 US2) — advisories broadcast by admins plus a live
@@ -59,6 +59,7 @@ const IncidentCard = ({ report, onSeen, unseen }) => {
 
 const AnnouncementsSection = () => {
   const { profile } = useAuth();
+  const firstLoad = React.useRef(true);
   const isAdmin = profile?.role === 'admin';
   // Live incident cards (maps + unit progress) are a resident-facing view;
   // staff track the same data on their own queue/command pages.
@@ -85,6 +86,16 @@ const AnnouncementsSection = () => {
     ]);
     setAnnouncements(anns ?? []);
     setIncidents(reps ?? []);
+    // First visit marks everything currently here as seen — the nav badge
+    // clears on page view and only re-counts items that arrive afterwards.
+    if (firstLoad.current) {
+      firstLoad.current = false;
+      markAllAnnouncementsSeen(profile?.id, [
+        ...(anns ?? []).map(a => a.id),
+        ...(reps ?? []).map(r => r.id),
+      ]);
+      setSeenIds(getSeenIds(profile?.id));
+    }
   };
 
   useEffect(() => {

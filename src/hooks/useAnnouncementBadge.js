@@ -21,6 +21,17 @@ export const markAnnouncementSeen = (uid, id) => {
   window.dispatchEvent(new Event(SEEN_EVENT));
 };
 
+// Visiting the Announcements page marks every current item seen at once —
+// Facebook semantics: the badge clears on view and only re-counts items
+// that arrive afterwards.
+export const markAllAnnouncementsSeen = (uid, ids) => {
+  if (!uid || !ids?.length) return;
+  const seen = getSeenIds(uid);
+  ids.forEach(id => seen.add(id));
+  localStorage.setItem(seenKey(uid), JSON.stringify([...seen].slice(-500)));
+  window.dispatchEvent(new Event(SEEN_EVENT));
+};
+
 /**
  * Unseen count for the Announcements nav badge:
  *   residents → advisories + open (live) incidents
@@ -37,18 +48,25 @@ export default function useAnnouncementBadge(profile, enabled = true) {
     if (!enabled || !uid || role === 'admin') return undefined;
     let alive = true;
 
+    // Signature guard: realtime fires on every row update (status changes,
+    // responder writes), and consecutive refetches can briefly disagree on
+    // the id list — comparing before setCount stops the visible flicker.
+    let lastKey = null;
     const load = async () => {
       const { data: anns } = await supabase
         .from('announcements').select('id').order('created_at', { ascending: false }).limit(100);
       let ids = (anns ?? []).map(a => a.id);
       if (role === 'resident') {
         const { data: inc } = await supabase
-          .from('emergency_reports_list').select('id').in('status', OPEN_STATUSES).limit(50);
+          .from('emergency_reports_list').select('id').in('status', OPEN_STATUSES)
+          .order('created_at', { ascending: false }).limit(50);
         ids = ids.concat((inc ?? []).map(r => r.id));
       }
       if (!alive) return;
       const seen = getSeenIds(uid);
-      setCount(ids.filter(id => !seen.has(id)).length);
+      const unseen = ids.filter(id => !seen.has(id));
+      const key = unseen.join('|');
+      if (key !== lastKey) { lastKey = key; setCount(unseen.length); }
     };
 
     load();
