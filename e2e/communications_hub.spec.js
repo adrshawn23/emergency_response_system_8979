@@ -55,7 +55,7 @@ test.describe('Communications hub', () => {
 
     await page.getByPlaceholder('Advisory title').fill(title);
     await page.getByPlaceholder(/Advisory details/).fill('E2E smoke body — road closed for drill.');
-    await page.getByRole('button', { name: 'Publish + email residents' }).click();
+    await page.getByRole('button', { name: 'Publish + email' }).click();
     await expect(page.getByText(title)).toBeVisible({ timeout: 15000 });
 
     // Resident view — same page, no compose form.
