@@ -1170,7 +1170,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
     if (section !== 'new') return undefined;
 
     if (!navigator.geolocation) {
-      setGpsStatus('GPS is unavailable in this browser. Enter a location manually.');
+      setGpsStatus('GPS is unavailable in this browser — a report can\u2019t be filed without your location.');
       return undefined;
     }
 
@@ -1201,13 +1201,13 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
           serviceAreaStatus
         }));
         setGpsStatus(!isResident
-          ? `Current GPS location captured (+/-${Math.round(coords.accuracy)} m). You can still edit the location.`
+          ? `Current GPS location captured (+/-${Math.round(coords.accuracy)} m).`
           : inServiceArea
-            ? `Current GPS location captured (+/-${Math.round(coords.accuracy)} m). You can still edit the location.`
+            ? `Current GPS location captured (+/-${Math.round(coords.accuracy)} m).`
             : 'GPS location is outside the Barangay Kalubihan service area. Your emergency report will still be sent to dispatch for triage.');
       },
       () => {
-        if (isCurrent) setGpsStatus('GPS permission was not granted. Enter a location manually.');
+        if (isCurrent) setGpsStatus('GPS permission was not granted — allow location access, then reopen this page.');
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
     );
@@ -1223,7 +1223,11 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
       setSubmitError('Your account is pending verification — reporting unlocks once an administrator approves your ID.');
       return;
     }
-    if (!draft.location.trim() || !draft.description.trim()) return;
+    if (!draft.location.trim()) {
+      setSubmitError('Waiting for GPS — your location is captured automatically.');
+      return;
+    }
+    if (!draft.description.trim()) return;
     if (!profile?.id) {
       setSubmitError('Profile is still loading. Try again in a moment.');
       return;
@@ -1498,7 +1502,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
           </div>)}
         </div>
       </>}
-      {section === 'new' && <>{!canReport && <div className="mt-7 flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4"><Icon name="Lock" size={18} className="mt-0.5 shrink-0 text-amber-700"/><div className="text-sm text-amber-800"><p className="font-semibold">Reporting is locked while your registration is pending.</p><p className="mt-0.5 text-amber-700">Once an administrator approves your ID, this form unlocks and your reports go straight to dispatch. Check your verification status from Home.</p></div></div>}<form onSubmit={submitIncident} className="mt-7 grid gap-5 lg:grid-cols-[1.4fr_.6fr]"><fieldset disabled={!canReport} className="contents"><div className="rounded-lg border border-slate-200/70 bg-white p-6 "><div className="grid gap-5 sm:grid-cols-2"><label className="text-sm font-semibold">Emergency type<select value={draft.type} onChange={e => setDraft(value => ({...value, type: e.target.value}))} className="mt-2 w-full rounded-xl border-slate-200/70 bg-white text-sm"><option value="fire">Fire</option><option value="medical">Medical</option><option value="accident">Accident</option><option value="police">Public safety</option><option value="natural">Natural hazard</option></select></label><label className="text-sm font-semibold">Priority<select value={draft.priority} onChange={e => setDraft(value => ({...value, priority: e.target.value}))} className="mt-2 w-full rounded-xl border-slate-200/70 bg-white text-sm"><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="critical">Critical</option></select></label></div><label className="mt-5 block text-sm font-semibold">Incident location<input required value={draft.location} onChange={e => setDraft(value => ({...value, location: e.target.value}))} placeholder="Address, landmark, or selected map pin" className="mt-2 w-full rounded-xl border-slate-200 px-3 py-3 text-sm"/></label><div className="mt-3 flex items-center gap-2 rounded-xl bg-taste-50 p-3 text-xs text-taste-600"><Icon name="MapPin" size={15}/>GPS and map provider are optional. A manual location is always accepted; outside-boundary reports go to dispatch for triage.</div>{gpsStatus && <div className={`mt-2 rounded-xl p-3 text-xs ${gpsStatus.includes('outside') ? 'bg-amber-50 text-amber-800' : 'bg-emerald-50 text-emerald-800'}`}>{gpsStatus}</div>}<label className="mt-5 block text-sm font-semibold">What is happening?<textarea required value={draft.description} onChange={e => setDraft(value => ({...value, description: e.target.value}))} placeholder="Describe hazards, people involved, and immediate risks." rows="6" className="mt-2 w-full rounded-xl border-slate-200 px-3 py-3 text-sm"/></label>
+      {section === 'new' && <>{!canReport && <div className="mt-7 flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4"><Icon name="Lock" size={18} className="mt-0.5 shrink-0 text-amber-700"/><div className="text-sm text-amber-800"><p className="font-semibold">Reporting is locked while your registration is pending.</p><p className="mt-0.5 text-amber-700">Once an administrator approves your ID, this form unlocks and your reports go straight to dispatch. Check your verification status from Home.</p></div></div>}<form onSubmit={submitIncident} className="mt-7 grid gap-5 lg:grid-cols-[1.4fr_.6fr]"><fieldset disabled={!canReport} className="contents"><div className="rounded-lg border border-slate-200/70 bg-white p-6 "><div className="grid gap-5 sm:grid-cols-2"><label className="text-sm font-semibold">Emergency type<select value={draft.type} onChange={e => setDraft(value => ({...value, type: e.target.value}))} className="mt-2 w-full rounded-xl border-slate-200/70 bg-white text-sm"><option value="fire">Fire</option><option value="medical">Medical</option><option value="accident">Accident</option><option value="police">Public safety</option><option value="natural">Natural hazard</option></select></label><label className="text-sm font-semibold">Priority<select value={draft.priority} onChange={e => setDraft(value => ({...value, priority: e.target.value}))} className="mt-2 w-full rounded-xl border-slate-200/70 bg-white text-sm"><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="critical">Critical</option></select></label></div><label className="mt-5 block text-sm font-semibold">Incident location<input required value={draft.location} readOnly placeholder="Auto-detecting GPS location…" className="mt-2 w-full rounded-xl border-slate-200 px-3 py-3 text-sm bg-slate-50"/></label><div className="mt-3 flex items-center gap-2 rounded-xl bg-taste-50 p-3 text-xs text-taste-600"><Icon name="MapPin" size={15}/>GPS and map provider are optional. A manual location is always accepted; outside-boundary reports go to dispatch for triage.</div>{gpsStatus && <div className={`mt-2 rounded-xl p-3 text-xs ${gpsStatus.includes('outside') ? 'bg-amber-50 text-amber-800' : 'bg-emerald-50 text-emerald-800'}`}>{gpsStatus}</div>}<label className="mt-5 block text-sm font-semibold">What is happening?<textarea required value={draft.description} onChange={e => setDraft(value => ({...value, description: e.target.value}))} placeholder="Describe hazards, people involved, and immediate risks." rows="6" className="mt-2 w-full rounded-xl border-slate-200 px-3 py-3 text-sm"/></label>
         <div className="mt-5">
           <label className="block text-sm font-semibold mb-2">Upload evidence {profile?.role === 'resident' ? '(required — at least 1 photo)' : '(optional)'}</label>
           <input 
