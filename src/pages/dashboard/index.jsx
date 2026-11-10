@@ -6,9 +6,7 @@ import { useMockData } from '../../contexts/MockDataContext';
 import NotificationBell from '../../components/NotificationBell';
 import { supabase } from '../../lib/supabase';
 import DepartmentManagementSection from './components/DepartmentManagementSection';
-// Lazy-loaded so recharts (~200kB) only downloads for admin sessions
-// that actually render the command-center analytics card.
-const CommandAnalytics = lazy(() => import('./components/CommandAnalytics'));
+import CommandOps from './components/CommandOps';
 import UserAccessManager from './components/UserAccessManager';
 import PageAccessMatrix from './components/PageAccessMatrix';
 // Reports pulls in recharts via CommandAnalytics — lazy like the analytics card.
