@@ -192,11 +192,17 @@ export async function createReport(content, status = 'pending', location = 'E2E 
     'dispatcher@emergency.gov',
     'dispatcher123'
   );
+  // Real reports carry GPS in attachments — without them detail modals show
+  // the "no GPS" note instead of the map. Seed Kalubihan-center coords.
+  const coords = { latitude: 10.297085, longitude: 123.907249 };
   const { error } = await sb.from('emergency_reports').insert({
     reporter_id: user.id,
     report_type: 'fire',
     content,
-    attachments: { location },
+    attachments: {
+      location: `GPS: ${coords.latitude}, ${coords.longitude} — ${location}`,
+      ...coords,
+    },
     status,
     priority: 'high',
   });
