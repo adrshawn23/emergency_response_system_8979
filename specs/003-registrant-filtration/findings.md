@@ -30,6 +30,6 @@
 - Soft assertion: `verification_decision` notification row — passes once T016's migration is applied.
 - **Cleanup note**: seeded `id_verifications` rows can't be deleted with the publishable key; the spec only ever re-statuses admin's own rows (`superseded` at the end). `supabase/cleanup_test_data.sql` covers manual cleanup.
 
-## Follow-ups (user-side)
+## Follow-ups
 
-- **T016**: apply `supabase/migrations/20261110140000_verification_decision_notification.sql` in the Supabase SQL editor; verify a `needs_clarity` decision writes a `notifications` row (re-run the spec — the soft assert flips to pass and counts start live-updating across sessions).
+- **T016 done (2026-11-10)**: migration applied via SQL editor; e2e re-run 3/3 including the `verification_decision` notification assert — the trigger fires and writes the row live.
