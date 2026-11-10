@@ -19,14 +19,27 @@ const parseFrom = (from: string): { name?: string; email: string } => {
   return m ? { name: m[1] || undefined, email: m[2] } : { email: from };
 };
 
+// A photo/file to attach. `content` is base64 (no data-URL prefix);
+// `url` lets providers pull a remote file. Providers don't render inline
+// data-URI <img> — real attachments are the reliable path.
+export interface EmailAttachment {
+  name: string;
+  content?: string; // base64
+  url?: string;
+}
+
 const sendViaBrevo = async (
   apiKey: string, from: string, to: string, subject: string, html: string,
+  attachments?: EmailAttachment[],
 ): Promise<Response> => {
   const sender = parseFrom(from);
+  const attachment = attachments?.length
+    ? attachments.map(a => (a.url ? { name: a.name, url: a.url } : { name: a.name, content: a.content }))
+    : undefined;
   return fetch(BREVO_ENDPOINT, {
     method: 'POST',
     headers: { 'api-key': apiKey, 'Content-Type': 'application/json', accept: 'application/json' },
-    body: JSON.stringify({ sender, to: [{ email: to }], subject, htmlContent: html }),
+    body: JSON.stringify({ sender, to: [{ email: to }], subject, htmlContent: html, ...(attachment && { attachment }) }),
   });
 };
 
@@ -34,6 +47,7 @@ export const sendEmail = async (
   to: string,
   subject: string,
   html: string,
+  attachments?: EmailAttachment[],
 ): Promise<{ sent: boolean; skipped?: boolean; error?: string }> => {
   const brevoKey = Deno.env.get('BREVO_API_KEY');
   const resendKey = Deno.env.get('RESEND_API_KEY');
@@ -47,11 +61,17 @@ export const sendEmail = async (
 
   try {
     const res = brevoKey
-      ? await sendViaBrevo(brevoKey, from, to, subject, html)
+      ? await sendViaBrevo(brevoKey, from, to, subject, html, attachments)
       : await fetch(RESEND_ENDPOINT, {
           method: 'POST',
           headers: { Authorization: `Bearer ${resendKey}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ from, to: [to], subject, html }),
+          body: JSON.stringify({
+            from, to: [to], subject, html,
+            ...(attachments?.length && {
+              attachments: attachments.map(a =>
+                a.url ? { filename: a.name, path: a.url } : { filename: a.name, content: a.content }),
+            }),
+          }),
         });
     if (!res.ok) {
       const detail = await res.text().catch(() => '');

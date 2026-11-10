@@ -342,6 +342,10 @@ export default function ResponderView() {
     ));
     setResolutionPhoto(null);
     setSelectedReport(null);
+    // Email the reporter: summary + appreciation + attached photos.
+    // Fire-and-forget — mail delivery must never block or fail the resolve.
+    supabase.functions.invoke('notify-resolved', { body: { report_id: report.id } })
+      .catch(e => console.warn('notify-resolved failed:', e?.message ?? e));
   };
 
   return (

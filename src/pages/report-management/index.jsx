@@ -309,6 +309,15 @@ const ReportManagement = () => {
               }
             : r
         ));
+
+        // Email the reporter: summary + appreciation + attached photos.
+        // This path keys on report_id (display id) — the function needs
+        // the row uuid. Fire-and-forget: mail never blocks the resolve.
+        const resolvedRow = reports.find(r => r?.report_id === turnoverData?.reportId);
+        if (resolvedRow?.id) {
+          supabase.functions.invoke('notify-resolved', { body: { report_id: resolvedRow.id } })
+            .catch(e => console.warn('notify-resolved failed:', e?.message ?? e));
+        }
       }
       setShowTurnoverModal(false);
     } catch (error) {
