@@ -77,6 +77,7 @@ const Register = () => {
     
     // Role Selection
     role: '',
+    departmentId: '',
     
     // Emergency Contacts
     emergencyContacts: [],
@@ -88,6 +89,9 @@ const Register = () => {
   });
 
   const [errors, setErrors] = useState({});
+  // Departments list for the role step's responder/department_admin picker
+  // (public_can_read_departments covers anonymous registrants).
+  const [departments, setDepartments] = useState([]);
   // Shown instead of the form once signup succeeds but email confirmation
   // is enabled — the applicant must enter the code before finishing.
   const [awaitingOtp, setAwaitingOtp] = useState(false);
@@ -99,6 +103,14 @@ const Register = () => {
   // exist until the code is entered, so the declared fields are stashed in
   // sessionStorage to restore the code-entry screen after a reload.
   const PENDING_REG_KEY = 'ers.pendingRegistration';
+
+  useEffect(() => {
+    supabase
+      .from('departments')
+      .select('id, name')
+      .order('name')
+      .then(({ data }) => setDepartments(data || []));
+  }, []);
 
   const savePendingRegistration = async (userId) => {
     try {
@@ -125,10 +137,17 @@ const Register = () => {
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e?.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }));
+    setFormData(prev => {
+      const next = {
+        ...prev,
+        [name]: type === 'checkbox' ? checked : value
+      };
+      // Switching to a role that doesn't need a department clears the pick
+      if (name === 'role' && !['responder', 'department_admin'].includes(value)) {
+        next.departmentId = '';
+      }
+      return next;
+    });
     
     // Clear error when user starts typing
     if (errors?.[name]) {
@@ -182,6 +201,9 @@ const Register = () => {
 
       case 3: // Role Selection
         if (!formData?.role) newErrors.role = 'Please select your role';
+        if (['responder', 'department_admin'].includes(formData?.role) && !formData?.departmentId) {
+          newErrors.departmentId = 'Please select your department';
+        }
         break;
 
       case 4: // Emergency Contacts & Terms
@@ -269,7 +291,8 @@ const Register = () => {
             phone: contact.phone,
             relationship: contact.relationship
           })),
-          role: formData.role
+          role: formData.role,
+          department_id: formData.departmentId || null
         }
       );
 
@@ -393,6 +416,7 @@ const Register = () => {
             formData={formData}
             errors={errors}
             onChange={handleInputChange}
+            departments={departments}
           />
         );
       case 4:

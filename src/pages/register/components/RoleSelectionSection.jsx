@@ -5,21 +5,53 @@ import Icon from '../../../components/AppIcon';
 const RoleSelectionSection = ({ 
   formData, 
   errors, 
-  onChange 
+  onChange,
+  departments = []
 }) => {
   const roleOptions = [
     { 
       value: 'resident', 
       label: 'Resident/Boarder',
       description: 'Community member who can report emergencies and receive alerts'
+    },
+    {
+      value: 'responder',
+      label: 'Responder',
+      description: 'Department field staff who respond to assigned incidents'
+    },
+    {
+      value: 'dispatcher',
+      label: 'Dispatcher',
+      description: 'Command-center staff who triage reports and assign departments'
+    },
+    {
+      value: 'department_admin',
+      label: 'Department Admin',
+      description: 'Manages one department and assigns its responders'
+    },
+    {
+      value: 'admin',
+      label: 'Administrator',
+      description: 'System administrator — approvals, access control, settings'
     }
   ];
+
+  // Roles that must pick a department at registration
+  const deptRoles = ['responder', 'department_admin'];
+  const needsDepartment = deptRoles.includes(formData?.role);
+
+  const departmentOptions = departments.map(d => ({
+    value: d.id,
+    label: d.name,
+  }));
 
   const getRoleIcon = (role) => {
     switch (role) {
       case 'resident': return 'Home';
       case 'responder': return 'Shield';
       case 'dispatcher': return 'Radio';
+      case 'department_admin': return 'Building2';
+      case 'admin': return 'Crown';
       default: return 'User';
     }
   };
@@ -44,6 +76,18 @@ const RoleSelectionSection = ({
           requirements: ['Valid ID verification', 'Emergency services training certificate', 'Department authorization'],
           timeline: '2-4 business days for approval'
         };
+      case 'department_admin':
+        return {
+          approval: true,
+          requirements: ['Valid ID verification', 'Department assignment', 'Administrator review'],
+          timeline: '3-5 business days for approval'
+        };
+      case 'admin':
+        return {
+          approval: true,
+          requirements: ['Valid ID verification', 'System administrator authorization'],
+          timeline: 'Reviewed only by existing administrators'
+        };
       default:
         return { approval: false, requirements: [], timeline: '' };
     }
@@ -58,7 +102,7 @@ const RoleSelectionSection = ({
         
         <Select
           label="Select Your Role"
-          description="Resident and boarder accounts are created here. Department responder and dispatcher access is assigned only by an Administrator."
+          description="Pick the access level you're applying for. Staff roles activate only after an administrator approves them."
           options={roleOptions}
           value={formData?.role}
           onChange={(value) => onChange({ target: { name: 'role', value } })}
@@ -68,6 +112,22 @@ const RoleSelectionSection = ({
           className="w-full"
         />
       </div>
+
+      {needsDepartment && (
+        <div>
+          <Select
+            label="Department"
+            description="Choose the department you belong to — an administrator still confirms the assignment at approval."
+            options={departmentOptions}
+            value={formData?.departmentId}
+            onChange={(value) => onChange({ target: { name: 'departmentId', value } })}
+            error={errors?.departmentId}
+            placeholder="Select your department..."
+            required
+            className="w-full"
+          />
+        </div>
+      )}
       {formData?.role && (
         <div className="bg-muted rounded-lg p-4 border border-border">
           <div className="flex items-start space-x-3">
