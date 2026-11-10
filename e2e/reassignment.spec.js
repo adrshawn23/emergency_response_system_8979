@@ -88,10 +88,14 @@ test.describe.serial('Reassignment requests', () => {
     await expect(page.getByText(`"${REASON}"`)).toBeVisible({ timeout: 10000 });
 
     // The banner row offers Reassign + Dismiss; dismiss marks it denied.
-    const row = page.locator('li', { hasText: DESC }).first();
+    // (The li shows the reason, not the report content — filter by it.)
+    const row = page.locator('li', { hasText: REASON }).first();
     await expect(row.getByRole('button', { name: 'Reassign' })).toBeVisible();
     await row.getByRole('button', { name: 'Dismiss' }).click();
-    await expect(page.getByText(`"${REASON}"`)).toHaveCount(0, { timeout: 10000 });
+    // The banner keeps resolved requests listed (like CDA declines) — the
+    // status pill flips to 'denied' instead of the row disappearing.
+    await expect(page.locator('li', { hasText: REASON })
+      .getByText('denied', { exact: true })).toBeVisible({ timeout: 10000 });
   });
 });
 
