@@ -23,7 +23,7 @@ const VERIFICATION_COPY = {
   pending: { tone: 'amber', label: 'Under review', text: 'Your ID submission is waiting for an administrator review. This usually takes 1–2 business days.' },
   under_review: { tone: 'amber', label: 'Under review', text: 'Your ID submission is being reviewed by an administrator.' },
   correction_required: { tone: 'red', label: 'Correction needed', text: 'The information on your ID did not match your registration. See the reason below, then resubmit a matching document.' },
-  needs_clarity: { tone: 'amber', label: 'Clearer photo needed', text: 'The reviewer could not read your ID clearly. Please upload a sharper, well-lit photo.' },
+  needs_clarity: { tone: 'amber', label: 'Clearer photo needed', text: 'The reviewer could not read your ID clearly. Re-upload exactly what the note below asks for — usually a sharper, well-lit photo.' },
   rejected: { tone: 'red', label: 'Not approved', text: 'Your registration could not be approved. You may resubmit a different document or contact the barangay office to appeal.' },
 };
 
@@ -157,7 +157,7 @@ export default function ResidentHome() {
               <p className="mt-1 text-sm text-slate-600">{vCopy?.text || 'Submit a clear photo of a valid ID to finish registration.'}</p>
               {(verification?.decision_reason || verification?.review_notes) && (
                 <p className="mt-2 rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700">
-                  <span className="font-semibold">Reviewer note: </span>{verification.decision_reason || verification.review_notes}
+                  <span className="font-semibold">{needsResubmit ? 'What to re-upload: ' : 'Reviewer note: '}</span>{verification.decision_reason || verification.review_notes}
                 </p>
               )}
               {needsResubmit || !verification ? (

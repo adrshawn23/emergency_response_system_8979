@@ -11,7 +11,6 @@ import UserAccessManager from './components/UserAccessManager';
 import PageAccessMatrix from './components/PageAccessMatrix';
 // Reports pulls in recharts via CommandAnalytics — lazy like the analytics card.
 const ReportsSection = lazy(() => import('./components/ReportsSection'));
-import PendingRegistrations from '../user-management/components/PendingRegistrations';
 import useIncidentAlarm from '../../hooks/useIncidentAlarm';
 import { isPointInBoundary } from '../../utils/geofence';
 import ResidentHome from '../resident-home';
@@ -387,25 +386,14 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
     fetchContacts();
   }, [profile?.id]);
 
-  // Fetch ID verifications (admin only)
+  // Fetch ID verifications (admin only). Runs on mount so the Residents &
+  // review nav badge + status tabs are accurate on any section; a realtime
+  // channel re-derives them live (spec 003 FR-009 — needs the
+  // 20261110140000 migration's publication add).
   useEffect(() => {
+    if (profile?.role !== 'admin') return;
+
     const fetchVerifications = async () => {
-      if (profile?.role !== 'admin' || section !== 'residents') return;
-
-      // Auto-reject: pending submissions that never delivered a document.
-      // 1h grace covers an in-flight registration upload; mirrored hourly by
-      // pg_cron (supabase/auto_reject_missing_id.sql) when enabled.
-      await supabase
-        .from('id_verifications')
-        .update({
-          verification_status: 'rejected',
-          review_notes: 'Auto-rejected: no ID document was submitted.',
-        })
-        .eq('verification_status', 'pending')
-        .is('id_document_url', null)
-        .is('document_storage_path', null)
-        .lt('created_at', new Date(Date.now() - 3600_000).toISOString());
-
       const { data } = await supabase
         .from('id_verifications')
         .select('*, user_profiles!id_verifications_user_id_fkey(full_name, email, phone, address, residency_type, birthdate)')
@@ -419,8 +407,74 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
       setIdVerifications(data);
     };
 
-    fetchVerifications();
+    const load = async () => {
+      // Auto-reject: pending submissions that never delivered a document.
+      // 1h grace covers an in-flight registration upload; mirrored hourly by
+      // pg_cron (supabase/auto_reject_missing_id.sql) when enabled.
+      if (section === 'residents') {
+        await supabase
+          .from('id_verifications')
+          .update({
+            verification_status: 'rejected',
+            review_notes: 'Auto-rejected: no ID document was submitted.',
+          })
+          .eq('verification_status', 'pending')
+          .is('id_document_url', null)
+          .is('document_storage_path', null)
+          .lt('created_at', new Date(Date.now() - 3600_000).toISOString());
+      }
+      await fetchVerifications();
+    };
+
+    load();
+    const ch = supabase
+      .channel('id-verifications-live')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'id_verifications' }, fetchVerifications)
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
   }, [profile?.role, section]);
+
+  const [registrantTab, setRegistrantTab] = useState('forApproval');
+
+  // Latest non-superseded verification per user — single source of truth for
+  // the four registrant views (spec 003).
+  const latestVerificationByUser = useMemo(() => {
+    const map = new Map();
+    (idVerifications || []).forEach(v => {
+      if (v.verification_status === 'superseded') return;
+      const prev = map.get(v.user_id);
+      if (!prev || new Date(v.created_at) > new Date(prev.created_at)) map.set(v.user_id, v);
+    });
+    return map;
+  }, [idVerifications]);
+
+  const registrantViews = useMemo(() => {
+    const views = { forApproval: [], returned: [], approved: [], rejected: [] };
+    latestVerificationByUser.forEach(v => {
+      const entry = { kind: 'verification', verification: v };
+      if (v.verification_status === 'pending' || v.verification_status === 'under_review') views.forApproval.push(entry);
+      else if (v.verification_status === 'needs_clarity' || v.verification_status === 'correction_required') views.returned.push(entry);
+      else if (v.verification_status === 'approved') views.approved.push(entry);
+      else if (v.verification_status === 'rejected') views.rejected.push(entry);
+    });
+    // Inactive profiles without any verification row are brand-new signups —
+    // they belong in For Approval. Users with a row are bucketed by its status
+    // above (returned/rejected users stay inactive, so this also dedupes them).
+    (pendingUsers || []).forEach(u => {
+      if (!latestVerificationByUser.has(u.id)) views.forApproval.push({ kind: 'pending', user: u });
+    });
+    return views;
+  }, [latestVerificationByUser, pendingUsers]);
+
+  // The reviewer's note on the previous revision — shown when a resubmitted
+  // registration reopens in For Approval (spec 003 US2).
+  const priorDecisionNote = useMemo(() => {
+    if (!selectedVerification?.user_id || (selectedVerification.submission_revision || 1) <= 1) return null;
+    const prev = (idVerifications || [])
+      .filter(v => v.user_id === selectedVerification.user_id && v.id !== selectedVerification.id)
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+    return prev ? (prev.decision_reason || prev.review_notes || null) : null;
+  }, [idVerifications, selectedVerification]);
 
   // review_verification() (migration 20261030101000) is the atomic server
   // path: decision + activation + audit in one transaction, with stale-
@@ -1090,7 +1144,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
   const idDocUrl = idDocIsDirect ? idDocRaw : idDocSignedUrl;
 
   return <div className="min-h-screen bg-slate-50 text-slate-900"><div className="flex min-h-screen">
-    <AppSidebar links={links.map(l => ({ ...l, badge: l.key === 'queue' ? pendingCount : l.key === 'residents' ? pendingUsers.length : undefined }))} profile={profile} signOut={signOut} />
+    <AppSidebar links={links.map(l => ({ ...l, badge: l.key === 'queue' ? pendingCount : l.key === 'residents' ? registrantViews.forApproval.length : undefined }))} profile={profile} signOut={signOut} />
     <main className="min-w-0 flex-1 pb-24 sm:pb-0"><header className="sticky top-0 z-30 flex h-20 items-center justify-between border-b border-slate-200/70 bg-white px-5  sm:px-8"><div><p className="text-xs font-medium  text-slate-400">Kalubihan emergency command</p><h1 className="text-lg font-bold">{current.title}</h1></div><div className="flex items-center gap-3"><NotificationBell userId={profile?.id} onOpenIncident={(id) => { const report = reports.find(r => r.id === id); if (report) handleReportClick(report); }}/></div></header><div className="mx-auto max-w-[1400px] p-5 sm:p-8"><p className="text-xs font-bold  text-taste-600">{current.eyebrow}</p><h2 className="mt-1 text-3xl font-bold tracking-tight">{current.title}</h2><p className="mt-2 text-sm text-slate-500">{current.description}</p>
       {section === 'queue' && <>
         <div className="mt-7 flex flex-wrap items-center justify-between gap-3">
@@ -1191,7 +1245,77 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
           )}
         </div>
       </div><div className="space-y-5"><div className="rounded-lg border border-slate-200/70 bg-white p-6"><h3 className="font-bold">Report summary</h3><p className="mt-3 text-sm text-slate-600">Your report will be immediately visible to dispatch. Verification happens in parallel, so even unverified reports are triaged for response.</p></div>{submitError && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{submitError}</div>}<button type="submit" disabled={loading || submitted || !profile?.id || !canReport} className="w-full rounded-xl bg-red-600 px-4 py-3.5 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed">{loading ? 'Submitting...' : submitted ? 'Report submitted' : !canReport ? 'Verification required to report' : 'Submit report'}</button>{submitted && <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-center"><Icon name="CheckCircle" size={32} className="text-emerald-600 mx-auto mb-2"/><h3 className="font-semibold text-emerald-900">Report submitted</h3><p className="mt-1 text-sm text-emerald-700">Report ID: {submittedReportId?.slice(0, 8)}<br/>Dispatch is reviewing your report now.</p></div>}</div></fieldset></form></>}
-      {section === 'residents' && <><PendingRegistrations pendingUsers={pendingUsers} onApproveUser={handlePendingApprove} onRejectUser={handlePendingReject} onReviewUser={handleReviewPendingUser} /><div className="mt-7 grid gap-5 lg:grid-cols-2"><div className="rounded-lg border border-slate-200/70 bg-white p-6"><div className="mb-4"><h3 className="font-bold">ID verification queue</h3><p className="text-sm text-slate-500">{idVerifications.filter(v => v.verification_status === 'pending').length} awaiting review</p></div><p className="mt-5 text-xs leading-5 text-slate-500">OCR assists review. High-confidence full matches are approved automatically; everything else — approval, clearer-upload requests, rejection — is decided by an authorized administrator.</p>{idVerifications.length === 0 ? <p className="mt-4 text-sm text-slate-500">No ID verifications to review.</p> : <div className="mt-4 space-y-3 max-h-64 overflow-y-auto">{idVerifications.map(verification => (<div key={verification.id} className="flex items-center justify-between rounded-lg border border-slate-200 p-3 hover:bg-slate-50 cursor-pointer" onClick={() => handleReviewClick(verification)}><div><p className="text-sm font-medium">{verification.user_profiles?.full_name || 'Unknown'}</p><p className="text-xs text-slate-500">{verification.user_profiles?.email}</p><p className="text-[10px] text-slate-400 mt-1">OCR Confidence: {verification.ocr_confidence}%</p></div><span className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase ${verification.verification_status === 'pending' ? 'bg-amber-100 text-amber-700' : verification.verification_status === 'approved' ? 'bg-emerald-100 text-emerald-700' : verification.verification_status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-700'}`}>{verification.verification_status}</span></div>))}</div>}</div><div className="rounded-lg border border-slate-200/70 bg-white p-6"><h3 className="font-bold">Account access</h3><p className="mt-1 text-sm text-slate-500">Department access cannot be self-granted.</p><div className="mt-5 text-sm text-slate-500">Manage departments via the Department Management page.</div></div><div className="rounded-lg border border-slate-200/70 bg-white p-6"><div><h3 className="font-bold">Community verification</h3><p className="text-sm text-slate-500">Duplicate prevention enabled</p></div><p className="mt-5 text-sm leading-6 text-slate-500">System automatically detects duplicate reports from the same location within a 5-minute window. Admins can merge or dismiss duplicates manually.</p><button className="mt-5 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold hover:bg-slate-50">View duplicates</button></div></div></>}
+      {section === 'residents' && <>
+        <div className="mb-5 flex flex-wrap gap-2" role="tablist" aria-label="Registration status">
+          {[
+            { key: 'forApproval', label: 'For Approval' },
+            { key: 'returned', label: 'Returned' },
+            { key: 'approved', label: 'Approved' },
+            { key: 'rejected', label: 'Rejected' },
+          ].map(t => (
+            <button key={t.key} role="tab" aria-selected={registrantTab === t.key}
+              onClick={() => setRegistrantTab(t.key)}
+              className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition ${registrantTab === t.key ? 'border-taste-500 bg-taste-50 text-taste-600' : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50'}`}>
+              {t.label}
+              <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${registrantTab === t.key ? 'bg-taste-500 text-white' : 'bg-slate-100 text-slate-500'}`}>{registrantViews[t.key].length}</span>
+            </button>
+          ))}
+        </div>
+
+        <div className="rounded-lg border border-slate-200/70 bg-white">
+          <div className="border-b border-slate-100 p-5">
+            <h3 className="font-bold">{{ forApproval: 'Registrations awaiting review', returned: 'Returned for clarification', approved: 'Approved registrations', rejected: 'Rejected registrations' }[registrantTab]}</h3>
+            <p className="text-sm text-slate-500">{{ forApproval: 'Open a registration to review the ID and decide inside the modal.', returned: 'Waiting on the applicant to re-upload — resubmissions land back in For Approval automatically.', approved: 'Final approvals — read-only record.', rejected: 'Final rejections — archived record.' }[registrantTab]}</p>
+          </div>
+          {registrantViews[registrantTab].length === 0 ? (
+            <p className="p-8 text-center text-sm text-slate-500">{{ forApproval: 'No registrations for approval.', returned: 'Nothing returned for clarification.', approved: 'No approved registrations yet.', rejected: 'No rejected registrations.' }[registrantTab]}</p>
+          ) : (
+            <div className="divide-y divide-slate-100">
+              {registrantViews[registrantTab].map(entry => {
+                const v = entry.kind === 'verification' ? entry.verification : null;
+                const u = entry.kind === 'pending' ? entry.user : null;
+                const status = v ? v.verification_status : 'pending';
+                const archived = status === 'rejected';
+                return (
+                  <button key={v ? v.id : u.id} type="button"
+                    onClick={() => v ? handleReviewClick(v) : handleReviewPendingUser(u)}
+                    className={`flex w-full items-center justify-between px-5 py-4 text-left transition hover:bg-slate-50 ${archived ? 'opacity-70' : ''}`}>
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-sm font-medium">{v ? (v.user_profiles?.full_name || 'Unknown') : (u?.full_name || u?.name || u?.email)}</p>
+                        {v?.submission_revision > 1 && status === 'pending' && (
+                          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase text-amber-700">Resubmitted</span>
+                        )}
+                        {archived && <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase text-slate-500">Archived</span>}
+                      </div>
+                      <p className="text-xs text-slate-500">{v ? v.user_profiles?.email : u?.email}</p>
+                      <p className="mt-1 text-[11px] text-slate-400">
+                        {status === 'approved' || status === 'rejected'
+                          ? `Decided ${v?.decision_at ? new Date(v.decision_at).toLocaleDateString() : '—'}${(v?.decision_reason || v?.review_notes) ? ` — ${v.decision_reason || v.review_notes}` : ''}`
+                          : `Submitted ${new Date(v ? v.created_at : u?.created_at).toLocaleDateString()}`}
+                      </p>
+                    </div>
+                    <span className={`ml-3 shrink-0 rounded-full px-2 py-1 text-[10px] font-bold uppercase ${status === 'pending' || status === 'under_review' ? 'bg-amber-100 text-amber-700' : status === 'approved' ? 'bg-emerald-100 text-emerald-700' : status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>{status === 'needs_clarity' || status === 'correction_required' ? 'returned' : status.replace('_', ' ')}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <div className="mt-7 grid gap-5 lg:grid-cols-2">
+          <div className="rounded-lg border border-slate-200/70 bg-white p-6">
+            <h3 className="font-bold">Account access</h3>
+            <p className="mt-1 text-sm text-slate-500">Department access cannot be self-granted.</p>
+            <div className="mt-5 text-sm text-slate-500">Manage departments via the Department Management page.</div>
+          </div>
+          <div className="rounded-lg border border-slate-200/70 bg-white p-6">
+            <div><h3 className="font-bold">Community verification</h3><p className="text-sm text-slate-500">Duplicate prevention enabled</p></div>
+            <p className="mt-5 text-sm leading-6 text-slate-500">System automatically detects duplicate reports from the same location within a 5-minute window. Admins can merge or dismiss duplicates manually.</p>
+            <button className="mt-5 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold hover:bg-slate-50">View duplicates</button>
+          </div>
+        </div>
+      </>}
       {section === 'departments' && <DepartmentManagementSection />}
       {section === 'reports' && <Suspense fallback={<div className="mt-7 h-40 animate-pulse rounded-lg border border-slate-200/70 bg-white" />}><ReportsSection /></Suspense>}
       {section === 'access' && <div className="mt-7 max-w-4xl space-y-5"><UserAccessManager /><PageAccessMatrix /></div>}
@@ -1390,6 +1514,15 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
                 </div>
               </div>
 
+              {selectedVerification.submission_revision > 1 && (
+                <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                  <Icon name="RotateCcw" size={16} className="mt-0.5 shrink-0 text-amber-600"/>
+                  <div>
+                    <p className="font-semibold">Resubmission — revision {selectedVerification.submission_revision}.</p>
+                    {priorDecisionNote && <p className="mt-1">Previously requested: {priorDecisionNote}</p>}
+                  </div>
+                </div>
+              )}
               {selectedVerification.user_profiles?.residency_type === 'boarder' && (
                 <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800 flex items-start gap-2">
                   <Icon name="BedDouble" size={16} className="mt-0.5 shrink-0 text-blue-600"/>
@@ -1426,6 +1559,12 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
                 />
               </div>
 
+              {['approved', 'rejected'].includes(selectedVerification.verification_status) ? (
+                <div className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+                  <p className="text-sm text-slate-600">Decision recorded{selectedVerification.decision_at ? ` on ${new Date(selectedVerification.decision_at).toLocaleDateString()}` : ''} — terminal, read-only.</p>
+                  <button onClick={() => setIsReviewModalOpen(false)} className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold hover:bg-slate-50">Done</button>
+                </div>
+              ) : (
               <div className="flex justify-end gap-2 pt-4 border-t border-slate-200">
                 {selectedVerification.id ? (
                   <>
@@ -1470,6 +1609,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
                   </>
                 )}
               </div>
+              )}
             </div>
           </div>
         </div>
