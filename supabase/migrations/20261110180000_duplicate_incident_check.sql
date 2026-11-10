@@ -13,7 +13,11 @@
 -- the report's lifetime — not a fixed number of minutes. A 12h recency cap
 -- keeps stale, never-closed rows from warning forever.
 
-create or replace function public.check_duplicate_incidents(
+-- Return type changed vs the first version (status column added) —
+-- CREATE OR REPLACE cannot alter a function's return shape.
+drop function if exists public.check_duplicate_incidents(double precision, double precision, text);
+
+create function public.check_duplicate_incidents(
   p_lat double precision,
   p_lng double precision,
   p_report_type text
@@ -21,6 +25,7 @@ create or replace function public.check_duplicate_incidents(
 returns table (
   id uuid,
   report_type text,
+  status text,
   location text,
   created_at timestamptz,
   distance_m double precision
@@ -33,6 +38,7 @@ as $$
     select
       r.id,
       r.report_type::text,
+      r.status::text,
       coalesce(r.attachments->>'location', '') as location,
       r.created_at,
       (

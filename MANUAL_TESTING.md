@@ -55,12 +55,15 @@ realtime checks.
    c. **Cancel** → nothing files; the dispatcher queue still shows only
       one incident.
    d. Repeat → **Submit anyway** → files (different incidents on the same
-      street stay possible — never a hard block).
-   e. Same GPS, **different type** (e.g. Medical) → **no** modal — fires
+      street stay possible while the first is still pending).
+   e. **Dispatcher assigns** the first incident → file a third same-type
+      report at the same GPS → **"This incident is already being
+      handled"** — hard block, no submit button; only **Got it** closes.
+   f. Same GPS, **different type** (e.g. Medical) → **no** modal — fires
       and medicals at one spot aren't duplicates.
-   f. Same GPS, **text-only location** (type the location, no **Use my
+   g. Same GPS, **text-only location** (type the location, no **Use my
       location**) → check is skipped — no coords to compare.
-   g. After the first incident is **resolved**, a new same-type report at
+   h. After the first incident is **resolved**, a new same-type report at
       the same spot warns **not** — resolved incidents don't count.
 
 ## Phase 2 — Dispatcher dispatches to a department
@@ -141,8 +144,8 @@ realtime checks.
 
 ## Pass criteria (one line each)
 
-- Duplicate submit warns the reporter when an open same-type incident
-  is within ~150 m (never blocks — "Submit anyway" still files it).
+- Duplicate submit: pending match warns (Cancel / Submit anyway);
+  dispatched match hard-blocks "already being handled" — no submit path.
 - Registration gates the department requirement + approval.
 - Incident → dispatch → dept-admin responder assignment works end to end.
 - Dept admin **requests** but never **directly reassigns**; the dispatcher

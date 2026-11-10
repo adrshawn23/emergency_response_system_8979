@@ -1443,7 +1443,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
           </div>
           <div className="rounded-lg border border-slate-200/70 bg-white p-6">
             <div><h3 className="font-bold">Duplicate prevention</h3><p className="text-sm text-slate-500">Active — reporter-side warning</p></div>
-            <p className="mt-5 text-sm leading-6 text-slate-500">When a resident submits a report, the system checks for an open same-type incident within ~150 m and warns the reporter that it may already be reported. They can cancel or still submit if it is a different incident.</p>
+            <p className="mt-5 text-sm leading-6 text-slate-500">When a resident submits a report, the system checks for an open same-type incident within ~150 m. If responders are already dispatched the report is blocked outright; a still-pending match only warns — the reporter can cancel or still submit if it is a different incident.</p>
           </div>
         </div>
       </>}
@@ -1853,38 +1853,56 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
       )}
 
       {/* Duplicate-incident warning — the same type of incident is already
-          open nearby; the reporter confirms theirs is different */}
+          open nearby. Still-pending matches only warn (the reporter can
+          confirm it's different); a match that's already dispatched
+          hard-blocks — a responder is on the way, a second report adds
+          nothing. */}
       {dupMatches && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-1050 p-4">
           <div className="bg-white rounded-2xl ring-1 ring-slate-900/5 shadow-2xl w-full max-w-md">
             <div className="flex items-center justify-between p-4 border-b border-slate-200">
-              <h3 className="font-bold text-lg">This incident may already be reported</h3>
+              <h3 className="font-bold text-lg">
+                {dupMatches.some(m => m.status !== 'pending')
+                  ? 'This incident is already being handled'
+                  : 'This incident may already be reported'}
+              </h3>
               <button onClick={() => setDupMatches(null)} aria-label="Close" className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100">
                 <Icon name="X" size={20} />
               </button>
             </div>
             <div className="p-4">
               <p className="text-sm text-slate-600">
-                An open <span className="capitalize font-semibold">{draft.type}</span> incident is already on record near your location — responders may already be on the way.
+                {dupMatches.some(m => m.status !== 'pending')
+                  ? <>A <span className="capitalize font-semibold">{draft.type}</span> incident near your location is already assigned and responders are on the way — your report isn't needed.</>
+                  : <>An open <span className="capitalize font-semibold">{draft.type}</span> incident is already on record near your location — responders may already be on the way.</>}
               </p>
               <ul className="mt-3 space-y-2">
                 {dupMatches.map(m => (
                   <li key={m.id} className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm">
                     <span className="capitalize font-semibold text-amber-800">{m.report_type}</span>
                     {m.location ? <span className="text-amber-800"> · {m.location}</span> : null}
+                    <span className="ml-1.5 rounded-full bg-amber-200/60 px-2 py-0.5 text-[10px] font-bold capitalize text-amber-900">{formatStatus(m.status)}</span>
                     <span className="block text-xs text-amber-700 mt-0.5">
                       ~{Math.round(m.distance_m)} m away · reported {formatTimeAgo(m.created_at)}
                     </span>
                   </li>
                 ))}
               </ul>
-              <p className="mt-3 text-xs text-slate-500">
-                If your incident is different, you can still submit it.
-              </p>
-              <div className="mt-4 flex justify-end gap-2">
-                <button onClick={() => setDupMatches(null)} className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold hover:bg-slate-50">Cancel</button>
-                <button onClick={() => { setDupMatches(null); insertReport(); }} className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700">Submit anyway</button>
-              </div>
+              {dupMatches.some(m => m.status !== 'pending') ? (
+                <div className="mt-4 flex justify-end">
+                  <button onClick={() => setDupMatches(null)} className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-900">Got it</button>
+                </div>
+              ) : (
+                <>
+                  <p className="mt-3 text-xs text-slate-500">
+                    If your incident is different, you can still submit it.
+                  </p>
+                  <div className="mt-4 flex justify-end gap-2">
+                    <button onClick={() => setDupMatches(null)} className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold hover:bg-slate-50">Cancel</button>
+                    <button onClick={() => { setDupMatches(null); insertReport(); }} className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700">Submit anyway</button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
