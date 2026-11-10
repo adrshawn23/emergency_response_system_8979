@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Icon from '../../../components/AppIcon';
 import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -29,6 +29,12 @@ export default function PageAccessMatrix() {
   const { pageRoles } = useAuth();
   const [busyKey, setBusyKey] = useState('');
   const [error, setError] = useState('');
+  // Optimistic state: pageRoles only refreshes via realtime, so without this
+  // a toggle visibly snaps back until the echo arrives (or forever when
+  // realtime drops the event). Cleared whenever pageRoles actually changes.
+  const [overrides, setOverrides] = useState({});
+  useEffect(() => setOverrides({}), [pageRoles]);
+  const rolesFor = (key) => overrides[key] ?? pageRoles[key] ?? [];
 
   const toggle = async (pageKey, role) => {
     setBusyKey(`${pageKey}:${role}`);
@@ -47,7 +53,7 @@ export default function PageAccessMatrix() {
       setBusyKey('');
       return;
     }
-    const current = row?.allowed_roles ?? pageRoles[pageKey] ?? [];
+    const current = row?.allowed_roles ?? rolesFor(pageKey);
     const next = current.includes(role)
       ? current.filter(r => r !== role)
       : [...current, role];
@@ -57,6 +63,7 @@ export default function PageAccessMatrix() {
       .from('page_permissions')
       .upsert({ page_key: pageKey, allowed_roles: next });
     if (err) setError(err.message);
+    else setOverrides(prev => ({ ...prev, [pageKey]: next }));
     setBusyKey('');
   };
 
@@ -90,7 +97,7 @@ export default function PageAccessMatrix() {
             <tr key={p.key} className="border-t border-slate-100">
               <td className="py-2.5 font-medium text-slate-700">{p.label}</td>
               {EDITABLE_ROLES.map(role => {
-                const allowed = (pageRoles[p.key] || []).includes(role);
+                const allowed = rolesFor(p.key).includes(role);
                 const busy = busyKey === `${p.key}:${role}`;
                 return (
                   <td key={role} className="py-2.5 text-center">

@@ -12,6 +12,7 @@ const ROLE_OPTIONS = ['resident', 'dispatcher', 'responder', 'department_admin',
 const UserAccessManager = () => {
   const { profile } = useAuth();
   const [users, setUsers] = useState([]);
+  const [query, setQuery] = useState('');
   const [busyId, setBusyId] = useState(null);
   const [message, setMessage] = useState('');
   // Suspension must carry a reason — shown to the user + emailed to them
@@ -77,9 +78,21 @@ const UserAccessManager = () => {
       <h3 className="font-bold">User access & roles</h3>
       <p className="mt-1 text-sm text-slate-500">Changes apply to the user's live session immediately. Your own role and status cannot be edited.</p>
       {message && <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-600">{message}</p>}
-      <div className="mt-4 max-h-80 space-y-2 overflow-y-auto">
-        {users.length === 0 && !message && <p className="text-sm text-slate-500">No users found.</p>}
-        {users.map(u => {
+      <input
+        type="search"
+        value={query}
+        onChange={e => setQuery(e.target.value)}
+        placeholder="Search by name, email, or role…"
+        className="mt-3 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+      />
+      <div className="mt-3 max-h-80 space-y-2 overflow-y-auto">
+        {(() => {
+          const q = query.trim().toLowerCase();
+          const filtered = q
+            ? users.filter(u => [u.full_name, u.first_name, u.last_name, u.email, u.role].some(v => v?.toLowerCase().includes(q)))
+            : users;
+          if (filtered.length === 0) return <p className="text-sm text-slate-500">{users.length === 0 && !message ? 'No users found.' : 'No users match your search.'}</p>;
+          return filtered.map(u => {
           const isSelf = u.id === profile?.id;
           const suspended = u.account_status === 'suspended';
           const name = u.full_name || [u.first_name, u.last_name].filter(Boolean).join(' ') || 'Unnamed';
@@ -116,7 +129,8 @@ const UserAccessManager = () => {
               </div>
             </div>
           );
-        })}
+          });
+        })()}
       </div>
 
       {/* Suspension reason — required; the user sees it on their suspended
