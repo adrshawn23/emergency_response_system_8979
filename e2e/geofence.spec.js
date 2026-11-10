@@ -1,11 +1,12 @@
 import { test, expect } from '@playwright/test';
-import { deleteReportsByContent, getReportServiceArea } from './helpers.js';
+import { deleteReportsByContent, getReportServiceArea, submitIncident } from './helpers.js';
 
 /**
  * Geofence role scoping:
  *   resident   -> boundary check applies (inside/outside flag + outside warning)
  *   dispatcher -> bypasses geofence (no warning, service_area_status 'staff')
- *   admin      -> bypasses geofence (no warning, service_area_status 'staff')
+ *   responder  -> bypasses geofence (no warning, service_area_status 'staff')
+ *   (admin is intentionally excluded from 'new' by SECTION_ROLES)
  *
  * Active boundary: the real Barangay Kalubihan polygon
  *   lat 10.2935-10.2996, lng 123.8955-123.9006 — see
@@ -22,13 +23,11 @@ async function login(page, email, password) {
   await page.fill('input[type="password"]', password);
   await page.click('button[type="submit"]');
   await page.waitForURL('/', { timeout: 60000 });
+  // The geofence boundary fetches on workspace mount — the GPS callback
+  // computes serviceAreaStatus against it, so let it settle first.
+  await page.waitForLoadState('networkidle');
 }
 
-async function submitIncident(page, description) {
-  await page.fill('textarea', description);
-  await page.click('button[type="submit"]');
-  await expect(page.getByRole('heading', { name: 'Report submitted' })).toBeVisible({ timeout: 30000 });
-}
 
 test.describe('Geofence: resident is affected', () => {
   test.use({ geolocation: OUTSIDE, permissions: ['geolocation'], viewport: { width: 1280, height: 800 } });
@@ -42,7 +41,7 @@ test.describe('Geofence: resident is affected', () => {
     await expect(page.locator('text=outside the Barangay Kalubihan service area'))
       .toBeVisible({ timeout: 30000 });
 
-    await submitIncident(page, desc);
+    await submitIncident(page, { description: desc });
     await expect.poll(() => getReportServiceArea(desc), { timeout: 15000 }).toBe('outside');
     await deleteReportsByContent(desc, 'resident@example.com', 'resident123');
     await page.goto('/login');
@@ -63,7 +62,7 @@ test.describe('Geofence: resident inside boundary', () => {
     await expect(page.locator('text=outside the Barangay Kalubihan service area'))
       .toBeHidden();
 
-    await submitIncident(page, desc);
+    await submitIncident(page, { description: desc });
     await expect.poll(() => getReportServiceArea(desc), { timeout: 15000 }).toBe('inside');
     await deleteReportsByContent(desc, 'resident@example.com', 'resident123');
     await page.goto('/login');
@@ -75,17 +74,14 @@ test.describe('Geofence: staff bypass', () => {
 
   for (const [email, password, label] of [
     ['dispatcher@emergency.gov', 'dispatcher123', 'dispatcher'],
-    ['admin@emergency.gov', 'admin123', 'admin'],
+    ['responder@emergency.gov', 'responder123', 'responder'],
   ]) {
     test(`${label} outside boundary bypasses geofence`, async ({ page }) => {
       const desc = `E2E geo ${label} ${Date.now()}`;
       await login(page, email, password);
-      // Click and wait for navigation atomically — otherwise a slow dashboard
-      // mount can swallow the sidebar click before handlers attach.
-      await Promise.all([
-        page.waitForURL('/emergency-report'),
-        page.click('button[title="New incident"]'),
-      ]);
+      // URL nav — the sidebar no longer exposes a title="New incident" button.
+      await page.goto('/emergency-report');
+      await page.waitForURL('/emergency-report');
 
       // Staff get neutral GPS text — no outside-boundary warning
       await expect(page.locator('text=Current GPS location captured'))
@@ -93,7 +89,7 @@ test.describe('Geofence: staff bypass', () => {
       await expect(page.locator('text=outside the Barangay Kalubihan service area'))
         .toBeHidden();
 
-      await submitIncident(page, desc);
+      await submitIncident(page, { description: desc });
       await expect.poll(() => getReportServiceArea(desc), { timeout: 15000 }).toBe('staff');
       await deleteReportsByContent(desc, email, password);
       await page.goto('/login');

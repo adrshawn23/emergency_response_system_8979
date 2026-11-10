@@ -17,6 +17,9 @@ const EMAIL = `e2e.signup.${TS}@kalubihan.ph`;
 const FIRST = 'E2E';
 const LAST = `Signup${TS}`;
 const PASSWORD = 'Test@1234';
+// Set by Phase 1 — when email confirmation is ON the user_profiles row only
+// materializes after OTP verification, which a headless test cannot complete.
+let otpGated = false;
 
 async function login(page, email, password) {
   await page.goto('/');
@@ -35,13 +38,13 @@ test.describe.serial('Signup lifecycle (register -> approve -> first login)', ()
   test('Phase 1 (anonymous): register as resident with Kalubihan address', async ({ page }) => {
     await page.goto('/register');
 
-    // Step 1 — Personal Information
+    // Step 1 — Personal Information (sitio is a Kalubihan-only dropdown)
     await page.locator('input[name="firstName"]').fill(FIRST);
     await page.locator('input[name="lastName"]').fill(LAST);
     await page.locator('input[name="email"]').fill(EMAIL);
     await page.locator('input[name="phone"]').fill('09171234567');
     await page.locator('input[name="dateOfBirth"]').fill('1995-06-15');
-    await page.locator('input[name="address"]').fill('456 E2E Lane, Brgy Kalubihan, Cebu City');
+    await page.locator('select[name="sitio"]').selectOption('Kalubihan Proper');
     await page.click('button:has-text("Continue")');
 
     // Step 2 — Account Security
@@ -54,60 +57,52 @@ test.describe.serial('Signup lifecycle (register -> approve -> first login)', ()
     await page.locator('div.absolute.z-50').getByText('Resident/Boarder').click();
     await page.click('button:has-text("Continue")');
 
-    // Step 4 — ID upload (input is visually hidden)
-    await page.setInputFiles('input[type="file"]', {
-      name: 'id.png',
-      mimeType: 'image/png',
-      buffer: Buffer.from('fake-id-image'),
-    });
-    await page.click('button:has-text("Continue")');
-
-    // Step 5 — Terms (checkboxes are sr-only)
+    // Step 4 — Emergency contacts (optional) + Terms checkboxes
     const terms = page.locator('input[type="checkbox"]');
     const count = await terms.count();
     for (let i = 0; i < count; i++) await terms.nth(i).check({ force: true });
     await page.click('button:has-text("Create Account")');
 
-    // Redirected to login with the success notice
-    await page.waitForURL('/login', { timeout: 30000 });
+    // Email confirmation ON -> 6-digit code screen; OFF -> /login redirect.
+    // Either proves registration reached the backend.
+    await expect(
+      page.getByLabel('Verification code').or(page.locator('form input[type="email"]'))
+    ).toBeVisible({ timeout: 60000 });
+    otpGated = await page.getByLabel('Verification code').isVisible();
   });
 
   test('Phase 2 (admin): account appears under Pending Approvals -> approve', async ({ page }) => {
+    test.skip(otpGated, 'email confirmation required — no profile exists until OTP verify');
     await login(page, 'admin@emergency.gov', 'admin123');
     await page.waitForURL('/', { timeout: 60000 });
     await page.goto('/user-management');
 
-    // Pending Registrations panel renders directly in the residents section
-    await expect(page.getByRole('heading', { name: 'Pending Registrations' })).toBeVisible({ timeout: 30000 });
+    // Spec-003: pending accounts sit in the For Approval tab; decisions are
+    // modal-only. New signups without an ID row appear as pending-user rows.
+    await expect(page.getByRole('tab', { name: /For Approval/ })).toBeVisible({ timeout: 30000 });
 
-    // Real profile rows render email (name/requestedRole are mock-only fields).
-    // The same email also appears in the ID verification queue card — filter
-    // by the Approve button to isolate the pending registration row.
-    const card = page.locator('div.p-6')
-      .filter({ hasText: EMAIL })
-      .filter({ has: page.locator('button:has-text("Approve")') });
-    await expect(card).toBeVisible({ timeout: 30000 });
+    const row = page.getByRole('button', { name: new RegExp(EMAIL.replace(/[.@]/g, '\\$&')) });
+    await expect(row).toBeVisible({ timeout: 30000 });
+    await row.click();
 
-    await card.locator('button:has-text("Approve")').click();
+    await expect(page.getByText('Review ID Verification')).toBeVisible({ timeout: 15000 });
+    await page.getByRole('button', { name: 'Approve & Activate' }).click();
+    await expect(page.getByText('Review ID Verification')).toBeHidden({ timeout: 15000 });
 
-    // Card leaves the pending list (the ID verification queue card for the
-    // same email stays — that is a different, expected panel)
-    await expect(card).toBeHidden({ timeout: 30000 });
+    // Row leaves the For Approval list
+    await expect(row).toBeHidden({ timeout: 30000 });
   });
 
   test('Phase 3 (resident): first login — portal or email-confirmation gate', async ({ page }) => {
     await login(page, EMAIL, PASSWORD);
 
     // If the project does not require email confirmation, the resident lands
-    // on their portal. If it does, login is correctly refused with a
-    // "confirm your email" style error — either proves the gate works.
-    const portal = page.locator('text=Kalubihan Emergency');
-    const confirmGate = page.locator('text=/confirm|verification|verify/i').first();
+    // on their portal. If it does, login is refused with "Email not confirmed"
+    // — either proves the gate works. (The login page also carries the
+    // "Kalubihan Emergency" brand, so match the unique portal tagline instead.)
+    const portal = page.locator('text=Help is one report away');
+    const confirmGate = page.locator('text=Email not confirmed');
 
     await expect(portal.or(confirmGate)).toBeVisible({ timeout: 60000 });
-
-    if (await portal.isVisible()) {
-      await expect(page.locator('text=Help is one report away')).toBeVisible();
-    }
   });
 });

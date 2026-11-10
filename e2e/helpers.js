@@ -6,6 +6,35 @@ import { createClient } from '@supabase/supabase-js';
  * Reports are only deletable by their reporter (residents_manage_own_reports),
  * so this signs in as dispatcher — the account the E2E tests submit reports with.
  */
+// 1×1 PNG for photo-evidence fields (report composer requires ≥1 photo for
+// residents post-F-03; attaching one is harmless for staff too).
+export const EVIDENCE_PNG = {
+  name: 'evidence.png',
+  mimeType: 'image/png',
+  buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64'),
+};
+
+/**
+ * Submit a report via the dashboard 'new' composer (/emergency-report).
+ * The form requires Incident location + What is happening? (submitIncident
+ * silently returns without them); residents also need ≥1 photo (F-03).
+ */
+export async function submitIncident(page, { location, description }) {
+  if (location) await page.getByLabel('Incident location').fill(location);
+  await page.getByLabel('What is happening?').fill(description);
+  await page.locator('input[type="file"]').setInputFiles(EVIDENCE_PNG);
+  // Button is disabled until profile.id loads — clicking early is a no-op.
+  const submit = page.getByRole('button', { name: 'Submit report' });
+  await submit.waitFor({ state: 'visible', timeout: 30000 });
+  await page.waitForFunction(
+    el => el && !el.disabled,
+    await submit.elementHandle(),
+    { timeout: 30000 }
+  );
+  await submit.click();
+  await page.getByRole('heading', { name: 'Report submitted' }).waitFor({ timeout: 30000 });
+}
+
 export async function deleteReportsByContent(
   content,
   email = 'dispatcher@emergency.gov',
@@ -173,6 +202,48 @@ export async function createReport(content, status = 'pending', location = 'E2E 
   });
   await sb.auth.signOut();
   if (error) console.warn(`seed: could not create report "${content}": ${error.message}`);
+}
+
+/**
+ * Seeds a pending cross_department_assistance row for the newest report
+ * matching `content`, pointed at the first department. The UI renders these
+ * in the queue's "Assistance requests" banner; requested_by = dispatcher.
+ */
+export async function createAssistanceRequest(content) {
+  const sb = client();
+  const user = await signInWithRetry(sb, 'dispatcher@emergency.gov', 'dispatcher123');
+  const { data: reports } = await sb
+    .from('emergency_reports')
+    .select('id')
+    .eq('content', content)
+    .order('created_at', { ascending: false })
+    .limit(1);
+  const { data: depts } = await sb.from('departments').select('id').limit(1);
+  if (reports?.[0] && depts?.[0]) {
+    const { error } = await sb.from('cross_department_assistance').insert({
+      report_id: reports[0].id,
+      assisting_department_id: depts[0].id,
+      requested_by: user.id,
+      status: 'pending',
+      notes: 'e2e seed',
+    });
+    if (error) console.warn(`seed: could not insert CDA row: ${error.message}`);
+  } else {
+    console.warn('seed: CDA insert skipped — report or department missing');
+  }
+  await sb.auth.signOut();
+}
+
+/** Removes seeded CDA rows (notes = 'e2e seed') as dispatcher. */
+export async function deleteAssistanceRequests() {
+  const sb = client();
+  await signInWithRetry(sb, 'dispatcher@emergency.gov', 'dispatcher123');
+  const { error } = await sb
+    .from('cross_department_assistance')
+    .delete()
+    .eq('notes', 'e2e seed');
+  await sb.auth.signOut();
+  if (error) console.warn(`cleanup: could not delete CDA rows: ${error.message}`);
 }
 
 /**

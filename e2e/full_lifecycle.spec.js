@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { deleteReportsByContent } from './helpers.js';
+import { deleteReportsByContent, submitIncident, assignResponderToReport } from './helpers.js';
 
 /**
  * Complete incident lifecycle, end to end:
@@ -23,7 +23,14 @@ async function login(page, email, password) {
 }
 
 async function signOut(page) {
-  await page.locator('button[aria-label="Sign out"], button[title="Sign out"]').first().click();
+  // The sidebar Sign-out icon is not clickable at this viewport — clear the
+  // supabase session keys and land on /login instead (workflow.spec.js pattern).
+  await page.evaluate(() => {
+    Object.keys(localStorage)
+      .filter(k => k.startsWith('sb-'))
+      .forEach(k => localStorage.removeItem(k));
+  });
+  await page.goto('/login');
   await page.waitForURL('/login', { timeout: 30000 });
 }
 
@@ -36,6 +43,7 @@ test.describe.serial('Full incident lifecycle (resident -> dispatch -> responder
 
   test('Phase 1 (resident): create incident', async ({ page }) => {
     await login(page, 'resident@example.com', 'resident123');
+    await page.waitForLoadState('networkidle'); // geofence boundary must load before GPS computes
 
     // ResidentHome -> "Report an emergency" -> /emergency-report (section 'new')
     await Promise.all([
@@ -45,11 +53,7 @@ test.describe.serial('Full incident lifecycle (resident -> dispatch -> responder
 
     await page.getByLabel('Emergency type').selectOption('fire');
     await page.getByLabel('Priority').selectOption('high');
-    await page.getByLabel('Incident location').fill('789 Lifecycle Road');
-    await page.getByLabel('What is happening?').fill(DESC);
-    await page.click('button:has-text("Submit report")');
-
-    await expect(page.getByRole('heading', { name: 'Report submitted' })).toBeVisible({ timeout: 30000 });
+    await submitIncident(page, { location: '789 Lifecycle Road', description: DESC });
     await signOut(page);
   });
 
@@ -61,45 +65,29 @@ test.describe.serial('Full incident lifecycle (resident -> dispatch -> responder
     await expect(row).toBeVisible({ timeout: 30000 });
     await expect(row.locator('span.capitalize')).toHaveText('pending');
 
-    // Open the assign modal
+    // Open the assign modal — dispatchers get ONE dept-only select (the
+    // responder pick belongs to the dept admin; Phase 2.5 covers it by API).
     await row.locator('button:has-text("Assign")').click();
     const modal = page.locator('div.fixed.inset-0')
       .filter({ has: page.locator('h3:has-text("Assign Incident")') });
     await expect(modal.locator('h3:has-text("Assign Incident")')).toBeVisible();
+    await expect(modal.locator('select')).toHaveCount(1);
 
     const deptSelect = modal.locator('select').first();
-    const responderSelect = modal.locator('select').nth(1);
-
-    // Wait for async fetches: departments first, then responders populate
-    // per selected department. <option> elements are never 'visible', so
-    // wait for 'attached'.
     await deptSelect.locator('option').nth(1).waitFor({ state: 'attached', timeout: 30000 });
-    await responderSelect.locator('option').nth(1).waitFor({ state: 'attached', timeout: 30000 });
 
-    // Scan departments until one yields responder options
-    const deptValues = await deptSelect.locator('option').evaluateAll(opts =>
-      opts.map(o => o.getAttribute('value')).filter(Boolean)
-    );
-    let deptFound = false;
-    for (const v of deptValues) {
-      await deptSelect.selectOption(v);
-      await page.waitForTimeout(300); // React re-filters responder options
-      if ((await responderSelect.locator('option:not([value=""])').count()) > 0) {
-        deptFound = true;
-        break;
-      }
-    }
-    expect(deptFound, 'no department has assignable responders').toBe(true);
-
-    const responderValue = await responderSelect
-      .locator('option:not([value=""])').first().getAttribute('value');
-    await responderSelect.selectOption(responderValue);
-    await modal.getByRole('button', { name: 'Assign' }).click();
+    // Pick any real department — Phase 2.5 assigns the responder directly.
+    const deptValue = await deptSelect.locator('option:not([value=""])').first().getAttribute('value');
+    await deptSelect.selectOption(deptValue);
+    await modal.getByRole('button', { name: 'Assign department' }).click();
 
     // Modal closes; the row now shows 'assigned' and offers Resolve
     await expect(modal).toBeHidden();
     await expect(row.locator('span.capitalize')).toHaveText('assigned', { timeout: 30000 });
     await expect(row.locator('button:has-text("Resolve")')).toBeVisible();
+
+    // Dept-admin stand-in: write assigned_to for the resident-facing responder.
+    await assignResponderToReport(DESC, 'responder@emergency.gov');
 
     await signOut(page);
   });

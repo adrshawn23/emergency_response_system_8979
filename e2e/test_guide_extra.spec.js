@@ -3,6 +3,8 @@ import {
   deleteReportsByContent,
   ensurePendingVerification,
   createReport,
+  createAssistanceRequest,
+  deleteAssistanceRequests,
 } from './helpers.js';
 
 /**
@@ -31,28 +33,23 @@ async function login(page, email, password) {
 test.describe('TESTING.md remaining tests', () => {
   test.use({ viewport: { width: 1280, height: 800 } });
 
-  test('Test 6: Cross-department assistance modal', async ({ page }) => {
+  test('Test 6: Cross-department assistance banner', async ({ page }) => {
+    // The manual request modal is gone — CDA rows are created by the
+    // auto-dispatch trigger on assignment (needs ≥2 depts, so seed the row
+    // directly) and surface in the queue's amber banner.
+    const desc = `E2E assist ${Date.now()}`;
+    await createReport(desc, 'pending');
+    await createAssistanceRequest(desc);
+
     await login(page, 'dispatcher@emergency.gov', 'dispatcher123');
     await page.click('button[title="Incident queue"]');
-    await page.waitForSelector('div.grid.cursor-pointer', { timeout: 30000 });
 
-    // Any non-resolved incident row has the assistance (users) icon button
-    const assistBtn = page.locator('button[title="Request cross-department assistance"]').first();
-    await expect(assistBtn).toBeVisible({ timeout: 30000 });
-    await assistBtn.click();
+    await expect(page.locator('text=Assistance requests')).toBeVisible({ timeout: 30000 });
+    // Banner row: report id, target dept, requester, pending status chip
+    await expect(page.locator('text=requested by').first()).toBeVisible();
 
-    const modal = page.locator('div.fixed.inset-0');
-    await expect(modal.locator('h3:has-text("Request Assistance")')).toBeVisible();
-
-    // Select the first department checkbox, then Request
-    const checkbox = modal.locator('input[type="checkbox"]').first();
-    await expect(checkbox).toBeVisible();
-    await checkbox.check();
-    await modal.locator('button:has-text("Request")').click();
-
-    // Modal closes after request
-    await expect(modal.locator('h3:has-text("Request Assistance")')).toBeHidden();
-
+    await deleteAssistanceRequests();
+    await deleteReportsByContent(desc);
     await page.goto('/login');
   });
 
@@ -60,7 +57,8 @@ test.describe('TESTING.md remaining tests', () => {
     await login(page, 'dispatcher@emergency.gov', 'dispatcher123');
     await page.click('button[title="Profile"]');
 
-    await page.click('button:has-text("Add Contact")');
+    // Profile re-renders keep Playwright's stability check from settling — force it
+    await page.locator('button:has-text("Add Contact")').click({ force: true });
     const modal = page.locator('div.fixed.inset-0');
     await expect(modal.locator('h3:has-text("Add Emergency Contact")')).toBeVisible();
 
@@ -70,8 +68,10 @@ test.describe('TESTING.md remaining tests', () => {
     await modal.locator('input[placeholder="Phone number"]').fill('09948270026');
     await modal.locator('button:has-text("Add Contact")').click();
 
-    // Contact appears in list
-    const row = page.locator('div.rounded-lg.border').filter({ hasText: contactName });
+    // Contact appears in list (the name also matches the parent card — take
+    // the innermost row)
+    const row = page.locator('div.flex.items-center.justify-between.rounded-lg.border')
+      .filter({ hasText: contactName }).first();
     await expect(row).toBeVisible();
 
     // Delete removes it
@@ -101,17 +101,22 @@ test.describe('TESTING.md remaining tests', () => {
     // The badge query resolves before the filtered grid's rows land, so
     // poll the row count until it settles instead of sampling once.
     await page.click('button:has-text("pending")');
-    const badgeText = (await page.locator('button[title="Incident queue"] span').last().textContent()).trim();
+    // The badge is a nested span fed by pendingCount, which lands after the
+    // reports fetch — wait for it to render before reading the number.
+    const badge = page.locator('button[title="Incident queue"] span.rounded-full').first();
+    await expect(badge).toBeVisible({ timeout: 30000 });
+    const badgeNum = Number(await badge.textContent());
     const rows = page.locator('div.grid.cursor-pointer');
-    await expect.poll(() => rows.count(), { timeout: 30000 }).toBe(Number(badgeText));
+    await expect.poll(() => rows.count(), { timeout: 30000 }).toBe(badgeNum);
 
-    // Each status filter shows only matching rows
-    for (const status of ['assigned', 'in progress', 'resolved']) {
-      await page.click(`button:has-text("${status}")`);
+    // Each status filter shows only matching rows — the button text is
+    // already formatted ('in progress' renders for the 'in-progress' value).
+    for (const [filter, chip] of [['assigned', 'assigned'], ['in progress', 'in progress'], ['resolved', 'resolved']]) {
+      await page.click(`button:has-text("${filter}")`);
       const rows = page.locator('div.grid.cursor-pointer');
       const n = await rows.count();
       for (let i = 0; i < n; i++) {
-        await expect(rows.nth(i).locator('span.capitalize').last()).toHaveText(status);
+        await expect(rows.nth(i).locator('span.capitalize').last()).toHaveText(chip);
       }
     }
 
@@ -150,10 +155,10 @@ test.describe('Test 11: Duplicate name prevention', () => {
     // Step 1 - Personal Information ('Shawn Michael Dagatan' is an existing profile)
     await page.locator('input[name="firstName"]').fill('Shawn Michael');
     await page.locator('input[name="lastName"]').fill('Dagatan');
-    await page.locator('input[name="email"]').fill(`dup${Date.now()}@example.com`);
+    await page.locator('input[name="email"]').fill(`dup${Date.now()}@kalubihan.ph`);
     await page.locator('input[name="phone"]').fill('09948270026');
     await page.locator('input[name="dateOfBirth"]').fill('1990-01-01');
-    await page.locator('input[name="address"]').fill('123 Test Street, Brgy Kalubihan, Cebu City');
+    await page.locator('select[name="sitio"]').selectOption('Kalubihan Proper');
     await page.click('button:has-text("Continue")');
 
     // Step 2 - Account Security (needs upper, lower, digit, special char)
@@ -167,15 +172,7 @@ test.describe('Test 11: Duplicate name prevention', () => {
     await page.locator('div.absolute.z-50').getByText('Resident/Boarder').click();
     await page.click('button:has-text("Continue")');
 
-    // Step 4 - Identity Verification (file input is visually hidden)
-    await page.setInputFiles('input[type="file"]', {
-      name: 'id.png',
-      mimeType: 'image/png',
-      buffer: Buffer.from('fake-id-image'),
-    });
-    await page.click('button:has-text("Continue")');
-
-    // Step 5 - Terms (checkbox inputs are sr-only, force-check)
+    // Step 4 - Emergency contacts (optional) + Terms checkboxes
     const terms = page.locator('input[type="checkbox"]');
     const count = await terms.count();
     for (let i = 0; i < count; i++) await terms.nth(i).check({ force: true });
@@ -195,12 +192,13 @@ test.describe.serial('ID verification review (Tests 13-15)', () => {
   const openReviewModal = async (page) => {
     await login(page, 'admin@emergency.gov', 'admin123');
     await page.click('button[title="Residents & review"]');
-    const card = page.locator('div.rounded-lg.border')
-      .filter({ hasText: 'OCR Confidence' })
-      .filter({ hasText: 'pending' })
-      .first();
-    await expect(card).toBeVisible({ timeout: 30000 });
-    await card.click();
+    // Spec-003: pending rows live under the For Approval tab as row buttons
+    // tagged 'pending' — the seeded row is the admin's own pending verification.
+    await expect(page.getByRole('tab', { name: /For Approval/ })).toBeVisible({ timeout: 30000 });
+    const row = page.getByRole('button', { name: /admin@emergency\.gov/ })
+      .filter({ hasText: 'pending' }).first();
+    await expect(row).toBeVisible({ timeout: 30000 });
+    await row.click();
     const modal = page.locator('div.fixed.inset-0');
     await expect(modal.locator('h3:has-text("Review ID Verification")')).toBeVisible();
     return modal;
@@ -208,32 +206,34 @@ test.describe.serial('ID verification review (Tests 13-15)', () => {
 
   test('Test 13: Approve & Activate', async ({ page }) => {
     const modal = await openReviewModal(page);
-    await expect(modal.locator('text=OCR Confidence').first()).toBeVisible();
     await modal.locator('button:has-text("Approve & Activate")').click();
     await expect(modal).toBeHidden();
-    await expect(page.locator('div.rounded-lg.border')
-      .filter({ hasText: 'OCR Confidence' })
-      .filter({ hasText: 'approved' }).first()).toBeVisible();
+    await page.getByRole('tab', { name: /Approved/ }).click();
+    await expect(page.getByRole('button', { name: /admin@emergency\.gov/ })
+      .filter({ hasText: 'approved' }).first()).toBeVisible({ timeout: 30000 });
     await page.goto('/login');
   });
 
   test('Test 14: Reject', async ({ page }) => {
     const modal = await openReviewModal(page);
+    // Spec-003: a reviewer remark is required for Reject / Request clarity.
+    await modal.locator('#reviewRemark').fill('E2E rejection — unclear document');
     await modal.locator('button:has-text("Reject")').click();
     await expect(modal).toBeHidden();
-    await expect(page.locator('div.rounded-lg.border')
-      .filter({ hasText: 'OCR Confidence' })
-      .filter({ hasText: 'rejected' }).first()).toBeVisible();
+    await page.getByRole('tab', { name: /Rejected/ }).click();
+    await expect(page.getByRole('button', { name: /admin@emergency\.gov/ })
+      .filter({ hasText: 'rejected' }).first()).toBeVisible({ timeout: 30000 });
     await page.goto('/login');
   });
 
   test('Test 15: Request Clarity', async ({ page }) => {
     const modal = await openReviewModal(page);
+    await modal.locator('#reviewRemark').fill('E2E clarity request — re-upload in good lighting');
     await modal.locator('button:has-text("Request Clarity")').click();
     await expect(modal).toBeHidden();
-    await expect(page.locator('div.rounded-lg.border')
-      .filter({ hasText: 'OCR Confidence' })
-      .filter({ hasText: 'needs_clarity' }).first()).toBeVisible();
+    await page.getByRole('tab', { name: /Returned/ }).click();
+    await expect(page.getByRole('button', { name: /admin@emergency\.gov/ })
+      .filter({ hasText: 'returned' }).first()).toBeVisible({ timeout: 30000 });
     await page.goto('/login');
   });
 });

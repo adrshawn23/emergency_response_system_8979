@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { deleteReportsByContent, deleteDepartmentsByName } from './helpers.js';
+import { deleteReportsByContent, deleteDepartmentsByName, EVIDENCE_PNG } from './helpers.js';
 
 /**
  * Automated tests based on TESTING.md
@@ -37,9 +37,13 @@ test.describe('Manual Test Automation', () => {
     // 3. Click "Create Department"
     await page.click('button:has-text("Create Department")');
 
-    // 4. Fill in details (unique name so repeats don't collide)
+    // 4. Fill in details (unique name so repeats don't collide).
+    // Department Type is required — it's the same custom listbox Select used
+    // by the register flow.
     createdDeptName = `Test Department ${Date.now()}`;
     await page.getByLabel('Department Name').fill(createdDeptName);
+    await page.getByLabel('Department Type').click();
+    await page.locator('div.absolute.z-50').getByText('Fire Department').click();
     await page.getByLabel('Description').fill('Test department');
 
     // 5. Click "Create Department" in the modal
@@ -84,25 +88,23 @@ test.describe('Manual Test Automation', () => {
     await page.click('button[type="submit"]');
     await page.waitForURL('/', { timeout: 30000 });
 
-    // 2. Click "New incident" in sidebar
-    await page.click('text=New incident');
+    // 2. Go to the composer (sidebar exposes no title="New incident" button;
+    // text= also matches the command-center header button and trips strict mode)
+    await page.goto('/emergency-report');
 
-    // 3. Fill in incident details (the form uses select dropdowns)
-    await page.getByLabel('Emergency type').selectOption('fire');
-    await page.getByLabel('Priority').selectOption('high');
+    // 3. Fill in incident details — the dashboard composer only needs
+    // location + description (type/priority were removed with the redesign)
     await page.getByLabel('Incident location').fill('123 Test Street');
     await page.getByLabel('What is happening?').fill('Test incident with image upload');
 
     // 4. Upload an image as evidence
-    await page.setInputFiles('input[type="file"]', {
-      name: 'evidence.png',
-      mimeType: 'image/png',
-      buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64'),
-    });
+    await page.setInputFiles('input[type="file"]', EVIDENCE_PNG);
     await expect(page.locator('img[alt="evidence.png"]')).toBeVisible();
 
-    // 5. Click "Submit report"
-    await page.click('button:has-text("Submit report")');
+    // 5. Submit — button is disabled until profile.id loads, so wait enabled
+    const submit = page.getByRole('button', { name: 'Submit report' });
+    await page.waitForFunction(el => el && !el.disabled, await submit.elementHandle(), { timeout: 30000 });
+    await submit.click();
 
     // 6. Verify success message with report ID appears
     await expect(page.locator('h3:has-text("Report submitted")')).toBeVisible();

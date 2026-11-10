@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { deleteReportsByContent, assignResponderToReport } from './helpers.js';
+import { deleteReportsByContent, assignResponderToReport, submitIncident } from './helpers.js';
 
 /**
  * End-to-End Incident Workflow (TESTING.md Tests 3-5)
@@ -101,10 +101,7 @@ test.describe.serial('End-to-End Incident Workflow', () => {
     await expect(page.getByLabel('Emergency type')).toBeVisible({ timeout: 30000 });
     await page.getByLabel('Emergency type').selectOption('fire');
     await page.getByLabel('Priority').selectOption('high');
-    await page.getByLabel('Incident location').fill('456 Workflow Avenue');
-    await page.getByLabel(/happening/i).fill(uniqueDesc);
-    await page.click('button:has-text("Submit report")');
-    await expect(page.locator('h3:has-text("Report submitted")')).toBeVisible();
+    await submitIncident(page, { location: '456 Workflow Avenue', description: uniqueDesc });
 
     // Go to the incident queue by URL — the sidebar click races the
     // dashboard's initial render (same fix as department_dispatch.spec.js).

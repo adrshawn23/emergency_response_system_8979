@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, lazy, Suspense } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 import Icon from '../../components/AppIcon';
 import { useAuth } from '../../contexts/AuthContext';
 import { useMockData } from '../../contexts/MockDataContext';
@@ -1026,7 +1026,9 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
     );
 
     return () => { isCurrent = false; };
-  }, [section, profile?.role]);
+  // boundaryPoints arrives async — re-fire so serviceAreaStatus computes
+  // against the loaded polygon instead of staying 'manual'.
+  }, [section, profile?.role, boundaryPoints]);
 
   const submitIncident = async event => {
     event.preventDefault();
