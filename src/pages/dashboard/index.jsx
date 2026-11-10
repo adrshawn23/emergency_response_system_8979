@@ -16,6 +16,7 @@ const ContactsSection = lazy(() => import('./components/ContactsSection'));
 const MetricsSection = lazy(() => import('./components/MetricsSection'));
 import useIncidentAlarm from '../../hooks/useIncidentAlarm';
 import useAnnouncementBadge from '../../hooks/useAnnouncementBadge';
+import useForApprovalCount from '../../hooks/useForApprovalCount';
 import { isPointInBoundary } from '../../utils/geofence';
 import ResidentHome from '../resident-home';
 import ResponderView from '../responder-view';
@@ -2298,6 +2299,7 @@ export default function Dashboard({ section = 'command' }) {
   const { profile, signOut, canAccessPage } = useAuth();
   const { reports, setReports } = useMockData();
   const annBadge = useAnnouncementBadge(profile?.role);
+  const forApprovalCount = useForApprovalCount(profile);
   const [pendingUsers] = usePendingRegistrations(profile);
   const [activeReport, setActiveReport] = useState(null);
   const [activeSection, setActiveSection] = useState(section);
@@ -2524,7 +2526,7 @@ export default function Dashboard({ section = 'command' }) {
     { label: 'Command center', icon: 'LayoutDashboard', path: '/', roles: ['admin', 'dispatcher'], key: 'command' },
     { label: 'Incident queue', icon: 'Siren', path: '/report-management', badge: pendingCount, roles: ['dispatcher', 'responder', 'department_admin'], key: 'queue' },
     { label: 'New incident', icon: 'PlusCircle', path: '/emergency-report', roles: ['dispatcher', 'responder', 'resident'], key: 'new' },
-    { label: 'Residents & review', icon: 'Users', path: '/user-management', badge: pendingUsers.length, roles: ['admin'], key: 'residents' },
+    { label: 'Residents & review', icon: 'Users', path: '/user-management', badge: forApprovalCount, roles: ['admin'], key: 'residents' },
     { label: 'Access control', icon: 'ShieldCheck', path: '/access-control', roles: ['admin'], key: 'access' },
     { label: 'Departments', icon: 'Building2', path: '/department-management', roles: ['admin'], key: 'departments' },
     { label: 'Reports', icon: 'BarChart3', path: '/reports', roles: ['admin', 'dispatcher'], key: 'reports' },
@@ -2547,7 +2549,7 @@ export default function Dashboard({ section = 'command' }) {
             <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-center"><div><div className="mb-3 flex items-center gap-2 text-xs font-semibold  text-red-300"><span className="h-2 w-2  rounded-full bg-red-400"/>Live response operations</div><h2 className="text-2xl font-bold tracking-tight sm:text-3xl">Barangay Kalubihan Command Center</h2><p className="mt-2 max-w-xl text-sm leading-6 text-slate-300">Coordinate incidents, monitor the official service boundary, and request only the assistance your response needs.</p></div><div className="flex flex-wrap gap-3">{profile?.role !== 'admin' && <button onClick={() => navigate('/emergency-report')} className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-3 text-sm font-semibold hover:bg-red-700"><Icon name="Siren" size={18}/>Report emergency</button>}</div></div>
           </section>
           <section className="grid gap-4 sm:grid-cols-2">
-            {[['Active incidents', openCount], ['Awaiting verification review', pendingCount]].map(([label, value]) => <div key={label} className="rounded-lg border border-slate-200/70 bg-white p-5"><p className="text-sm font-medium text-slate-500">{label}</p><p className="mt-2 text-3xl tabular-nums">{value}</p></div>)}
+            {[['Active incidents', openCount], ['Awaiting verification review', forApprovalCount]].map(([label, value]) => <div key={label} className="rounded-lg border border-slate-200/70 bg-white p-5"><p className="text-sm font-medium text-slate-500">{label}</p><p className="mt-2 text-3xl tabular-nums">{value}</p></div>)}
           </section>
           <CommandOps reports={reports} />
           {/* Response times is a Command center fixture, not a page — everyone
