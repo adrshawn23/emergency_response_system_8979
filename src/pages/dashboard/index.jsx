@@ -1442,9 +1442,8 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
             <div className="mt-5 text-sm text-slate-500">Manage departments via the Department Management page.</div>
           </div>
           <div className="rounded-lg border border-slate-200/70 bg-white p-6">
-            <div><h3 className="font-bold">Community verification</h3><p className="text-sm text-slate-500">Duplicate prevention enabled</p></div>
-            <p className="mt-5 text-sm leading-6 text-slate-500">System automatically detects duplicate reports from the same location within a 5-minute window. Admins can merge or dismiss duplicates manually.</p>
-            <button className="mt-5 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold hover:bg-slate-50">View duplicates</button>
+            <div><h3 className="font-bold">Duplicate prevention</h3><p className="text-sm text-slate-500">Active — reporter-side warning</p></div>
+            <p className="mt-5 text-sm leading-6 text-slate-500">When a resident submits a report, the system checks for an open same-type incident within ~150 m and warns the reporter that it may already be reported. They can cancel or still submit if it is a different incident.</p>
           </div>
         </div>
       </>}
