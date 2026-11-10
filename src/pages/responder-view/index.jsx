@@ -533,6 +533,7 @@ export default function ResponderView() {
                         marker={incidentPos}
                         markers={selfMarkers}
                         route={approachRoute}
+                        radius={150}
                       />
                     </div>
                     {myPosition && (

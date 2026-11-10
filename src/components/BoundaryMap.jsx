@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { MapContainer, TileLayer, Polygon, Polyline, Marker, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Polygon, Polyline, Marker, Circle, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import '../utils/leafletIcon';
 import useServiceBoundary from '../hooks/useServiceBoundary';
@@ -29,7 +29,7 @@ const FitView = ({ positions }) => {
  *   <BoundaryMap />                       // boundary only
  *   <BoundaryMap marker={...} className="h-56" />
  */
-const BoundaryMap = ({ marker = null, markers = [], route = null, className = 'h-full w-full' }) => {
+const BoundaryMap = ({ marker = null, markers = [], route = null, radius = null, className = 'h-full w-full' }) => {
   const { points } = useServiceBoundary();
   const polygon = points.map(p => [p.lat, p.lng]);
   // `route` may be one line ([[lat,lng],[lat,lng]]), a list of lines, or a
@@ -60,6 +60,10 @@ const BoundaryMap = ({ marker = null, markers = [], route = null, className = 'h
         {routeList.map((r, i) => (
           <Polyline key={i} positions={r.positions} color={r.color || '#2563eb'} weight={3} dashArray="6 8" opacity={0.75} />
         ))}
+        {marker && radius && (
+          // e.g. the 150 m duplicate-detection radius around an incident
+          <Circle center={marker} radius={radius} color="#dc2626" fillColor="#dc2626" fillOpacity={0.08} weight={1.5} dashArray="4 6" />
+        )}
         {marker && <Marker position={marker} />}
         {markers.map((m, i) => (
           <Marker key={i} position={m.position} icon={m.icon || undefined} />

@@ -2084,6 +2084,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
                       <BoundaryMap
                         marker={selectedReport.attachments?.latitude && selectedReport.attachments?.longitude
                           ? [selectedReport.attachments.latitude, selectedReport.attachments.longitude] : null}
+                        radius={150}
                         markers={detailResponderLoc?.latitude
                           ? [{ position: [detailResponderLoc.latitude, detailResponderLoc.longitude], icon: RESPONDER_ICON }]
                           : []}
