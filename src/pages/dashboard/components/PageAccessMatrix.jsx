@@ -28,14 +28,28 @@ export default function PageAccessMatrix() {
   const [error, setError] = useState('');
 
   const toggle = async (pageKey, role) => {
-    const current = pageRoles[pageKey] || [];
+    setBusyKey(`${pageKey}:${role}`);
+    setError('');
+
+    // Read the live row before writing — pageRoles in context lags behind
+    // rapid toggles and other sessions, so deriving the next array from it
+    // silently restores roles a previous toggle just removed.
+    const { data: row, error: readErr } = await supabase
+      .from('page_permissions')
+      .select('allowed_roles')
+      .eq('page_key', pageKey)
+      .maybeSingle();
+    if (readErr) {
+      setError(readErr.message);
+      setBusyKey('');
+      return;
+    }
+    const current = row?.allowed_roles ?? pageRoles[pageKey] ?? [];
     const next = current.includes(role)
       ? current.filter(r => r !== role)
       : [...current, role];
     if (!next.includes('admin')) next.push('admin'); // keep admin in stored list
 
-    setBusyKey(`${pageKey}:${role}`);
-    setError('');
     const { error: err } = await supabase
       .from('page_permissions')
       .upsert({ page_key: pageKey, allowed_roles: next });

@@ -266,3 +266,13 @@ a second time (`new` dropped to `[admin, resident]`; `queue` lost
 `responder`), breaking `workflow.spec.js` Phase 2 — restored to matrix
 defaults. `department_dispatch.spec.js` 3/3 + `workflow.spec.js` 4/4 green
 after removal.
+
+**page_permissions revert root cause (2026-11-10):** drift was not a
+server-side rewrite — a removal written via the admin API persists. The
+defect is `PageAccessMatrix.toggle()` computing the next `allowed_roles`
+array from the stale `pageRoles` context snapshot: a second toggle issued
+before the realtime refetch lands rewrites the row from the pre-toggle
+state, silently restoring roles the first toggle removed. Fixed by
+read-before-write (`select` the live row, then `upsert`). The responder-side
+request-assistance card and its outgoing-request flow were also removed in
+the same pass (auto-dispatch covers fan-out; inbound accept/decline stays).
