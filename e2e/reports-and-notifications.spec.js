@@ -87,8 +87,11 @@ test.describe('Assignment notification deep-link', () => {
 
     await login(page, 'responder@emergency.gov', 'responder123');
     await page.getByRole('button', { name: /Notifications/ }).click();
+    // The menu must be open before item matching — under suite load the bell
+    // opens late and the row arrives on the realtime poll after that.
+    await expect(page.locator('div[role="menu"]')).toBeVisible({ timeout: 15000 });
     const item = page.getByRole('menuitem').filter({ hasText: 'New incident assignment' }).first();
-    await expect(item).toBeVisible({ timeout: 15000 });
+    await expect(item).toBeVisible({ timeout: 30000 });
     // Incident-identifying info is in the message (report ref like RPT-xxxx).
     await expect(item).toContainText(/\(RPT-|incident/i);
     await item.click();

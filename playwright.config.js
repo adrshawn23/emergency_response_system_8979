@@ -11,6 +11,9 @@ import { defineConfig, devices } from '@playwright/test';
 export default defineConfig({
   testDir: './e2e',
   timeout: 120000,
+  // Re-asserts canonical page_permissions rows — the live table drifts
+  // between runs and wrong rows silently bounce role-based navigation.
+  globalSetup: './e2e/global-setup.js',
   // Specs mutate shared live state (accounts, boundary, contacts, reports)
   // — parallel workers corrupt each other, so always run serially.
   fullyParallel: false,
