@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback, lazy, Suspense } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import Icon from '../../components/AppIcon';
 import { useAuth } from '../../contexts/AuthContext';
@@ -1167,22 +1167,23 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
     closeReviewWith('needs_clarity');
   };
 
-  useEffect(() => {
-    if (section !== 'new') return undefined;
-
+  // GPS is captured on mount and on demand via the Refresh button — a stale
+  // fix is useless if the reporter moved since opening the form.
+  const [gpsLoading, setGpsLoading] = useState(false);
+  const captureGps = useCallback((force = false) => {
     if (!navigator.geolocation) {
       setGpsStatus('GPS is unavailable in this browser — a report can\u2019t be filed without your location.');
-      return undefined;
+      return;
     }
 
+    setGpsLoading(true);
     setGpsStatus('Getting your current GPS location...');
-    let isCurrent = true;
     navigator.geolocation.getCurrentPosition(
       ({ coords }) => {
-        if (!isCurrent) return;
+        setGpsLoading(false);
         const latitude = Number(coords.latitude.toFixed(6));
         const longitude = Number(coords.longitude.toFixed(6));
-        
+
         // Geofence applies to residents only — staff file reports without boundary checks
         const isResident = profile?.role === 'resident';
         let serviceAreaStatus = 'staff';
@@ -1196,7 +1197,11 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
 
         setDraft(value => ({
           ...value,
-          location: value.location || `GPS: ${latitude}, ${longitude}`,
+          // A previous "GPS: …" fix is replaced on refresh; anything else
+          // (restored draft text) is left alone.
+          location: value.location && !value.location.startsWith('GPS:')
+            ? value.location
+            : `GPS: ${latitude}, ${longitude}`,
           latitude,
           longitude,
           serviceAreaStatus
@@ -1208,15 +1213,19 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
             : 'GPS location is outside the Barangay Kalubihan service area. Your emergency report will still be sent to dispatch for triage.');
       },
       () => {
-        if (isCurrent) setGpsStatus('GPS permission was not granted — allow location access, then reopen this page.');
+        setGpsLoading(false);
+        setGpsStatus('GPS permission was not granted — allow location access, then tap Refresh.');
       },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: force ? 0 : 60000 }
     );
+  }, [profile?.role, boundaryPoints]);
 
-    return () => { isCurrent = false; };
-  // boundaryPoints arrives async — re-fire so serviceAreaStatus computes
-  // against the loaded polygon instead of staying 'manual'.
-  }, [section, profile?.role, boundaryPoints]);
+  useEffect(() => {
+    if (section !== 'new') return;
+    captureGps();
+  // boundaryPoints arrives async — captureGps changes identity and re-fires
+  // so serviceAreaStatus computes against the loaded polygon.
+  }, [section, captureGps]);
 
   const submitIncident = async event => {
     event.preventDefault();
@@ -1503,7 +1512,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
           </div>)}
         </div>
       </>}
-      {section === 'new' && <>{!canReport && <div className="mt-7 flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4"><Icon name="Lock" size={18} className="mt-0.5 shrink-0 text-amber-700"/><div className="text-sm text-amber-800"><p className="font-semibold">Reporting is locked while your registration is pending.</p><p className="mt-0.5 text-amber-700">Once an administrator approves your ID, this form unlocks and your reports go straight to dispatch. Check your verification status from Home.</p></div></div>}<form onSubmit={submitIncident} className="mt-7 grid gap-5 lg:grid-cols-[1.4fr_.6fr]"><fieldset disabled={!canReport} className="contents"><div className="rounded-lg border border-slate-200/70 bg-white p-6 "><div className="grid gap-5 sm:grid-cols-2"><label className="text-sm font-semibold">Emergency type<select value={draft.type} onChange={e => setDraft(value => ({...value, type: e.target.value}))} className="mt-2 w-full rounded-xl border-slate-200/70 bg-white text-sm"><option value="fire">Fire</option><option value="medical">Medical</option><option value="accident">Accident</option><option value="police">Public safety</option><option value="natural">Natural hazard</option></select></label><label className="text-sm font-semibold">Priority<select value={draft.priority} onChange={e => setDraft(value => ({...value, priority: e.target.value}))} className="mt-2 w-full rounded-xl border-slate-200/70 bg-white text-sm"><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="critical">Critical</option></select></label></div><label className="mt-5 block text-sm font-semibold">Incident location<input required value={draft.location} readOnly placeholder="Auto-detecting GPS location…" className="mt-2 w-full rounded-xl border-slate-200 px-3 py-3 text-sm bg-slate-50"/></label><div className="mt-3 flex items-center gap-2 rounded-xl bg-taste-50 p-3 text-xs text-taste-600"><Icon name="MapPin" size={15}/>GPS and map provider are optional. A manual location is always accepted; outside-boundary reports go to dispatch for triage.</div>{gpsStatus && <div className={`mt-2 rounded-xl p-3 text-xs ${gpsStatus.includes('outside') ? 'bg-amber-50 text-amber-800' : 'bg-emerald-50 text-emerald-800'}`}>{gpsStatus}</div>}<label className="mt-5 block text-sm font-semibold">What is happening?<textarea required value={draft.description} onChange={e => setDraft(value => ({...value, description: e.target.value}))} placeholder="Describe hazards, people involved, and immediate risks." rows="6" className="mt-2 w-full rounded-xl border-slate-200 px-3 py-3 text-sm"/></label>
+      {section === 'new' && <>{!canReport && <div className="mt-7 flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4"><Icon name="Lock" size={18} className="mt-0.5 shrink-0 text-amber-700"/><div className="text-sm text-amber-800"><p className="font-semibold">Reporting is locked while your registration is pending.</p><p className="mt-0.5 text-amber-700">Once an administrator approves your ID, this form unlocks and your reports go straight to dispatch. Check your verification status from Home.</p></div></div>}<form onSubmit={submitIncident} className="mt-7 grid gap-5 lg:grid-cols-[1.4fr_.6fr]"><fieldset disabled={!canReport} className="contents"><div className="rounded-lg border border-slate-200/70 bg-white p-6 "><div className="grid gap-5 sm:grid-cols-2"><label className="text-sm font-semibold">Emergency type<select value={draft.type} onChange={e => setDraft(value => ({...value, type: e.target.value}))} className="mt-2 w-full rounded-xl border-slate-200/70 bg-white text-sm"><option value="fire">Fire</option><option value="medical">Medical</option><option value="accident">Accident</option><option value="police">Public safety</option><option value="natural">Natural hazard</option></select></label><label className="text-sm font-semibold">Priority<select value={draft.priority} onChange={e => setDraft(value => ({...value, priority: e.target.value}))} className="mt-2 w-full rounded-xl border-slate-200/70 bg-white text-sm"><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="critical">Critical</option></select></label></div><div className="mt-5"><div className="flex items-center justify-between"><span className="text-sm font-semibold">Incident location</span><button type="button" onClick={() => captureGps(true)} disabled={gpsLoading} aria-label="Refresh GPS location" className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50"><Icon name="RefreshCw" size={12} className={gpsLoading ? 'animate-spin' : ''}/>{gpsLoading ? 'Locating…' : 'Refresh'}</button></div><input required value={draft.location} readOnly placeholder="Auto-detecting GPS location…" className="mt-2 w-full rounded-xl border-slate-200 px-3 py-3 text-sm bg-slate-50"/></div><div className="mt-3 flex items-center gap-2 rounded-xl bg-taste-50 p-3 text-xs text-taste-600"><Icon name="MapPin" size={15}/>GPS and map provider are optional. A manual location is always accepted; outside-boundary reports go to dispatch for triage.</div>{gpsStatus && <div className={`mt-2 rounded-xl p-3 text-xs ${gpsStatus.includes('outside') ? 'bg-amber-50 text-amber-800' : 'bg-emerald-50 text-emerald-800'}`}>{gpsStatus}</div>}<label className="mt-5 block text-sm font-semibold">What is happening?<textarea required value={draft.description} onChange={e => setDraft(value => ({...value, description: e.target.value}))} placeholder="Describe hazards, people involved, and immediate risks." rows="6" className="mt-2 w-full rounded-xl border-slate-200 px-3 py-3 text-sm"/></label>
         <div className="mt-5">
           <label className="block text-sm font-semibold mb-2">Upload evidence {profile?.role === 'resident' ? '(required — at least 1 photo)' : '(optional)'}</label>
           <input 
