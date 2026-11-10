@@ -672,8 +672,9 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
     setReports(items => items.map(item => item.report_id === id ? { ...item, status: nextStatus } : item));
   };
 
-  // Busy = primary or backup on any incident that isn't closed. The assign
-  // selects disable them; they free up the moment their incident resolves.
+  // Busy = primary, backup, or accepted-assistance responder on any
+  // incident that isn't closed. The assign selects disable them; they
+  // free up the moment their incident resolves.
   const CLOSED_STATUSES = ['resolved', 'declined', 'cancelled'];
   const busyResponderIds = new Set();
   reports?.forEach(r => {
@@ -681,6 +682,11 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
       if (r.assigned_to) busyResponderIds.add(r.assigned_to);
       if (r.backup_responder_id) busyResponderIds.add(r.backup_responder_id);
     }
+  });
+  cdaRequests?.forEach(c => {
+    if (!c.responder_id || c.status !== 'accepted') return;
+    const rep = reports?.find(r => r.id === c.report_id);
+    if (!rep || !CLOSED_STATUSES.includes(rep.status)) busyResponderIds.add(c.responder_id);
   });
 
   const handleAssignClick = (report) => {
@@ -855,6 +861,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
   // department_admin assigns the responder for a CDA request targeted at
   // their department — picking a responder IS accepting the request.
   const handleCdaResponderAssign = async (cdaId, responderId) => {
+    if (busyResponderIds.has(responderId)) return;
     const { error } = await supabase
       .from('cross_department_assistance')
       .update({ responder_id: responderId, status: 'accepted', responded_by: profile?.id })
@@ -1376,7 +1383,11 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
                         className="rounded-lg border border-slate-200 bg-white px-2 py-0.5 text-xs"
                       >
                         <option value="">Assign responder…</option>
-                        {responders.map(r => <option key={r.id} value={r.id}>{r.full_name || r.email}</option>)}
+                        {responders.map(r => (
+                          <option key={r.id} value={r.id} disabled={busyResponderIds.has(r.id)}>
+                            {r.full_name || r.email}{busyResponderIds.has(r.id) ? ' — on another incident' : ''}
+                          </option>
+                        ))}
                       </select>
                     )}
                   </li>
