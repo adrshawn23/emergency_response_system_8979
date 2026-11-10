@@ -2547,15 +2547,13 @@ export default function Dashboard({ section = 'command' }) {
             {[['Active incidents', openCount], ['Awaiting verification review', pendingCount]].map(([label, value]) => <div key={label} className="rounded-lg border border-slate-200/70 bg-white p-5"><p className="text-sm font-medium text-slate-500">{label}</p><p className="mt-2 text-3xl tabular-nums">{value}</p></div>)}
           </section>
           <CommandOps reports={reports} />
-          {/* Response times lives here (not a separate page) — the 'metrics'
-             row in Access control still gates who sees it. */}
-          {canAccessPage('metrics', profile?.role) && (
-            <section className="rounded-lg border border-slate-200/70 bg-white p-5">
-              <Suspense fallback={<div className="h-40 animate-pulse rounded-lg bg-slate-50" />}>
-                <MetricsSection />
-              </Suspense>
-            </section>
-          )}
+          {/* Response times is a Command center fixture, not a page — everyone
+             who can open Command center sees it (admin + dispatcher). */}
+          <section className="rounded-lg border border-slate-200/70 bg-white p-5">
+            <Suspense fallback={<div className="h-40 animate-pulse rounded-lg bg-slate-50" />}>
+              <MetricsSection />
+            </Suspense>
+          </section>
           {cdaRequests.length > 0 && (
             <section className="rounded-lg border border-amber-200 bg-amber-50 p-4">
               <p className="text-xs font-bold uppercase text-amber-700">Assistance requests ({cdaRequests.length})</p>
