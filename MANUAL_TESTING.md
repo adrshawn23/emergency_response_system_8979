@@ -126,6 +126,18 @@ realtime checks.
    - Within the radius → arrival recorded → the reporter can see it.
 5. **Resolve** the incident → status → `resolved` → every open view
    updates via realtime.
+6. **Backup request** — needs `20261110190000_responder_backup_requests.sql`:
+   a. On an assigned/in-progress incident → **Request backup** →
+      reason required (Send stays disabled until filled) → submitted.
+   b. **Dept admin** → queue → **"Backup requests"** banner shows it
+      with the reason.
+   c. **Approve** → pick a same-dept responder (requester is excluded)
+      → approved; that responder sees the incident on their board
+      (realtime, no refresh).
+   d. **Decline** → remark is **required** → responder's incident modal
+      shows "Declined — <remark>".
+   e. Requester can **Withdraw** while pending; one pending request per
+      incident (second submit blocked).
 
 ## Phase 6 — Notifications + misc checks
 
@@ -150,6 +162,8 @@ realtime checks.
 - Incident → dispatch → dept-admin responder assignment works end to end.
 - Dept admin **requests** but never **directly reassigns**; the dispatcher
   acts on the request; the reason is mandatory and visible.
+- Responder backup: reason required, dept admin approves (picks the
+  backup) or declines with a visible remark; backup sees the incident live.
 - Responder pin is live only during an active assignment; the geofence
   blocks far-away arrival.
 - All views update without refresh (realtime).

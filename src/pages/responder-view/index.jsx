@@ -41,6 +41,11 @@ export default function ResponderView() {
   const [assistanceRequests, setAssistanceRequests] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [myPosition, setMyPosition] = useState(null);
+  // Same-dept backup: my requests + the reason modal state.
+  const [backupRequests, setBackupRequests] = useState([]);
+  const [backupFor, setBackupFor] = useState(null);
+  const [backupReason, setBackupReason] = useState('');
+  const [backupError, setBackupError] = useState('');
 
   // Fresh proof requirement per incident — clear any staged photo when the
   // modal opens, closes, or switches to a different report.
@@ -63,7 +68,8 @@ export default function ResponderView() {
       const { data, error } = await supabase
         .from('emergency_reports_list')
         .select('*')
-        .eq('assigned_to', profile.id)
+        // Primary assignments AND incidents where dept admin added me as backup
+        .or(`assigned_to.eq.${profile.id},backup_responder_id.eq.${profile.id}`)
         .order('created_at', { ascending: false });
       
       if (data && !error) {
@@ -81,6 +87,15 @@ export default function ResponderView() {
     const subscription = supabase
       .channel(`assigned_reports_${Math.random().toString(36).slice(2, 8)}`)
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'emergency_reports', filter: `assigned_to=eq.${profile.id}` }, (payload) => {
+        const row = payload.new;
+        setAssignedReports(prev => {
+          const known = prev.some(r => r.id === row.id);
+          if (known) return prev.map(r => (r.id === row.id ? { ...r, ...row } : r));
+          return [row, ...prev];
+        });
+      })
+      // Same upsert for backup_responder_id — dept-admin approval lands here
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'emergency_reports', filter: `backup_responder_id=eq.${profile.id}` }, (payload) => {
         const row = payload.new;
         setAssignedReports(prev => {
           const known = prev.some(r => r.id === row.id);
@@ -120,6 +135,52 @@ export default function ResponderView() {
 
     return () => { supabase.removeChannel(channel); };
   }, [profile?.id, profile?.department_id]);
+
+  // Same-dept backup requests: mine (status feedback + withdraw) and
+  // approvals naming me as the backup responder.
+  useEffect(() => {
+    if (!profile?.id) return;
+    const fetchBackups = async () => {
+      const { data } = await supabase
+        .from('responder_backup_requests')
+        .select('*')
+        .or(`requested_by.eq.${profile.id},backup_responder_id.eq.${profile.id}`)
+        .order('created_at', { ascending: false });
+      if (data) setBackupRequests(data);
+    };
+    fetchBackups();
+    const ch = supabase
+      .channel(`backup_req_${Math.random().toString(36).slice(2, 8)}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'responder_backup_requests' }, () => fetchBackups())
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [profile?.id]);
+
+  const myBackupReq = (reportId) => backupRequests.find(b => b.report_id === reportId);
+
+  const requestBackup = async () => {
+    const reason = backupReason.trim();
+    if (!backupFor || !reason) { setBackupError('A reason is required.'); return; }
+    const { error } = await supabase.from('responder_backup_requests').insert({
+      report_id: backupFor.id,
+      department_id: profile?.department_id,
+      requested_by: profile?.id,
+      reason,
+    });
+    if (error) {
+      setBackupError(error.code === '23505'
+        ? 'A backup request for this incident is already pending.'
+        : error.message);
+      return;
+    }
+    setBackupFor(null); setBackupReason(''); setBackupError('');
+  };
+
+  const withdrawBackup = async (req) => {
+    await supabase.from('responder_backup_requests')
+      .update({ status: 'cancelled', updated_at: new Date().toISOString() })
+      .eq('id', req.id);
+  };
 
   // Publish live GPS while carrying an open assignment OR an accepted
   // assistance request on a non-terminal incident — the reporter watches the
@@ -524,6 +585,30 @@ export default function ResponderView() {
 
               <IncidentTimeline report={selectedReport} />
 
+              {/* My same-dept backup request for this incident — status,
+                  the dept admin's decline remark, and withdraw */}
+              {(() => {
+                const req = myBackupReq(selectedReport.id);
+                if (!req) return null;
+                return (
+                  <div className="rounded-lg border border-sky-200 bg-sky-50 p-3 text-sm">
+                    <div className="flex items-center justify-between">
+                      <p className="font-semibold text-sky-800">Backup request <span className="ml-1 rounded-full bg-sky-200/70 px-2 py-0.5 text-[10px] font-bold uppercase text-sky-900">{req.status}</span></p>
+                      {req.status === 'pending' && req.requested_by === profile?.id && (
+                        <button onClick={() => withdrawBackup(req)} className="text-xs font-semibold text-sky-700 underline">Withdraw</button>
+                      )}
+                    </div>
+                    <p className="mt-1 text-xs text-sky-800">"{req.reason}"</p>
+                    {req.status === 'declined' && req.review_notes && (
+                      <p className="mt-1.5 text-xs text-red-700">Declined — {req.review_notes}</p>
+                    )}
+                    {req.status === 'approved' && (
+                      <p className="mt-1.5 text-xs text-emerald-700">Approved — a second responder is on the way.</p>
+                    )}
+                  </div>
+                );
+              })()}
+
               {selectedReport.assigned_to === profile?.id && (
                 <IncidentChat reportId={selectedReport.id} title="Message the reporter"/>
               )}
@@ -573,9 +658,55 @@ export default function ResponderView() {
                   </button>
                 </div>
               )}
+              {(selectedReport.assigned_to === profile?.id || selectedReport.backup_responder_id === profile?.id)
+                && ['assigned', 'in-progress'].includes(selectedReport.status) && (
+                <button
+                  onClick={() => { setBackupFor(selectedReport); setBackupReason(''); setBackupError(''); }}
+                  disabled={myBackupReq(selectedReport.id)?.status === 'pending'}
+                  className="flex-1 rounded-lg border border-sky-300 bg-sky-50 px-3 py-2 text-sm font-semibold text-sky-700 hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {myBackupReq(selectedReport.id)?.status === 'pending' ? 'Backup requested' : 'Request backup'}
+                </button>
+              )}
               <button onClick={() => setSelectedReport(null)} className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50">
                 Close
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Same-dept backup — reason is required; the department admin
+          approves and picks the second responder */}
+      {backupFor && (
+        <div className="fixed inset-0 z-1050 flex items-center justify-center bg-slate-900/50 p-4" role="dialog" aria-modal="true">
+          <div className="w-full max-w-md overflow-hidden rounded-2xl bg-white">
+            <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+              <h3 className="font-bold">Request backup</h3>
+              <button onClick={() => setBackupFor(null)} aria-label="Close" className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100">
+                <Icon name="X" size={18}/>
+              </button>
+            </div>
+            <div className="px-6 py-5">
+              <p className="text-sm text-slate-600">
+                Your department admin reviews this and assigns a second responder. Tell them why you can't handle
+                <span className="font-mono text-xs"> {backupFor.report_id || backupFor.id?.slice(0, 8)} </span>alone.
+              </p>
+              <label className="mt-4 block text-sm font-semibold">Reason <span className="text-red-500">*</span></label>
+              <textarea
+                value={backupReason}
+                onChange={e => { setBackupReason(e.target.value); setBackupError(''); }}
+                placeholder="e.g. Two casualties on scene — need a second unit for extrication..."
+                rows={4}
+                className="mt-1.5 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+              />
+              {backupError && (
+                <p className="mt-2 rounded-lg border border-red-200 bg-red-50 p-2.5 text-xs text-red-700">{backupError}</p>
+              )}
+              <div className="mt-4 flex justify-end gap-2">
+                <button onClick={() => setBackupFor(null)} className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold hover:bg-slate-50">Cancel</button>
+                <button onClick={requestBackup} disabled={!backupReason.trim()} className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-50">Send request</button>
+              </div>
             </div>
           </div>
         </div>

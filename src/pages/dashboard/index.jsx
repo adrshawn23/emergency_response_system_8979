@@ -225,6 +225,12 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
   const [isBoundaryModalOpen, setIsBoundaryModalOpen] = useState(false);
   const [cdaRequests, setCdaRequests] = useState([]);
   const [reassignRequests, setReassignRequests] = useState([]);
+  // Same-dept backup: responder asks for a second unit; dept admin picks who
+  const [backupRequests, setBackupRequests] = useState([]);
+  const [backupReview, setBackupReview] = useState(null); // {request, mode:'approve'|'decline'}
+  const [backupPick, setBackupPick] = useState('');
+  const [backupNotes, setBackupNotes] = useState('');
+  const [backupReviewError, setBackupReviewError] = useState('');
   const [isReassignRequestOpen, setIsReassignRequestOpen] = useState(false);
   const [reassignReason, setReassignReason] = useState('');
   const [reassignRequestError, setReassignRequestError] = useState('');
@@ -352,6 +358,24 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'reassignment_requests' }, () => fetchReassign())
       .subscribe();
     return () => { supabase.removeChannel(rrChannel); };
+  }, []);
+
+  // Same-dept backup requests — realtime so the dept-admin banner updates
+  // as responders file them.
+  useEffect(() => {
+    const fetchBackups = async () => {
+      const { data } = await supabase
+        .from('responder_backup_requests')
+        .select('*, requester:user_profiles!requested_by(full_name), backup:user_profiles!backup_responder_id(full_name), department:departments!department_id(name)')
+        .in('status', ['pending', 'approved', 'declined', 'cancelled'])
+        .order('created_at', { ascending: false });
+      setBackupRequests(data || []);
+    };
+    fetchBackups();
+    const brChannel = supabase.channel(`workspace_br_changes_${Math.random().toString(36).slice(2, 8)}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'responder_backup_requests' }, () => fetchBackups())
+      .subscribe();
+    return () => { supabase.removeChannel(brChannel); };
   }, []);
 
   // Fetch departments and responders for assignment modal
@@ -760,6 +784,56 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
       .from('reassignment_requests')
       .update({ status, reviewed_by: profile?.id, reviewed_at: new Date().toISOString() })
       .eq('id', request.id);
+  };
+
+  // Same-dept backup review: approve = dept admin picks the second
+  // responder (written to the report's backup_responder_id so that
+  // responder's board picks the incident up); decline needs a remark the
+  // requester can see.
+  const openBackupReview = async (request, mode) => {
+    setBackupReview({ request, mode });
+    setBackupPick(''); setBackupNotes(''); setBackupReviewError('');
+    if (mode === 'approve') {
+      const { data } = await supabase
+        .from('user_profiles')
+        .select('id, full_name')
+        .eq('role', 'responder')
+        .eq('department_id', profile?.department_id)
+        .neq('id', request.requested_by)
+        .order('full_name');
+      setResponders(data || []);
+    }
+  };
+
+  const handleBackupReviewSubmit = async () => {
+    const { request, mode } = backupReview || {};
+    if (!request) return;
+    if (mode === 'approve' && !backupPick) {
+      setBackupReviewError('Pick the responder to send as backup.');
+      return;
+    }
+    const notes = backupNotes.trim();
+    if (mode === 'decline' && !notes) {
+      setBackupReviewError('Say why the request is declined — the responder sees this.');
+      return;
+    }
+    const { error } = await supabase
+      .from('responder_backup_requests')
+      .update({
+        status: mode === 'approve' ? 'approved' : 'declined',
+        backup_responder_id: mode === 'approve' ? backupPick : null,
+        review_notes: notes || null,
+        reviewed_by: profile?.id,
+        reviewed_at: new Date().toISOString(),
+      })
+      .eq('id', request.id);
+    if (error) { setBackupReviewError(error.message); return; }
+    if (mode === 'approve') {
+      await supabase.from('emergency_reports')
+        .update({ backup_responder_id: backupPick })
+        .eq('id', request.report_id);
+    }
+    setBackupReview(null);
   };
 
   // department_admin assigns the responder for a CDA request targeted at
@@ -1315,6 +1389,37 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
                     )}
                     {profile?.role === 'department_admin' && row.requested_by === profile?.id && row.status === 'pending' && (
                       <button onClick={() => handleReassignRequestReview(row, 'cancelled')} className="rounded-lg border border-slate-300 bg-white px-2 py-0.5 text-xs font-semibold text-slate-600 hover:bg-slate-100">Withdraw</button>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
+        {backupRequests.length > 0 && (
+          <div className="mt-4 rounded-lg border border-sky-200 bg-sky-50 p-4">
+            <p className="text-xs font-bold uppercase text-sky-700">Backup requests ({backupRequests.filter(r => r.status === 'pending').length})</p>
+            <ul className="mt-2 space-y-1.5">
+              {backupRequests.map(row => {
+                const rep = reports.find(r => r.id === row.report_id);
+                return (
+                  <li key={row.id} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-700">
+                    <span className="font-mono text-xs text-slate-500">{rep?.report_id || '—'}</span>
+                    <span className="font-semibold capitalize">{rep?.report_type || rep?.incident_type || 'Incident'}</span>
+                    <span className="text-xs text-slate-500">by {row.requester?.full_name || 'responder'}</span>
+                    <span className="max-w-[260px] truncate text-xs italic text-slate-600" title={row.reason}>"{row.reason}"</span>
+                    {row.status === 'approved' && row.backup?.full_name && (
+                      <span className="text-xs text-slate-500">→ {row.backup.full_name}</span>
+                    )}
+                    {row.status === 'declined' && row.review_notes && (
+                      <span className="max-w-[200px] truncate text-xs text-red-600" title={row.review_notes}>declined: {row.review_notes}</span>
+                    )}
+                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${row.status === 'approved' ? 'bg-emerald-100 text-emerald-700' : row.status === 'declined' ? 'bg-red-100 text-red-700' : row.status === 'cancelled' ? 'bg-slate-200 text-slate-600' : 'bg-sky-200 text-sky-800'}`}>{row.status}</span>
+                    {profile?.role === 'department_admin' && row.status === 'pending' && (
+                      <span className="flex gap-1">
+                        <button onClick={() => openBackupReview(row, 'approve')} className="rounded-lg border border-sky-300 bg-white px-2 py-0.5 text-xs font-semibold text-sky-700 hover:bg-sky-100">Approve</button>
+                        <button onClick={() => openBackupReview(row, 'decline')} className="rounded-lg border border-slate-300 bg-white px-2 py-0.5 text-xs font-semibold text-slate-600 hover:bg-slate-100">Decline</button>
+                      </span>
                     )}
                   </li>
                 );
@@ -1903,6 +2008,54 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
                   </div>
                 </>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Backup request review — approve picks the second responder,
+          decline needs a remark the requester can see */}
+      {backupReview && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-1050 p-4">
+          <div className="bg-white rounded-2xl ring-1 ring-slate-900/5 shadow-2xl w-full max-w-md">
+            <div className="flex items-center justify-between p-4 border-b border-slate-200">
+              <h3 className="font-bold text-lg">{backupReview.mode === 'approve' ? 'Approve backup' : 'Decline backup'}</h3>
+              <button onClick={() => setBackupReview(null)} aria-label="Close" className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100">
+                <Icon name="X" size={20} />
+              </button>
+            </div>
+            <div className="p-4">
+              <p className="text-sm text-slate-600">
+                {backupReview.request.requester?.full_name || 'The responder'} asks for a second responder on
+                <span className="font-mono text-xs"> {backupReview.request.report_id?.slice(0, 8)}</span>: "{backupReview.request.reason}"
+              </p>
+              {backupReview.mode === 'approve' ? (
+                <>
+                  <label className="mt-4 block text-sm font-semibold">Send as backup <span className="text-red-500">*</span></label>
+                  <select value={backupPick} onChange={e => { setBackupPick(e.target.value); setBackupReviewError(''); }} className="mt-1.5 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm">
+                    <option value="">Choose a responder…</option>
+                    {responders.map(r => (
+                      <option key={r.id} value={r.id}>{r.full_name}</option>
+                    ))}
+                  </select>
+                  <label className="mt-3 block text-sm font-semibold">Note <span className="font-normal text-slate-400">(optional)</span></label>
+                  <textarea value={backupNotes} onChange={e => setBackupNotes(e.target.value)} rows={2} className="mt-1.5 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" placeholder="Anything the responders should know…"/>
+                </>
+              ) : (
+                <>
+                  <label className="mt-4 block text-sm font-semibold">Reason for declining <span className="text-red-500">*</span></label>
+                  <textarea value={backupNotes} onChange={e => { setBackupNotes(e.target.value); setBackupReviewError(''); }} rows={3} className="mt-1.5 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" placeholder="e.g. Single casualty — one unit is enough, monitor and re-request if it escalates…"/>
+                </>
+              )}
+              {backupReviewError && (
+                <p className="mt-2 rounded-lg border border-red-200 bg-red-50 p-2.5 text-xs text-red-700">{backupReviewError}</p>
+              )}
+              <div className="mt-4 flex justify-end gap-2">
+                <button onClick={() => setBackupReview(null)} className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold hover:bg-slate-50">Cancel</button>
+                <button onClick={handleBackupReviewSubmit} className={`rounded-lg px-4 py-2 text-sm font-semibold text-white ${backupReview.mode === 'approve' ? 'bg-sky-600 hover:bg-sky-700' : 'bg-slate-700 hover:bg-slate-800'}`}>
+                  {backupReview.mode === 'approve' ? 'Approve + dispatch backup' : 'Decline request'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
