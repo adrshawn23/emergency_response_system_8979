@@ -301,9 +301,3 @@ const ReportTable = ({
 };
 
 export default ReportTable;
-      </div>
-    </div>
-  );
-};
-
-export default ReportTable;

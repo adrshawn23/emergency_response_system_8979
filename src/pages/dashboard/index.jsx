@@ -2055,4 +2055,3 @@ export default function Dashboard({ section = 'command' }) {
     )}
   </div>;
 }
-}
