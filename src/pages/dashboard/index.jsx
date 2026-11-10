@@ -221,6 +221,10 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
 
   const [isBoundaryModalOpen, setIsBoundaryModalOpen] = useState(false);
   const [cdaRequests, setCdaRequests] = useState([]);
+  const [reassignRequests, setReassignRequests] = useState([]);
+  const [isReassignRequestOpen, setIsReassignRequestOpen] = useState(false);
+  const [reassignReason, setReassignReason] = useState('');
+  const [reassignRequestError, setReassignRequestError] = useState('');
   const [assignError, setAssignError] = useState('');
 
   const [imageFiles, setImageFiles] = useState([]);
@@ -250,6 +254,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
   // TDZ ReferenceError.
   useEscapeKey(() => setIsContactModalOpen(false), isContactModalOpen);
   useEscapeKey(() => setIsBoundaryModalOpen(false), isBoundaryModalOpen);
+  useEscapeKey(() => setIsReassignRequestOpen(false), isReassignRequestOpen);
   useEscapeKey(() => setIsReviewModalOpen(false), isReviewModalOpen);
   useEscapeKey(() => setIsAssignModalOpen(false), isAssignModalOpen);
   useEscapeKey(() => setIsReportDetailModalOpen(false), isReportDetailModalOpen);
@@ -326,6 +331,24 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'cross_department_assistance' }, () => fetchAssistance())
       .subscribe();
     return () => { supabase.removeChannel(cdaChannel); };
+  }, []);
+
+  // Reassignment requests — dept admins flag wrongly-assigned incidents for
+  // the dispatcher to re-dispatch. Realtime so the queue updates live.
+  useEffect(() => {
+    const fetchReassign = async () => {
+      const { data } = await supabase
+        .from('reassignment_requests')
+        .select('*, requester:user_profiles!requested_by(full_name), department:departments!department_id(name)')
+        .in('status', ['pending', 'approved', 'denied', 'cancelled'])
+        .order('created_at', { ascending: false });
+      setReassignRequests(data || []);
+    };
+    fetchReassign();
+    const rrChannel = supabase.channel(`workspace_rr_changes_${Math.random().toString(36).slice(2, 8)}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'reassignment_requests' }, () => fetchReassign())
+      .subscribe();
+    return () => { supabase.removeChannel(rrChannel); };
   }, []);
 
   // Fetch departments and responders for assignment modal
@@ -679,9 +702,61 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
     ));
 
     setIsAssignModalOpen(false);
+
+    // A dispatcher reassigning fulfils any pending reassignment request on
+    // this report — mark it approved so the banner stops showing it live.
+    if (profile?.role === 'dispatcher') {
+      supabase
+        .from('reassignment_requests')
+        .update({ status: 'approved', reviewed_by: profile?.id, reviewed_at: new Date().toISOString() })
+        .eq('report_id', selectedReport.id)
+        .eq('status', 'pending')
+        .then(({ error: rrError }) => {
+          if (rrError) console.warn('Could not close reassignment request:', rrError.message);
+        });
+    }
+
     setSelectedReport(null);
     setSelectedDepartment(null);
     setSelectedResponder(null);
+  };
+
+  // Department admin files a reassignment request — they can't move the
+  // incident themselves, dispatch stays a dispatcher job; the reason is
+  // required so the dispatcher knows why it was wrongly assigned.
+  const handleReassignRequestSubmit = async () => {
+    const reason = reassignReason.trim();
+    if (!selectedReport || !reason) {
+      setReassignRequestError('Please give the dispatcher a reason for the reassignment.');
+      return;
+    }
+    const { error } = await supabase
+      .from('reassignment_requests')
+      .insert({
+        report_id: selectedReport.id,
+        department_id: profile?.department_id,
+        requested_by: profile?.id,
+        reason,
+      });
+    if (error) {
+      setReassignRequestError(
+        error.code === '23505'
+          ? 'A reassignment request is already pending for this incident.'
+          : error.message
+      );
+      return;
+    }
+    setIsReassignRequestOpen(false);
+    setReassignReason('');
+    setReassignRequestError('');
+    setSelectedReport(null);
+  };
+
+  const handleReassignRequestReview = async (request, status) => {
+    await supabase
+      .from('reassignment_requests')
+      .update({ status, reviewed_by: profile?.id, reviewed_at: new Date().toISOString() })
+      .eq('id', request.id);
   };
 
   // department_admin assigns the responder for a CDA request targeted at
@@ -1197,6 +1272,35 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
             </ul>
           </div>
         )}
+        {reassignRequests.length > 0 && (
+          <div className="mt-4 rounded-lg border border-blue-200 bg-blue-50 p-4">
+            <p className="text-xs font-bold uppercase text-blue-700">Reassignment requests ({reassignRequests.filter(r => r.status === 'pending').length})</p>
+            <ul className="mt-2 space-y-1.5">
+              {reassignRequests.map(row => {
+                const rep = reports.find(r => r.id === row.report_id);
+                return (
+                  <li key={row.id} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-700">
+                    <span className="font-mono text-xs text-slate-500">{rep?.report_id || '—'}</span>
+                    <span className="font-semibold capitalize">{rep?.report_type || rep?.incident_type || 'Incident'}</span>
+                    <span>← {row.department?.name || 'department'}</span>
+                    <span className="text-xs text-slate-500">by {row.requester?.full_name || 'staff'}</span>
+                    <span className="max-w-[260px] truncate text-xs italic text-slate-600" title={row.reason}>"{row.reason}"</span>
+                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${row.status === 'approved' ? 'bg-emerald-100 text-emerald-700' : row.status === 'denied' ? 'bg-red-100 text-red-700' : row.status === 'cancelled' ? 'bg-slate-200 text-slate-600' : 'bg-blue-200 text-blue-800'}`}>{row.status}</span>
+                    {profile?.role === 'dispatcher' && row.status === 'pending' && (
+                      <span className="flex gap-1">
+                        <button onClick={() => rep && handleAssignClick(rep)} className="rounded-lg border border-blue-300 bg-white px-2 py-0.5 text-xs font-semibold text-blue-700 hover:bg-blue-100">Reassign</button>
+                        <button onClick={() => handleReassignRequestReview(row, 'denied')} className="rounded-lg border border-slate-300 bg-white px-2 py-0.5 text-xs font-semibold text-slate-600 hover:bg-slate-100">Dismiss</button>
+                      </span>
+                    )}
+                    {profile?.role === 'department_admin' && row.requested_by === profile?.id && row.status === 'pending' && (
+                      <button onClick={() => handleReassignRequestReview(row, 'cancelled')} className="rounded-lg border border-slate-300 bg-white px-2 py-0.5 text-xs font-semibold text-slate-600 hover:bg-slate-100">Withdraw</button>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
         {profile?.role === 'department_admin' && !profile?.department_id && (
           <div className="mt-4 flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 p-4">
             <Icon name="AlertTriangle" size={18} className="mt-0.5 shrink-0 text-red-700"/>
@@ -1211,9 +1315,14 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
             <span className={`w-fit rounded-full px-2 py-1 text-[10px] font-bold uppercase ${priorityStyles[report.priority]}`}>{report.priority}</span>
             <div className="flex min-w-0 items-center gap-2">
               <span className={`inline-flex h-8 min-w-[84px] items-center justify-center rounded-full px-2 text-xs font-medium capitalize ${statusStyles[report.status] || 'bg-slate-100 text-slate-700'}`}>{formatStatus(report.status)}</span>
-              {(profile?.role === 'dispatcher' || profile?.role === 'admin') && (report.status) !== 'resolved' && <div className="flex gap-1"><button onClick={(e) => { e.stopPropagation(); (report.status) === 'pending' ? handleAssignClick(report) : setReportStatus(report.report_id || report.id, 'resolved'); }} className="inline-flex h-8 min-w-[72px] items-center justify-center rounded-lg border border-taste-200 bg-taste-50 px-3 text-xs font-bold text-taste-600 transition hover:border-taste-300 hover:bg-taste-100 focus:outline-none focus:ring-2 focus:ring-taste-500 focus:ring-offset-2">{(report.status) === 'pending' ? 'Assign' : 'Resolve'}</button></div>}
+              {(profile?.role === 'dispatcher' || profile?.role === 'admin') && (report.status) !== 'resolved' && <div className="flex gap-1">{(report.status) === 'pending' && <button onClick={(e) => { e.stopPropagation(); handleAssignClick(report); }} className="inline-flex h-8 min-w-[72px] items-center justify-center rounded-lg border border-taste-200 bg-taste-50 px-3 text-xs font-bold text-taste-600 transition hover:border-taste-300 hover:bg-taste-100 focus:outline-none focus:ring-2 focus:ring-taste-500 focus:ring-offset-2">Assign</button>}{['assigned','in-progress'].includes(report.status) && <button onClick={(e) => { e.stopPropagation(); handleAssignClick(report); }} className="inline-flex h-8 min-w-[72px] items-center justify-center rounded-lg border border-amber-200 bg-amber-50 px-3 text-xs font-bold text-amber-700 transition hover:border-amber-300 hover:bg-amber-100">Reassign</button>}<button onClick={(e) => { e.stopPropagation(); setReportStatus(report.report_id || report.id, 'resolved'); }} className="inline-flex h-8 min-w-[72px] items-center justify-center rounded-lg border border-taste-200 bg-taste-50 px-3 text-xs font-bold text-taste-600 transition hover:border-taste-300 hover:bg-taste-100">Resolve</button></div>}
               {profile?.role === 'department_admin' && report.assigned_department_id === profile?.department_id && report.status !== 'resolved' && (
-                <button onClick={(e) => { e.stopPropagation(); handleAssignClick(report); }} className="inline-flex h-8 items-center justify-center rounded-lg border border-taste-200 bg-taste-50 px-3 text-xs font-bold text-taste-600 transition hover:border-taste-300 hover:bg-taste-100">{report.assigned_to ? 'Reassign' : 'Assign responder'}</button>
+                <div className="flex gap-1">
+                  <button onClick={(e) => { e.stopPropagation(); handleAssignClick(report); }} className="inline-flex h-8 items-center justify-center rounded-lg border border-taste-200 bg-taste-50 px-3 text-xs font-bold text-taste-600 transition hover:border-taste-300 hover:bg-taste-100">{report.assigned_to ? 'Reassign responder' : 'Assign responder'}</button>
+                  {!reassignRequests.some(r => r.report_id === report.id && r.status === 'pending') && (
+                    <button onClick={(e) => { e.stopPropagation(); setSelectedReport(report); setReassignReason(''); setReassignRequestError(''); setIsReassignRequestOpen(true); }} className="inline-flex h-8 items-center justify-center rounded-lg border border-amber-200 bg-amber-50 px-3 text-xs font-bold text-amber-700 transition hover:border-amber-300 hover:bg-amber-100">Request reassign</button>
+                  )}
+                </div>
               )}
             </div>
           </div>)}
@@ -1687,7 +1796,42 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
           </div>
         </div>
       )}
-      
+
+      {/* Reassignment request — dept admin explains why dispatch picked the wrong dept */}
+      {isReassignRequestOpen && selectedReport && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-1050 p-4">
+          <div className="bg-white rounded-2xl ring-1 ring-slate-900/5 shadow-2xl w-full max-w-md">
+            <div className="flex items-center justify-between p-4 border-b border-slate-200">
+              <h3 className="font-bold text-lg">Request reassignment</h3>
+              <button onClick={() => { setIsReassignRequestOpen(false); setSelectedReport(null); }} aria-label="Close" className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100">
+                <Icon name="X" size={20} />
+              </button>
+            </div>
+            <div className="p-4">
+              <p className="text-sm text-slate-600 mb-3">
+                Only the dispatcher can move <span className="font-mono text-xs">{selectedReport.report_id || selectedReport.id?.slice(0,8)}</span> to another department — your request tells them why the current assignment is wrong.
+              </p>
+              <label className="block text-sm font-semibold mb-1.5">Reason <span className="text-red-500">*</span></label>
+              <textarea
+                id="reassignReason"
+                value={reassignReason}
+                onChange={e => { setReassignReason(e.target.value); setReassignRequestError(''); }}
+                placeholder="e.g. This is a medical incident but it was dispatched to fire..."
+                rows={4}
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+              />
+              {reassignRequestError && (
+                <div className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{reassignRequestError}</div>
+              )}
+              <div className="mt-4 flex justify-end gap-2">
+                <button onClick={() => { setIsReassignRequestOpen(false); setSelectedReport(null); }} className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold hover:bg-slate-50">Cancel</button>
+                <button onClick={handleReassignRequestSubmit} disabled={!reassignReason.trim()} className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed">Send request</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Report Detail Modal */}
       {isReportDetailModalOpen && selectedReport && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-1050 p-4">
@@ -1864,6 +2008,7 @@ export default function Dashboard({ section = 'command' }) {
   const [activeSection, setActiveSection] = useState(section);
   const [currentDate, setCurrentDate] = useState('');
   const [cdaRequests, setCdaRequests] = useState([]);
+  const [reassignRequests, setReassignRequests] = useState([]);
   const [isBoundaryModalOpen, setIsBoundaryModalOpen] = useState(false);
 
   // Esc closes overlays (audit U-05).
@@ -1939,6 +2084,24 @@ export default function Dashboard({ section = 'command' }) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'cross_department_assistance' }, () => fetchAssistance())
       .subscribe();
     return () => { supabase.removeChannel(cdaChannel); };
+  }, []);
+
+  // Reassignment requests — dept admins flag wrongly-assigned incidents
+  // for the dispatcher to re-dispatch. Realtime so the board updates live.
+  useEffect(() => {
+    const fetchReassign = async () => {
+      const { data } = await supabase
+        .from('reassignment_requests')
+        .select('*, requester:user_profiles!requested_by(full_name), department:departments!department_id(name)')
+        .in('status', ['pending', 'approved', 'denied', 'cancelled'])
+        .order('created_at', { ascending: false });
+      setReassignRequests(data || []);
+    };
+    fetchReassign();
+    const rrChannel = supabase.channel(`dashboard_rr_changes_${Math.random().toString(36).slice(2, 8)}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'reassignment_requests' }, () => fetchReassign())
+      .subscribe();
+    return () => { supabase.removeChannel(rrChannel); };
   }, []);
 
   const getGreeting = () => {
@@ -2100,6 +2263,28 @@ export default function Dashboard({ section = 'command' }) {
                       ? <span className="rounded-full bg-slate-700 px-1.5 py-0.5 text-[9px] font-bold uppercase text-white">auto-dispatch</span>
                       : <span className="text-xs text-slate-500">requested by {row.requester?.full_name || 'staff'}</span>}
                     <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${row.status === 'accepted' ? 'bg-emerald-100 text-emerald-700' : row.status === 'declined' ? 'bg-red-100 text-red-700' : 'bg-amber-200 text-amber-800'}`}>{row.status}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          )}
+          {reassignRequests.some(r => r.status === 'pending') && (
+            <section className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+              <p className="text-xs font-bold uppercase text-blue-700">Reassignment requests ({reassignRequests.filter(r => r.status === 'pending').length})</p>
+              <ul className="mt-2 space-y-1.5">
+                {reassignRequests.filter(r => r.status === 'pending').map(row => {
+                  const rep = reports.find(r => r.id === row.report_id);
+                  return (
+                    <li key={row.id} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-700">
+                      <span className="font-mono text-xs text-slate-500">{rep?.report_id || '—'}</span>
+                      <span className="font-semibold capitalize">{rep?.report_type || rep?.incident_type || 'Incident'}</span>
+                      <span>← {row.department?.name || 'department'}</span>
+                      <span className="text-xs text-slate-500">by {row.requester?.full_name || 'staff'}</span>
+                      <span className="max-w-[300px] truncate text-xs italic text-slate-600" title={row.reason}>"{row.reason}"</span>
+                      {profile?.role === 'dispatcher' && (
+                        <button onClick={() => navigate('/report-management')} className="rounded-lg border border-blue-300 bg-white px-2 py-0.5 text-xs font-semibold text-blue-700 hover:bg-blue-100">Review in queue</button>
+                      )}
                     </li>
                   );
                 })}
