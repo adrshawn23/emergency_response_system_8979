@@ -176,6 +176,9 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
   const [gpsStatus, setGpsStatus] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [submittedReportId, setSubmittedReportId] = useState(null);
+  // Nearby open incidents of the same type — set when the composer detects
+  // a possible duplicate and needs the reporter to confirm it is different.
+  const [dupMatches, setDupMatches] = useState(null);
   const [submitError, setSubmitError] = useState('');
   const [loading, setLoading] = useState(false);
   const [selectedReport, setSelectedReport] = useState(null);
@@ -1117,8 +1120,26 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
       return;
     }
     setSubmitError('');
+
+    // Same-type open incident within ~150 m? Warn first instead of
+    // silently duplicating — a responder may already be on the way.
+    // Skip when we have no coords (manual text-only location).
+    if (draft.latitude != null && draft.longitude != null) {
+      const { data: matches, error: checkErr } = await supabase
+        .rpc('check_duplicate_incidents', {
+          p_lat: draft.latitude, p_lng: draft.longitude, p_report_type: draft.type,
+        });
+      if (!checkErr && matches?.length) {
+        setDupMatches(matches);
+        return;
+      }
+    }
+    await insertReport();
+  };
+
+  const insertReport = async () => {
     setLoading(true);
-    
+
     // Convert image files to base64 for storage
     const imagePromises = imageFiles.map(file => {
       return new Promise((resolve, reject) => {
@@ -1826,6 +1847,44 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
               <div className="mt-4 flex justify-end gap-2">
                 <button onClick={() => { setIsReassignRequestOpen(false); setSelectedReport(null); }} className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold hover:bg-slate-50">Cancel</button>
                 <button onClick={handleReassignRequestSubmit} disabled={!reassignReason.trim()} className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed">Send request</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Duplicate-incident warning — the same type of incident is already
+          open nearby; the reporter confirms theirs is different */}
+      {dupMatches && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-1050 p-4">
+          <div className="bg-white rounded-2xl ring-1 ring-slate-900/5 shadow-2xl w-full max-w-md">
+            <div className="flex items-center justify-between p-4 border-b border-slate-200">
+              <h3 className="font-bold text-lg">This incident may already be reported</h3>
+              <button onClick={() => setDupMatches(null)} aria-label="Close" className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100">
+                <Icon name="X" size={20} />
+              </button>
+            </div>
+            <div className="p-4">
+              <p className="text-sm text-slate-600">
+                An open <span className="capitalize font-semibold">{draft.type}</span> incident is already on record near your location — responders may already be on the way.
+              </p>
+              <ul className="mt-3 space-y-2">
+                {dupMatches.map(m => (
+                  <li key={m.id} className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm">
+                    <span className="capitalize font-semibold text-amber-800">{m.report_type}</span>
+                    {m.location ? <span className="text-amber-800"> · {m.location}</span> : null}
+                    <span className="block text-xs text-amber-700 mt-0.5">
+                      ~{Math.round(m.distance_m)} m away · reported {formatTimeAgo(m.created_at)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-3 text-xs text-slate-500">
+                If your incident is different, you can still submit it.
+              </p>
+              <div className="mt-4 flex justify-end gap-2">
+                <button onClick={() => setDupMatches(null)} className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold hover:bg-slate-50">Cancel</button>
+                <button onClick={() => { setDupMatches(null); insertReport(); }} className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700">Submit anyway</button>
               </div>
             </div>
           </div>

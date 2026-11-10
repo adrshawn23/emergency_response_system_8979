@@ -46,6 +46,11 @@ realtime checks.
 3. Negative: submit with empty location/description → blocked.
 4. Submit → success → incident appears in the dispatcher view within
    seconds (realtime, no refresh needed).
+5. **Duplicate warning:** file a second report with the SAME type and GPS
+   within ~150 m of the first → a **"This incident may already be
+   reported"** modal lists the matching incident (distance + how long
+   ago) — **Cancel** aborts, **Submit anyway** files it. (Needs the
+   `20261110180000_duplicate_incident_check.sql` migration applied.)
 
 ## Phase 2 — Dispatcher dispatches to a department
 
@@ -125,6 +130,8 @@ realtime checks.
 
 ## Pass criteria (one line each)
 
+- Duplicate submit warns the reporter when an open same-type incident
+  is within ~150 m (never blocks — "Submit anyway" still files it).
 - Registration gates the department requirement + approval.
 - Incident → dispatch → dept-admin responder assignment works end to end.
 - Dept admin **requests** but never **directly reassigns**; the dispatcher
