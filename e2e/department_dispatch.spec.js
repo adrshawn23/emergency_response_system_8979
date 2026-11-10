@@ -203,6 +203,6 @@ test.describe.serial('Department dispatch gate', () => {
     await responderSelect.selectOption(responderValue);
     await modal.getByRole('button', { name: 'Assign' }).click();
     await expect(modal).toBeHidden();
-    await expect(row.locator('button', { hasText: 'Reassign' })).toBeVisible();
+    await expect(row.locator('button', { hasText: 'Reassign responder' })).toBeVisible();
   });
 });
