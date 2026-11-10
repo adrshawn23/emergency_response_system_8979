@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-09
 
-**Status**: Draft
+**Status**: Implemented
 
 **Input**: User description: "Incident Status Updates – Add step-by-step incident status updates, such as Assigned and In Progress, similar to the parcel tracking feature of Shopee. Add the full tracking statuses so they can see where the incident now is depending on status. In the responder side it should have an Arrived button so the resident who reported knows that they have arrived — the Arrived button should only be usable when the responder is close to the incident pin, like within 5 meters or a similar close boundary."
 

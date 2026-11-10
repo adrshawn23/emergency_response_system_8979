@@ -10,7 +10,10 @@ by a policy, RPC, or Edge Function, never only in React. Client-side
 validation duplicates the rule for UX but is never the sole guard.
 
 ### II. Roles & Lifecycle Are Canonical
-- `user_profiles.role`: `resident | dispatcher | responder | admin`.
+- `user_profiles.role`: `resident | dispatcher | responder | department_admin | admin`
+  (`department_admin` manages a single department's queue/responders — added
+  2026-11-10 after verified use across page_permissions, SECTION_ROLES, and
+  the dept-admin write guards).
 - `user_profiles.status = 'inactive'` means awaiting admin approval — that
   IS the pending-registration signal (drive badges/counters from it).
 - `account_status = 'suspended'` blocks at ProtectedRoute.

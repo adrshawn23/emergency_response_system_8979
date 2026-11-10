@@ -64,7 +64,9 @@ const ReportManagement = () => {
           setFilteredReports(mockData);
         } else {
           // Use Supabase
-          let query = supabase.from('emergency_reports').select('*');
+          // Slim list view — full rows (with multi-MB attachments) are
+          // lazily fetched on detail open (constitution IV).
+          let query = supabase.from('emergency_reports_list').select('*');
           
           if (profile?.role === 'resident') {
             query = query.eq('reporter_id', user.id);
@@ -96,7 +98,7 @@ const ReportManagement = () => {
       filtered = filtered?.filter(report => report?.priority === filters?.priority);
     }
     if (filters?.incidentType && filters?.incidentType !== 'all') {
-      filtered = filtered?.filter(report => report?.emergency_type === filters?.incidentType);
+      filtered = filtered?.filter(report => report?.report_type === filters?.incidentType);
     }
     if (filters?.dateFrom) {
       const fromDate = new Date(filters.dateFrom);
@@ -109,21 +111,21 @@ const ReportManagement = () => {
     }
     if (filters?.location) {
       filtered = filtered?.filter(report => 
-        report?.location?.toLowerCase()?.includes(filters?.location?.toLowerCase())
+        report?.attachments?.location?.toLowerCase()?.includes(filters?.location?.toLowerCase())
       );
     }
     if (filters?.reporter) {
       filtered = filtered?.filter(report => 
-        report?.contact_name?.toLowerCase()?.includes(filters?.reporter?.toLowerCase())
+        report?.attachments?.contact_name?.toLowerCase()?.includes(filters?.reporter?.toLowerCase())
       );
     }
 
     if (searchQuery) {
       filtered = filtered?.filter(report =>
         report?.report_id?.toLowerCase()?.includes(searchQuery?.toLowerCase()) ||
-        report?.location?.toLowerCase()?.includes(searchQuery?.toLowerCase()) ||
-        report?.description?.toLowerCase()?.includes(searchQuery?.toLowerCase()) ||
-        report?.contact_name?.toLowerCase()?.includes(searchQuery?.toLowerCase())
+        report?.attachments?.location?.toLowerCase()?.includes(searchQuery?.toLowerCase()) ||
+        report?.content?.toLowerCase()?.includes(searchQuery?.toLowerCase()) ||
+        report?.attachments?.contact_name?.toLowerCase()?.includes(searchQuery?.toLowerCase())
       );
     }
 
@@ -154,9 +156,19 @@ const ReportManagement = () => {
     }
   };
 
-  const handleViewDetails = (report) => {
+  const handleViewDetails = async (report) => {
+    // List rows come from the slim view — pull the full row (attachments
+    // included) so the detail modal can render evidence media.
     setSelectedReport(report);
     setShowDetailsModal(true);
+    if (report?.id) {
+      const { data } = await supabase
+        .from('emergency_reports')
+        .select('*')
+        .eq('id', report.id)
+        .single();
+      if (data) setSelectedReport(data);
+    }
   };
 
   const handleReportAction = (action, report) => {
