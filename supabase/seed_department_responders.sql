@@ -39,6 +39,8 @@ BEGIN
                 INSERT INTO auth.users (
                     instance_id, id, aud, role, email,
                     encrypted_password, email_confirmed_at,
+                    confirmation_token, recovery_token, reauthentication_token,
+                    email_change_token_new, email_change_token_current, email_change,
                     created_at, updated_at,
                     raw_app_meta_data, raw_user_meta_data
                 ) VALUES (
@@ -46,7 +48,9 @@ BEGIN
                     gen_random_uuid(), 'authenticated', 'authenticated',
                     v_email,
                     crypt('deptadmin123', gen_salt('bf')),
-                    now(), now(), now(),
+                    now(),
+                    '', '', '', '', '', '',
+                    now(), now(),
                     '{"provider":"email","providers":["email"]}', '{}'
                 )
                 RETURNING id INTO v_uid;
@@ -88,6 +92,8 @@ BEGIN
                 INSERT INTO auth.users (
                     instance_id, id, aud, role, email,
                     encrypted_password, email_confirmed_at,
+                    confirmation_token, recovery_token, reauthentication_token,
+                    email_change_token_new, email_change_token_current, email_change,
                     created_at, updated_at,
                     raw_app_meta_data, raw_user_meta_data
                 ) VALUES (
@@ -95,7 +101,9 @@ BEGIN
                     gen_random_uuid(), 'authenticated', 'authenticated',
                     v_email,
                     crypt('responder123', gen_salt('bf')),
-                    now(), now(), now(),
+                    now(),
+                    '', '', '', '', '', '',
+                    now(), now(),
                     '{"provider":"email","providers":["email"]}', '{}'
                 )
                 RETURNING id INTO v_uid;
