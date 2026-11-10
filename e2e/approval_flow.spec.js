@@ -36,15 +36,19 @@ test.describe.serial('Admin approval flow', () => {
 
     await page.goto('/user-management');
 
-    await expect(page.getByRole('heading', { name: 'Pending Registrations' })).toBeVisible({ timeout: 30000 });
+    // Spec-003: registrants sit in the For Approval tab; decisions are modal-only.
+    await expect(page.getByRole('tab', { name: /For Approval/ })).toBeVisible({ timeout: 30000 });
 
-    const card = page.locator('div.p-6').filter({ hasText: RESIDENT }).first();
-    await expect(card).toBeVisible({ timeout: 30000 });
+    const row = page.getByRole('button', { name: new RegExp(RESIDENT.replace('.', '\\.')) });
+    await expect(row).toBeVisible({ timeout: 30000 });
+    await row.click();
 
-    await card.locator('button:has-text("Approve")').click();
+    await expect(page.getByText('Review ID Verification')).toBeVisible({ timeout: 15000 });
+    await page.getByRole('button', { name: 'Approve & Activate' }).click();
+    await expect(page.getByText('Review ID Verification')).toBeHidden({ timeout: 15000 });
 
-    // Card leaves the pending list
-    await expect(page.locator('div.p-6').filter({ hasText: RESIDENT })).toBeHidden({ timeout: 30000 });
+    // Row leaves the For Approval list
+    await expect(row).toBeHidden({ timeout: 30000 });
 
     // Persisted: profile is active again
     const sb = client();
