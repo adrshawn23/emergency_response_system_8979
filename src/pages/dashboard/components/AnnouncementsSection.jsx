@@ -64,14 +64,16 @@ const AnnouncementsSection = () => {
 
   const [announcements, setAnnouncements] = useState([]);
   const [incidents, setIncidents] = useState([]);
-  const [form, setForm] = useState({ title: '', body: '', severity: 'info', report_id: '', audience: 'residents' });
+  const [form, setForm] = useState({ title: '', body: '', severity: 'info', audience: 'residents' });
   const [posting, setPosting] = useState(false);
   const [msg, setMsg] = useState('');
 
   const load = async () => {
     const [{ data: anns }, { data: reps }] = await Promise.all([
       supabase.from('announcements').select('*').order('created_at', { ascending: false }).limit(30),
-      supabase.from('emergency_reports_list').select('*').in('status', OPEN_STATUSES).order('created_at', { ascending: false }).limit(10),
+      showLiveIncidents
+        ? supabase.from('emergency_reports_list').select('*').in('status', OPEN_STATUSES).order('created_at', { ascending: false }).limit(10)
+        : Promise.resolve({ data: [] }),
     ]);
     setAnnouncements(anns ?? []);
     setIncidents(reps ?? []);
@@ -101,7 +103,6 @@ const AnnouncementsSection = () => {
         title: form.title.trim(),
         body: form.body.trim(),
         severity: form.severity,
-        report_id: form.report_id || null,
         created_by: profile.id,
       })
       .select('id')
@@ -112,7 +113,7 @@ const AnnouncementsSection = () => {
     supabase.functions.invoke('broadcast-incident', { body: { kind: 'announcement', announcement_id: data.id, audience: form.audience } })
       .catch(err => console.warn('broadcast-incident failed:', err?.message ?? err));
     const label = { residents: 'all residents', staff: 'staff', everyone: 'residents and staff' }[form.audience] || 'all residents';
-    setForm({ title: '', body: '', severity: 'info', report_id: '', audience: form.audience });
+    setForm({ title: '', body: '', severity: 'info', audience: form.audience });
     setMsg(`Advisory published and emailed to ${label}.`);
     load();
   };
@@ -164,18 +165,6 @@ const AnnouncementsSection = () => {
                 <option value="everyone">Residents + staff</option>
               </select>
             </label>
-            <select
-              className="rounded-lg border border-slate-200 px-3 py-2 text-sm max-w-xs"
-              value={form.report_id}
-              onChange={e => setForm({ ...form, report_id: e.target.value })}
-            >
-              <option value="">No linked incident</option>
-              {incidents.map(r => (
-                <option key={r.id} value={r.id} className="capitalize">
-                  {r.report_type} — {r.attachments?.location?.slice(0, 40) || 'open incident'}
-                </option>
-              ))}
-            </select>
             <button
               type="submit"
               disabled={posting}
