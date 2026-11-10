@@ -5,13 +5,10 @@ import LoginHeader from './components/LoginHeader';
 import LoginFooter from './components/LoginFooter';
 import TrustSignals from './components/TrustSignals';
 import { useAuth } from '../../contexts/AuthContext';
-import { useMockData } from '../../contexts/MockDataContext';
-import { supabase } from '../../lib/supabase';
 
 const Login = () => {
   const navigate = useNavigate();
-  const { signIn, signOut, user, profile } = useAuth();
-  const { useMock } = useMockData();
+  const { signIn, user, profile } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -29,21 +26,9 @@ const Login = () => {
       const { data, error: authError } = await signIn(formData.email.trim(), formData.password);
       if (authError) throw authError;
 
-      // Block suspended accounts only. Pending registrants MUST be able to
-      // sign in — their home page hosts the ID-verification card that is the
-      // sole submission/resubmission path. Routes.jsx renders SuspendedScreen
-      // for suspended profiles as well; this is a belt-and-suspenders check.
-      if (!useMock && data?.user) {
-        const { data: prof } = await supabase
-          .from('user_profiles')
-          .select('account_status')
-          .eq('id', data.user.id)
-          .maybeSingle();
-        if (prof?.account_status === 'suspended') {
-          await signOut();
-          throw new Error('Your account has been suspended. Contact the barangay office if you believe this is a mistake.');
-        }
-      }
+      // Suspended accounts DO sign in — Routes.jsx gates them to the
+      // SuspendedScreen (which shows the reason). Signing them out here
+      // would bounce them back to this form after a flash of that page.
 
       navigate('/', { replace: true });
     } catch (err) {
