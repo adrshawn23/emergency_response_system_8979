@@ -45,7 +45,7 @@ export default function ResidentHome() {
   const navigate = useNavigate();
   const { profile, signOut, canAccessPage } = useAuth();
   const { reports } = useMockData();
-  const annBadge = useAnnouncementBadge(profile?.role);
+  const annBadge = useAnnouncementBadge(profile);
   const links = RESIDENT_LINKS
     .filter(l => canAccessPage(l.key, profile?.role))
     .map(l => ({ ...l, badge: l.key === 'announcements' ? annBadge : undefined }));

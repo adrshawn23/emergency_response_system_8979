@@ -181,7 +181,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
   const { refreshProfile, canAccessPage } = useAuth();
   const navigate = useNavigate();
   const { reports, setReports } = useMockData();
-  const annBadge = useAnnouncementBadge(profile?.role);
+  const annBadge = useAnnouncementBadge(profile);
   const [status, setStatus] = useState('all');
   const [draft, setDraft] = useState({ type: 'fire', priority: 'high', location: '', description: '', latitude: null, longitude: null, serviceAreaStatus: 'manual' });
   const draftKey = `incident-draft-${profile?.id || 'anon'}`;
@@ -2298,7 +2298,7 @@ export default function Dashboard({ section = 'command' }) {
   const navigate = useNavigate();
   const { profile, signOut, canAccessPage } = useAuth();
   const { reports, setReports } = useMockData();
-  const annBadge = useAnnouncementBadge(profile?.role);
+  const annBadge = useAnnouncementBadge(profile);
   const forApprovalCount = useForApprovalCount(profile);
   const [pendingUsers] = usePendingRegistrations(profile);
   const [activeReport, setActiveReport] = useState(null);

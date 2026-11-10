@@ -33,7 +33,7 @@ const RESPONDER_LINKS = [
 export default function ResponderView() {
   const { profile, signOut, canAccessPage } = useAuth();
   const { reports: allReports, setReports } = useMockData();
-  const annBadge = useAnnouncementBadge(profile?.role);
+  const annBadge = useAnnouncementBadge(profile);
   const links = RESPONDER_LINKS
     .filter(l => canAccessPage(l.key, profile?.role))
     .map(l => ({ ...l, badge: l.key === 'announcements' ? annBadge : undefined }));

@@ -4,6 +4,7 @@ import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../../contexts/AuthContext';
 import BoundaryMap from '../../../components/BoundaryMap';
 import IncidentTimeline from '../../../components/IncidentTimeline';
+import { getSeenIds, markAnnouncementSeen } from '../../../hooks/useAnnouncementBadge';
 
 /**
  * Announcements (specs/004 US2) — advisories broadcast by admins plus a live
@@ -28,14 +29,15 @@ const reportCoords = (r) => {
   return (typeof lat === 'number' && typeof lng === 'number') ? [lat, lng] : null;
 };
 
-const IncidentCard = ({ report }) => {
+const IncidentCard = ({ report, onSeen, unseen }) => {
   const marker = reportCoords(report);
   return (
-    <div className="rounded-lg border border-border bg-card overflow-hidden">
+    <div onClick={onSeen} className="cursor-pointer rounded-lg border border-border bg-card overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3 border-b border-border">
         <div className="flex items-center gap-2">
           <Icon name="Siren" size={16} className="text-red-600" />
           <span className="font-semibold text-foreground capitalize">{report.report_type || 'incident'} emergency</span>
+          {unseen && <span className="rounded-full bg-red-600 px-1.5 py-0.5 text-[9px] font-bold uppercase text-white">New</span>}
           <span className="text-xs text-muted-foreground capitalize">{report.priority || 'standard'} priority</span>
         </div>
         <span className="text-xs text-muted-foreground">
@@ -64,7 +66,13 @@ const AnnouncementsSection = () => {
 
   const [announcements, setAnnouncements] = useState([]);
   const [incidents, setIncidents] = useState([]);
+  const [seenIds, setSeenIds] = useState(() => getSeenIds(profile?.id));
   const [form, setForm] = useState({ title: '', body: '', severity: 'info', audience: 'residents' });
+
+  const markSeen = (id) => {
+    markAnnouncementSeen(profile?.id, id);
+    setSeenIds(getSeenIds(profile?.id));
+  };
   const [posting, setPosting] = useState(false);
   const [msg, setMsg] = useState('');
 
@@ -188,9 +196,12 @@ const AnnouncementsSection = () => {
             {announcements.map(a => {
               const sev = SEVERITY[a.severity] || SEVERITY.info;
               return (
-                <div key={a.id} className={`rounded-lg border border-border border-l-4 ${sev.bar} bg-card p-4`}>
+                <div key={a.id} onClick={() => markSeen(a.id)} className={`cursor-pointer rounded-lg border border-border border-l-4 ${sev.bar} bg-card p-4`}>
                   <div className="flex items-center justify-between">
-                    <span className="font-semibold text-foreground">{a.title}</span>
+                    <span className="flex items-center gap-2 font-semibold text-foreground">
+                      {a.title}
+                      {!seenIds.has(a.id) && <span className="rounded-full bg-red-600 px-1.5 py-0.5 text-[9px] font-bold uppercase text-white">New</span>}
+                    </span>
                     <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${sev.chip}`}>{sev.label}</span>
                   </div>
                   <p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">{a.body}</p>
@@ -211,7 +222,7 @@ const AnnouncementsSection = () => {
             <p className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">No open incidents right now.</p>
           ) : (
             <div className="space-y-4">
-              {incidents.map(r => <IncidentCard key={r.id} report={r} />)}
+              {incidents.map(r => <IncidentCard key={r.id} report={r} unseen={!seenIds.has(r.id)} onSeen={() => markSeen(r.id)} />)}
             </div>
           )}
         </section>
