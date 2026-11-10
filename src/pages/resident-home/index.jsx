@@ -9,6 +9,7 @@ import SidebarProfile from '../../components/SidebarProfile';
 import AppSidebar from '../../components/AppSidebar';
 import ServiceAreaBadge from '../../components/ServiceAreaBadge';
 import IncidentTimeline from '../../components/IncidentTimeline';
+import useAnnouncementBadge from '../../hooks/useAnnouncementBadge';
 import BoundaryMap from '../../components/BoundaryMap';
 import { RESPONDER_ICON, responderDeptIcon } from '../../utils/leafletIcon';
 import useResponderLocation from '../../hooks/useResponderLocation';
@@ -44,7 +45,10 @@ export default function ResidentHome() {
   const navigate = useNavigate();
   const { profile, signOut, canAccessPage } = useAuth();
   const { reports } = useMockData();
-  const links = RESIDENT_LINKS.filter(l => canAccessPage(l.key, profile?.role));
+  const annBadge = useAnnouncementBadge(profile?.role);
+  const links = RESIDENT_LINKS
+    .filter(l => canAccessPage(l.key, profile?.role))
+    .map(l => ({ ...l, badge: l.key === 'announcements' ? annBadge : undefined }));
   const myReports = reports.filter(r => r.reporter_id === profile?.id).slice(0, 3);
 
   const [selectedReport, setSelectedReport] = useState(null);

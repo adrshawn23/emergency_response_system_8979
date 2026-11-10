@@ -15,6 +15,7 @@ const AnnouncementsSection = lazy(() => import('./components/AnnouncementsSectio
 const ContactsSection = lazy(() => import('./components/ContactsSection'));
 const MetricsSection = lazy(() => import('./components/MetricsSection'));
 import useIncidentAlarm from '../../hooks/useIncidentAlarm';
+import useAnnouncementBadge from '../../hooks/useAnnouncementBadge';
 import { isPointInBoundary } from '../../utils/geofence';
 import ResidentHome from '../resident-home';
 import ResponderView from '../responder-view';
@@ -179,6 +180,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
   const { refreshProfile, canAccessPage } = useAuth();
   const navigate = useNavigate();
   const { reports, setReports } = useMockData();
+  const annBadge = useAnnouncementBadge(profile?.role);
   const [status, setStatus] = useState('all');
   const [draft, setDraft] = useState({ type: 'fire', priority: 'high', location: '', description: '', latitude: null, longitude: null, serviceAreaStatus: 'manual' });
   const draftKey = `incident-draft-${profile?.id || 'anon'}`;
@@ -1356,7 +1358,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
   const idDocUrl = idDocIsDirect ? idDocRaw : idDocSignedUrl;
 
   return <div className="min-h-screen bg-slate-50 text-slate-900"><div className="flex min-h-screen">
-    <AppSidebar links={links.map(l => ({ ...l, badge: l.key === 'queue' ? pendingCount : l.key === 'residents' ? registrantViews.forApproval.length : undefined }))} profile={profile} signOut={signOut} />
+    <AppSidebar links={links.map(l => ({ ...l, badge: l.key === 'queue' ? pendingCount : l.key === 'residents' ? registrantViews.forApproval.length : l.key === 'announcements' ? annBadge : undefined }))} profile={profile} signOut={signOut} />
     <main className="min-w-0 flex-1 pb-24 sm:pb-0"><header className="sticky top-0 z-30 flex h-20 items-center justify-between border-b border-slate-200/70 bg-white px-5  sm:px-8"><div><p className="text-xs font-medium  text-slate-400">Kalubihan emergency command</p><h1 className="text-lg font-bold">{current.title}</h1></div><div className="flex items-center gap-3"><NotificationBell userId={profile?.id} onOpenIncident={(id) => { const report = reports.find(r => r.id === id); if (report) handleReportClick(report); }}/></div></header><div className="mx-auto max-w-[1400px] p-5 sm:p-8"><p className="text-xs font-bold  text-taste-600">{current.eyebrow}</p><h2 className="mt-1 text-3xl font-bold tracking-tight">{current.title}</h2><p className="mt-2 text-sm text-slate-500">{current.description}</p>
       {section === 'queue' && <>
         <div className="mt-7 flex flex-wrap items-center justify-between gap-3">
@@ -2295,6 +2297,7 @@ export default function Dashboard({ section = 'command' }) {
   const navigate = useNavigate();
   const { profile, signOut, canAccessPage } = useAuth();
   const { reports, setReports } = useMockData();
+  const annBadge = useAnnouncementBadge(profile?.role);
   const [pendingUsers] = usePendingRegistrations(profile);
   const [activeReport, setActiveReport] = useState(null);
   const [activeSection, setActiveSection] = useState(section);
@@ -2526,7 +2529,7 @@ export default function Dashboard({ section = 'command' }) {
     { label: 'Departments', icon: 'Building2', path: '/department-management', roles: ['admin'], key: 'departments' },
     { label: 'Reports', icon: 'BarChart3', path: '/reports', roles: ['admin', 'dispatcher'], key: 'reports' },
     // Open role lists — canAccessPage (the Access control matrix) decides.
-    { label: 'Announcements', icon: 'Megaphone', path: '/announcements', roles: ['admin', 'dispatcher', 'responder', 'resident', 'department_admin'], key: 'announcements' },
+    { label: 'Announcements', icon: 'Megaphone', path: '/announcements', badge: annBadge, roles: ['admin', 'dispatcher', 'responder', 'resident', 'department_admin'], key: 'announcements' },
     { label: 'Contacts', icon: 'Phone', path: '/contacts', roles: ['admin', 'dispatcher', 'responder', 'resident', 'department_admin'], key: 'contacts' },
     { label: 'Profile', icon: 'User', path: '/profile', roles: ['admin', 'dispatcher', 'department_admin'], key: 'profile' }
   ].filter(link => link.roles?.includes(profile?.role) && canAccessPage(link.key, profile?.role));

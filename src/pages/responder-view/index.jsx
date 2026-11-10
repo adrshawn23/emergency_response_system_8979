@@ -13,6 +13,7 @@ import { reportCoords } from '../../utils/reportCoords';
 import AppSidebar from '../../components/AppSidebar';
 import ServiceAreaBadge from '../../components/ServiceAreaBadge';
 import IncidentTimeline from '../../components/IncidentTimeline';
+import useAnnouncementBadge from '../../hooks/useAnnouncementBadge';
 import useIncidentHistory from '../../hooks/useIncidentHistory';
 import { haversineMeters } from '../../utils/distance';
 import useEscapeKey from '../../hooks/useEscapeKey';
@@ -32,7 +33,10 @@ const RESPONDER_LINKS = [
 export default function ResponderView() {
   const { profile, signOut, canAccessPage } = useAuth();
   const { reports: allReports, setReports } = useMockData();
-  const links = RESPONDER_LINKS.filter(l => canAccessPage(l.key, profile?.role));
+  const annBadge = useAnnouncementBadge(profile?.role);
+  const links = RESPONDER_LINKS
+    .filter(l => canAccessPage(l.key, profile?.role))
+    .map(l => ({ ...l, badge: l.key === 'announcements' ? annBadge : undefined }));
   const [assignedReports, setAssignedReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedReport, setSelectedReport] = useState(null);
