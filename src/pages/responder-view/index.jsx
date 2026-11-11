@@ -212,6 +212,7 @@ export default function ResponderView() {
   // server's copy of our position before recording anything.
   const [arriving, setArriving] = useState(false);
   const [arriveMsg, setArriveMsg] = useState('');
+  const [assistMsg, setAssistMsg] = useState('');
   const [radiusM, setRadiusM] = useState(50);
   const { rows: selHistory } = useIncidentHistory(selectedReport?.id, !!selectedReport);
   const hasArrived = selHistory.some(r => r.to_status === 'arrived');
@@ -282,12 +283,17 @@ export default function ResponderView() {
   }, [profile?.id, hasOpenAssignment]);
 
   const respondAssistance = async (request, nextStatus) => {
-    const { error } = await supabase
+    setAssistMsg('');
+    // .select() forces a row count back — an RLS-blocked UPDATE returns
+    // zero rows with NO error, and the optimistic UI used to lie "accepted".
+    const { data, error } = await supabase
       .from('cross_department_assistance')
       .update({ status: nextStatus, responded_by: profile?.id, updated_at: new Date().toISOString() })
-      .eq('id', request.id);
-    if (error) {
-      console.error('Assistance response failed:', error);
+      .eq('id', request.id)
+      .select('id');
+    if (error || !data?.length) {
+      console.error('Assistance response failed:', error || 'RLS blocked — no rows updated');
+      setAssistMsg(error?.message || 'Could not respond — this request can only be answered by the target department.');
       return;
     }
     setAssistanceRequests(prev => prev.map(r => r.id === request.id ? { ...r, status: nextStatus } : r));
@@ -463,6 +469,7 @@ export default function ResponderView() {
               <Icon name="Users" size={18} className="text-amber-600"/>
               <h2 className="font-bold">Assistance requested for your department</h2>
             </div>
+            {assistMsg && <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{assistMsg}</p>}
             <div className="space-y-3">
               {assistanceRequests.map((req) => {
                 const r = req.report || {};

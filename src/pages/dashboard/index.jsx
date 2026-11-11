@@ -886,12 +886,13 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
   // their department — picking a responder IS accepting the request.
   const handleCdaResponderAssign = async (cdaId, responderId) => {
     if (busyResponderIds.has(responderId)) return;
-    const { error } = await supabase
+    const { data: updated, error } = await supabase
       .from('cross_department_assistance')
       .update({ responder_id: responderId, status: 'accepted', responded_by: profile?.id, assigned_at: new Date().toISOString() })
-      .eq('id', cdaId);
-    if (error) {
-      console.error('CDA responder assign error:', error);
+      .eq('id', cdaId)
+      .select('id');
+    if (error || !updated?.length) {
+      console.error('CDA responder assign error:', error || 'RLS blocked — no rows updated');
       return;
     }
     setCdaRequests(prev => prev.map(c =>
