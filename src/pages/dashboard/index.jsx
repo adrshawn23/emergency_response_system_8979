@@ -1360,6 +1360,22 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
     isReportDetailModalOpen && !['resolved', 'declined'].includes(selectedReport?.status) ? selectedReport?.assigned_to : null
   );
 
+  // Full attachments for the open incident — the queue reads the slim view
+  // (media >8KB stripped), so evidence photos/proof need a per-row fetch.
+  const [detailAttachments, setDetailAttachments] = useState(null);
+  useEffect(() => {
+    setDetailAttachments(null);
+    if (!isReportDetailModalOpen || !selectedReport?.id) return undefined;
+    let alive = true;
+    supabase
+      .from('emergency_reports').select('attachments').eq('id', selectedReport.id).maybeSingle()
+      .then(({ data }) => { if (alive && data?.attachments) setDetailAttachments(data.attachments); });
+    return () => { alive = false; };
+  }, [isReportDetailModalOpen, selectedReport?.id]);
+  const detailMedia = detailAttachments || selectedReport?.attachments || {};
+  // Same admin-tunable circle the shared modal draws (app_settings).
+  const incidentRadius = useAppSetting('incident_radius_m', 150);
+
   // --- Manual arrival fallback (Spec 001 FR-017) --------------------------
   // Staff mark arrival when the responder's GPS can't; audited via
   // meta.method='manual'. The RPC re-checks role + state server-side.
