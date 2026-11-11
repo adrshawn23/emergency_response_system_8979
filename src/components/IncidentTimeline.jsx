@@ -204,7 +204,7 @@ const TONES = {
   done:     { ring: 'bg-emerald-500 text-white', text: 'text-slate-900', sub: 'text-slate-500' },
   current:  { ring: 'bg-taste-500 text-white ring-4 ring-taste-100', text: 'text-taste-600 font-semibold', sub: 'text-slate-500' },
   upcoming: { ring: 'bg-slate-200 text-slate-400', text: 'text-slate-400', sub: 'text-slate-400' },
-  skipped:  { ring: 'bg-slate-100 text-slate-400', text: 'text-slate-400 line-through', sub: 'text-slate-400' },
+  skipped:  { ring: 'bg-slate-100 text-slate-400', text: 'text-slate-400', sub: 'text-slate-400' },
   declined: { ring: 'bg-red-500 text-white', text: 'text-red-600 font-semibold', sub: 'text-slate-500' },
 };
 
@@ -235,7 +235,7 @@ export default function IncidentTimeline({ report }) {
                 <p className={`text-sm ${tone.text}`}>{step.label}</p>
                 {step.time && <p className={`text-xs ${tone.sub}`}>{step.time}</p>}
                 {sub && <p className={`text-xs capitalize ${tone.sub}`}>{sub}</p>}
-                {step.state === 'skipped' && <p className="text-xs text-slate-400">skipped</p>}
+                {step.state === 'skipped' && <p className="text-xs text-slate-400">not recorded — resolved before arrival</p>}
               </div>
             </li>
           );

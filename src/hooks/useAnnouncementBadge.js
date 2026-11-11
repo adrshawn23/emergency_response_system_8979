@@ -3,7 +3,6 @@ import { supabase } from '../lib/supabase';
 
 // 'arrived' is a status-history event, not a report_status enum value —
 // including it makes PostgREST reject the whole in() filter (400).
-const OPEN_STATUSES = ['pending', 'assigned', 'in-progress'];
 const SEEN_EVENT = 'announcement-seen';
 const seenKey = (uid) => `ann-seen-${uid}`;
 
@@ -63,8 +62,11 @@ export default function useAnnouncementBadge(profile, enabled = true) {
         .from('announcements').select('id').order('created_at', { ascending: false }).limit(100);
       let ids = (anns ?? []).map(a => a.id);
       if (role === 'resident') {
+        // Same feed as AnnouncementsSection — today's incidents (public_incidents).
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
         const { data: inc } = await supabase
-          .from('emergency_reports_list').select('id').in('status', OPEN_STATUSES)
+          .from('public_incidents').select('id').gte('created_at', today.toISOString())
           .order('created_at', { ascending: false }).limit(50);
         ids = ids.concat((inc ?? []).map(r => r.id));
       }

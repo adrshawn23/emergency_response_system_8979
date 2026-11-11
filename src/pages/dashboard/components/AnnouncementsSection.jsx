@@ -4,6 +4,7 @@ import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../../contexts/AuthContext';
 import BoundaryMap from '../../../components/BoundaryMap';
 import IncidentTimeline from '../../../components/IncidentTimeline';
+import IncidentDetailModal from '../../../components/IncidentDetailModal';
 import { getSeenIds, markAnnouncementSeen, markAllAnnouncementsSeen } from '../../../hooks/useAnnouncementBadge';
 
 /**
@@ -20,9 +21,13 @@ const SEVERITY = {
   critical: { chip: 'bg-red-100 text-red-700',      bar: 'border-l-red-500',     label: 'Critical' },
 };
 
-// 'arrived' is a status-history event, not a report_status enum value —
-// including it makes PostgREST reject the whole in() filter (400).
-const OPEN_STATUSES = ['pending', 'assigned', 'in-progress'];
+// Start of today (client-local) — the resident feed shows every incident
+// reported today, open or already resolved, from any reporter.
+const todayStartISO = () => {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d.toISOString();
+};
 
 const reportCoords = (r) => {
   const a = r?.attachments ?? {};
@@ -69,6 +74,7 @@ const AnnouncementsSection = () => {
 
   const [announcements, setAnnouncements] = useState([]);
   const [incidents, setIncidents] = useState([]);
+  const [selectedIncident, setSelectedIncident] = useState(null);
   const [seenIds, setSeenIds] = useState(() => getSeenIds(profile?.id));
   const [form, setForm] = useState({ title: '', body: '', severity: 'info', audience: 'residents' });
 
@@ -83,7 +89,9 @@ const AnnouncementsSection = () => {
     const [{ data: anns }, { data: reps }] = await Promise.all([
       supabase.from('announcements').select('*').order('created_at', { ascending: false }).limit(30),
       showLiveIncidents
-        ? supabase.from('emergency_reports_list').select('*').in('status', OPEN_STATUSES).order('created_at', { ascending: false }).limit(10)
+        // public_incidents — non-PII feed (migration 20261111230000); every
+        // incident reported today, any reporter. Falls back to [] pre-migration.
+        ? supabase.from('public_incidents').select('*').gte('created_at', todayStartISO()).order('created_at', { ascending: false }).limit(30)
         : Promise.resolve({ data: [] }),
     ]);
     setAnnouncements(anns ?? []);
@@ -229,17 +237,25 @@ const AnnouncementsSection = () => {
       {showLiveIncidents && (
         <section>
           <h3 className="mb-3 flex items-center gap-2 font-semibold text-foreground">
-            <Icon name="Activity" size={16} className="text-primary" /> Live incidents
+            <Icon name="Activity" size={16} className="text-primary" /> Today's incidents
           </h3>
           {incidents.length === 0 ? (
-            <p className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">No open incidents right now.</p>
+            <p className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">No incidents reported today.</p>
           ) : (
             <div className="space-y-4">
-              {incidents.map(r => <IncidentCard key={r.id} report={r} unseen={!seenIds.has(r.id)} onSeen={() => markSeen(r.id)} />)}
+              {incidents.map(r => <IncidentCard key={r.id} report={r} unseen={!seenIds.has(r.id)} onSeen={() => { markSeen(r.id); setSelectedIncident(r); }} />)}
             </div>
           )}
         </section>
       )}
+
+      {/* Same detail modal as the staff queue — public feed rows carry no
+          reporter PII, and chat only opens when it's the viewer's own report. */}
+      <IncidentDetailModal
+        report={selectedIncident}
+        onClose={() => setSelectedIncident(null)}
+        chatTitle={selectedIncident?.reporter_id === profile?.id && selectedIncident?.assigned_to ? 'Message the responder' : null}
+      />
     </div>
   );
 };

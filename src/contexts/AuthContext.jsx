@@ -8,7 +8,7 @@ const AuthContext = createContext({})
 // are treated as open, matching the old hardcoded-gate semantics.
 export const DEFAULT_PAGE_ROLES = {
   command: ['admin', 'dispatcher', 'responder', 'resident'],
-  queue: ['admin', 'dispatcher', 'responder', 'department_admin'],
+  queue: ['admin', 'dispatcher', 'responder', 'department_admin', 'resident'],
   new: ['admin', 'dispatcher', 'responder', 'resident'],
   residents: ['admin'],
   access: ['admin'],

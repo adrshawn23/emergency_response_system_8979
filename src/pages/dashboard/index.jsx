@@ -164,7 +164,7 @@ const sectionCopy = {
 // and triage stay with dispatchers/responders/residents who own them.
 const SECTION_ROLES = {
   command: ['admin', 'dispatcher', 'responder', 'resident'],
-  queue: ['dispatcher', 'responder', 'department_admin'],
+  queue: ['dispatcher', 'responder', 'department_admin', 'resident'],
   new: ['dispatcher', 'responder', 'resident'],
   residents: ['admin'],
   access: ['admin'],
@@ -639,6 +639,9 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
     resident: {
       command: { label: 'Home', icon: 'Home' },
       new: { label: 'Report emergency', icon: 'Siren' },
+      // RLS scopes the queue to the resident's own reports — it's their
+      // incident history page, so the label says so.
+      queue: { label: 'My reports', icon: 'FileText' },
     },
   };
   const links = [
@@ -2535,7 +2538,7 @@ export default function Dashboard({ section = 'command' }) {
 
   const sidebarLinks = [
     { label: 'Command center', icon: 'LayoutDashboard', path: '/', roles: ['admin', 'dispatcher'], key: 'command' },
-    { label: 'Incident queue', icon: 'Siren', path: '/report-management', badge: pendingCount, roles: ['dispatcher', 'responder', 'department_admin'], key: 'queue' },
+    { label: 'Incident queue', icon: 'Siren', path: '/report-management', badge: pendingCount, roles: ['dispatcher', 'responder', 'department_admin', 'resident'], key: 'queue' },
     { label: 'New incident', icon: 'PlusCircle', path: '/emergency-report', roles: ['dispatcher', 'responder', 'resident'], key: 'new' },
     { label: 'Residents & review', icon: 'Users', path: '/user-management', badge: forApprovalCount, roles: ['admin'], key: 'residents' },
     { label: 'Access control', icon: 'ShieldCheck', path: '/access-control', roles: ['admin'], key: 'access' },

@@ -4,14 +4,11 @@ import Icon from '../../components/AppIcon';
 import { useAuth } from '../../contexts/AuthContext';
 import { useMockData } from '../../contexts/MockDataContext';
 import NotificationBell from '../../components/NotificationBell';
-import IncidentChat from '../../components/IncidentChat';
+import IncidentDetailModal from '../../components/IncidentDetailModal';
 import SidebarProfile from '../../components/SidebarProfile';
 import AppSidebar from '../../components/AppSidebar';
-import ServiceAreaBadge from '../../components/ServiceAreaBadge';
-import IncidentTimeline from '../../components/IncidentTimeline';
 import useAnnouncementBadge from '../../hooks/useAnnouncementBadge';
-import BoundaryMap from '../../components/BoundaryMap';
-import { RESPONDER_ICON, responderDeptIcon } from '../../utils/leafletIcon';
+import { responderDeptIcon } from '../../utils/leafletIcon';
 import useResponderLocation from '../../hooks/useResponderLocation';
 import useResponderLocations from '../../hooks/useResponderLocations';
 import useDrivingRoutes from '../../hooks/useDrivingRoutes';
@@ -33,7 +30,7 @@ const VERIFICATION_COPY = {
 const RESIDENT_LINKS = [
   { key: 'command', label: 'Home', icon: 'Home', path: '/' },
   { key: 'new', label: 'Report emergency', icon: 'Siren', path: '/emergency-report' },
-  { key: 'queue', label: 'Incident queue', icon: 'ListChecks', path: '/report-management' },
+  { key: 'queue', label: 'My reports', icon: 'FileText', path: '/report-management' },
   { key: 'residents', label: 'Residents & review', icon: 'Users', path: '/user-management' },
   { key: 'departments', label: 'Departments', icon: 'Building2', path: '/department-management' },
   { key: 'announcements', label: 'Announcements', icon: 'Megaphone', path: '/announcements' },
@@ -183,81 +180,15 @@ export default function ResidentHome() {
       <section className="rounded-lg border border-slate-200 bg-white p-5"><h2 className="font-bold">Emergency contacts & guidance</h2><p className="mt-2 text-sm text-slate-500">Emergency phone services are the fastest fallback when network or app notifications are unavailable. Contact details are managed and verified by Barangay administrators.</p><div className="mt-4 flex flex-wrap gap-3"><button onClick={() => navigate('/emergency-report')} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold hover:bg-slate-50"><Icon name="MapPin" size={16} className="mr-2 inline"/>Submit with a manual pin</button><button onClick={() => setContactNotice(v => !v)} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold hover:bg-slate-50"><Icon name="Phone" size={16} className="mr-2 inline"/>View contacts</button></div>{contactNotice && <p className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600">Emergency contacts are managed by the Barangay administrator — contact the front desk to add or update numbers.</p>}</section>
     </main>
 
-    {selectedReport && (
-      <div className="fixed inset-0 z-1050 flex items-center justify-center bg-slate-900/50 p-4" role="dialog" aria-modal="true" onClick={() => setSelectedReport(null)}>
-        <div className="w-full max-w-md overflow-hidden rounded-2xl bg-white " onClick={(e) => e.stopPropagation()}>
-          <div className="flex items-start justify-between border-b border-slate-100 px-6 py-4">
-            <div>
-              <p className="font-semibold capitalize">{selectedReport.emergency_type || selectedReport.report_type || 'Incident'} report</p>
-              <p className="font-mono text-xs text-slate-500">{selectedReport.report_id || selectedReport.id?.slice(0, 8)}</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="rounded-full bg-taste-50 px-2 py-1 text-[10px] font-bold uppercase text-taste-600">{selectedReport.status || 'pending'}</span>
-              <button onClick={() => setSelectedReport(null)} aria-label="Close" className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100">
-                <Icon name="X" size={18}/>
-              </button>
-            </div>
-          </div>
-          <div className="max-h-[70vh] space-y-4 overflow-y-auto px-6 py-5">
-            <div>
-              <p className="text-xs font-bold  text-slate-500">Description</p>
-              <p className="mt-1 text-sm text-slate-700">{selectedReport.content || selectedReport.description || 'No description provided.'}</p>
-            </div>
-            <div>
-              <p className="text-xs font-bold  text-slate-500">Location</p>
-              <p className="mt-1 text-sm text-slate-700">{selectedReport.location || selectedReport.attachments?.location || 'No location recorded'}</p>
-            </div>
-            <ServiceAreaBadge report={selectedReport} />
-            <IncidentTimeline report={selectedReport} />
-            {(incidentCoords || responderMarkers.length > 0) && (
-              <div>
-                <p className="text-xs font-bold  text-slate-500">Map</p>
-                <div className="mt-1 h-48 overflow-hidden rounded-lg border border-slate-200">
-                  <BoundaryMap
-                    marker={incidentCoords}
-                    markers={responderMarkers}
-                    route={responderRoutes.length ? responderRoutes : null}
-                  />
-                </div>
-                {lastUpdate && (
-                  <p className="mt-1.5 flex items-center gap-1.5 text-xs text-slate-500">
-                    <Icon name="Navigation" size={12} className="text-blue-600"/>
-                    {responderMarkers.length > 1 ? 'Responders' : 'Responder'} live — updated {new Date(lastUpdate).toLocaleTimeString()}
-                  </p>
-                )}
-              </div>
-            )}
-            {selectedReport.status === 'resolved' && (
-              <div className="flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700">
-                <Icon name="CheckCircle" size={16}/> This incident was resolved by responders.
-              </div>
-            )}
-            {selectedReport.attachments?.resolution_proof && (
-              <div>
-                <p className="text-xs font-bold  text-slate-500">Resolution proof</p>
-                <img
-                  src={selectedReport.attachments.resolution_proof}
-                  alt="Resolution proof"
-                  className="mt-1 h-32 w-48 rounded-lg border border-emerald-200 object-cover"
-                />
-              </div>
-            )}
-            <div>
-              <p className="text-xs font-bold  text-slate-500">Reported</p>
-              <p className="mt-1 text-sm text-slate-700">{selectedReport.created_at ? new Date(selectedReport.created_at).toLocaleString() : 'N/A'}</p>
-            </div>
-            {selectedReport.assigned_to && (
-              <IncidentChat reportId={selectedReport.id} title="Message the responder"/>
-            )}
-          </div>
-          <div className="border-t border-slate-100 px-6 py-4">
-            <button onClick={() => setSelectedReport(null)} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50">
-              Close
-            </button>
-          </div>
-        </div>
-      </div>
-    )}
+    <IncidentDetailModal
+      report={selectedReport}
+      onClose={() => setSelectedReport(null)}
+      markers={responderMarkers.length ? responderMarkers : null}
+      route={responderRoutes.length ? responderRoutes : null}
+      mapNote={lastUpdate ? `${responderMarkers.length > 1 ? 'Responders' : 'Responder'} live — updated ${new Date(lastUpdate).toLocaleTimeString()}` : null}
+      showReporterContact
+      chatTitle={selectedReport?.assigned_to ? 'Message the responder' : null}
+    />
     </div>
   </div>;
 }
