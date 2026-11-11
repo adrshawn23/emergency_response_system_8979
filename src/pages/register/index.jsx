@@ -75,8 +75,8 @@ const Register = () => {
     password: '',
     confirmPassword: '',
     
-    // Role Selection
-    role: '',
+    // Role Selection — self-registration is resident-only
+    role: 'resident',
     departmentId: '',
     
     // Emergency Contacts
@@ -291,8 +291,9 @@ const Register = () => {
             phone: contact.phone,
             relationship: contact.relationship
           })),
-          role: formData.role,
-          department_id: formData.departmentId || null
+          // Public signup is resident-only — never trust the form value here.
+          role: 'resident',
+          department_id: null
         }
       );
 

@@ -1164,6 +1164,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
         .eq('id', selectedVerification.id);
       if (e1) { console.error('Request-clarity failed:', e1); return; }
     }
+    notifyDecision(selectedVerification.id);
     closeReviewWith('needs_clarity');
   };
 

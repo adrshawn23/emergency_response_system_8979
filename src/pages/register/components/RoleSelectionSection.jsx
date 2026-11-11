@@ -8,31 +8,13 @@ const RoleSelectionSection = ({
   onChange,
   departments = []
 }) => {
+  // Self-registration is resident-only — staff accounts (responder,
+  // dispatcher, department_admin, admin) are provisioned by administrators.
   const roleOptions = [
-    { 
-      value: 'resident', 
+    {
+      value: 'resident',
       label: 'Resident/Boarder',
       description: 'Community member who can report emergencies and receive alerts'
-    },
-    {
-      value: 'responder',
-      label: 'Responder',
-      description: 'Department field staff who respond to assigned incidents'
-    },
-    {
-      value: 'dispatcher',
-      label: 'Dispatcher',
-      description: 'Command-center staff who triage reports and assign departments'
-    },
-    {
-      value: 'department_admin',
-      label: 'Department Admin',
-      description: 'Manages one department and assigns its responders'
-    },
-    {
-      value: 'admin',
-      label: 'Administrator',
-      description: 'System administrator — approvals, access control, settings'
     }
   ];
 
@@ -102,7 +84,7 @@ const RoleSelectionSection = ({
         
         <Select
           label="Select Your Role"
-          description="Pick the access level you're applying for. Staff roles activate only after an administrator approves them."
+          description="Public registration is for residents and boarders — staff accounts are created by administrators."
           options={roleOptions}
           value={formData?.role}
           onChange={(value) => onChange({ target: { name: 'role', value } })}
