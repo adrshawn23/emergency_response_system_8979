@@ -48,10 +48,12 @@ const UserAccessManager = () => {
     const { error } = await supabase.from('user_profiles').update(patch).eq('id', id);
     if (error) {
       setMessage(`Update failed: ${error.message}`);
-    } else {
-      setUsers(prev => prev.map(u => (u.id === id ? { ...u, ...patch } : u)));
+      setBusyId(null);
+      return false;
     }
+    setUsers(prev => prev.map(u => (u.id === id ? { ...u, ...patch } : u)));
     setBusyId(null);
+    return true;
   };
 
   const submitSuspend = async () => {
@@ -114,9 +116,14 @@ const UserAccessManager = () => {
                   {ROLE_OPTIONS.map(r => <option key={r} value={r}>{r}</option>)}
                 </select>
                 <button
-                  onClick={() => {
+                  onClick={async () => {
                     if (suspended) {
-                      updateUser(u.id, { account_status: 'active', suspension_reason: null });
+                      const ok = await updateUser(u.id, { account_status: 'active', suspension_reason: null });
+                      if (ok) {
+                        // Best-effort notify — reactivation already landed even if email fails.
+                        supabase.functions.invoke('notify-suspension', { body: { user_id: u.id } })
+                          .catch(e => console.error('notify-suspension invoke failed:', e));
+                      }
                     } else {
                       setSuspendFor(u); setSuspendReason(''); setSuspendError('');
                     }

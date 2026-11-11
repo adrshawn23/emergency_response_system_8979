@@ -1,8 +1,9 @@
-// notify-suspension — emails a user when an admin suspends their account.
+// notify-suspension — emails a user when an admin suspends or reactivates
+// their account.
 //
 // Same contract as notify-decision: authenticated admin caller only, the
 // reason is read from the stored user_profiles row — the client cannot
-// supply a fake one. Called right after the suspend write.
+// supply a fake one. Called right after the status write.
 //
 // Deploy: supabase functions deploy notify-suspension
 // Secrets: BREVO_API_KEY (or RESEND_API_KEY fallback), EMAIL_FROM —
@@ -55,18 +56,23 @@ Deno.serve(async (req: Request) => {
       .eq('id', targetId)
       .single();
     if (error || !target) return json({ error: 'not_found' }, 404);
-    if (target.account_status !== 'suspended')
-      return json({ skipped: true, reason: 'account not suspended' });
     if (!target.email) return json({ skipped: true, reason: 'no recipient email' });
 
-    const reason = target.suspension_reason ||
-      'Your access was suspended by an administrator. Contact the barangay office for details.';
+    let subject: string;
+    let html: string;
+    if (target.account_status === 'suspended') {
+      subject = 'Account suspended — Kalubihan Emergency Command';
+      html = decisionEmail('suspended', target.suspension_reason ||
+        'Your access was suspended by an administrator. Contact the barangay office for details.');
+    } else if (target.account_status === 'active') {
+      subject = 'Account reactivated — Kalubihan Emergency Command';
+      html = decisionEmail('reactivated',
+        'An administrator has reactivated your account. You can sign in and use the app normally again.');
+    } else {
+      return json({ skipped: true, reason: `account status ${target.account_status} — nothing to notify` });
+    }
 
-    const result = await sendEmail(
-      target.email,
-      'Account suspended — Kalubihan Emergency Command',
-      decisionEmail('suspended', reason),
-    );
+    const result = await sendEmail(target.email, subject, html);
     return json(result);
   } catch (e) {
     console.error('notify-suspension unhandled error:', e);

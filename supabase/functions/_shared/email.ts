@@ -107,7 +107,7 @@ export const sendEmail = async (
 // Branded card layout for decision notices — matches the Confirm-signup
 // template in supabase/email_templates/confirm_signup.html.
 export const decisionEmail = (
-  status: 'approved' | 'rejected' | 'correction_required' | 'pending',
+  status: 'approved' | 'rejected' | 'correction_required' | 'pending' | 'suspended' | 'reactivated',
   reason: string,
 ) => {
   const heading = {
@@ -115,10 +115,12 @@ export const decisionEmail = (
     rejected: 'Your registration was not approved',
     correction_required: 'Your ID needs correction',
     pending: 'Your ID is under review',
+    suspended: 'Your account has been suspended',
+    reactivated: 'Your account has been reactivated',
   }[status];
-  const color = { approved: '#059669', rejected: '#dc2626', correction_required: '#d97706', pending: '#2563eb' }[status];
-  const tint = { approved: '#ecfdf5', rejected: '#fef2f2', correction_required: '#fffbeb', pending: '#eff6ff' }[status];
-  const icon = { approved: '&#10003;', rejected: '&#10007;', correction_required: '&#9998;', pending: '&#9200;' }[status];
+  const color = { approved: '#059669', rejected: '#dc2626', correction_required: '#d97706', pending: '#2563eb', suspended: '#dc2626', reactivated: '#059669' }[status];
+  const tint = { approved: '#ecfdf5', rejected: '#fef2f2', correction_required: '#fffbeb', pending: '#eff6ff', suspended: '#fef2f2', reactivated: '#ecfdf5' }[status];
+  const icon = { approved: '&#10003;', rejected: '&#10007;', correction_required: '&#9998;', pending: '&#9200;', suspended: '&#9888;', reactivated: '&#10003;' }[status];
 
   const cta = {
     approved: 'You can now sign in to Kalubihan Emergency Response.',
@@ -126,6 +128,7 @@ export const decisionEmail = (
     rejected: 'If you believe this was a mistake, contact the barangay office to appeal.',
     correction_required: 'Fix the issue above, then submit a corrected or clearer ID photo.',
     suspended: 'If you believe this was a mistake, contact the barangay office to appeal.',
+    reactivated: 'You can sign in again right away — all access has been restored.',
   }[status];
 
   // Numbered guide shown when the user must act — mirrors the resident-home flow.
@@ -133,6 +136,7 @@ export const decisionEmail = (
     approved: null,
     pending: null,
     suspended: null,
+    reactivated: null,
     rejected: [
       'Sign in with the email and password you registered.',
       'Open your Resident Home — the verification card shows what went wrong.',
