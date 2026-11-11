@@ -70,6 +70,9 @@ export default function IncidentDetailModal({
   const ref = report.report_id || report.id?.slice(0, 8);
   const contactName = attachments.contact_name;
   const contactPhone = attachments.contact_phone;
+  // Feed rows carry reporter_name (public_incidents join); direct row
+  // reads fall back to the stored contact name. Phone stays gated.
+  const reporterName = report.reporter_name || contactName;
 
   return (
     <div
@@ -180,6 +183,12 @@ export default function IncidentDetailModal({
               <p className="text-xs font-bold text-slate-500">Reported</p>
               <p className="mt-1 text-sm text-slate-700">{report.created_at ? new Date(report.created_at).toLocaleString() : 'N/A'}</p>
             </div>
+            {reporterName && (
+              <div>
+                <p className="text-xs font-bold text-slate-500">Reported by</p>
+                <p className="mt-1 text-sm text-slate-700">{reporterName}</p>
+              </div>
+            )}
             {showReporterContact && (
               <div>
                 <p className="text-xs font-bold text-slate-500">Reporter contact</p>
