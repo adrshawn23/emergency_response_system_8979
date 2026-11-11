@@ -19,6 +19,8 @@
 // Secrets: BREVO_API_KEY (or RESEND_API_KEY), EMAIL_FROM — shared/email.ts.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { Buffer } from 'node:buffer';
+import { PNG } from 'https://esm.sh/pngjs@7.0.0';
 import { sendEmail, EmailAttachment } from '../_shared/email.ts';
 
 const corsHeaders = {
@@ -56,6 +58,104 @@ const mapLinkHtml = (lat: unknown, lng: unknown) => {
   return url
     ? ` <a href="${url}" style="color:#2563eb;">View on map</a>`
     : '';
+};
+
+// --- Incident map snapshot -------------------------------------------------
+// The free staticmap providers are dead, so we render the pin map ourselves:
+// fetch the OSM tiles covering a 600x300 viewport centred on the incident,
+// blit them into an RGBA canvas, draw a pin, and attach the PNG bytes.
+const MAP_W = 600, MAP_H = 300, TILE = 256, MAP_ZOOM = 16;
+
+const mercator = (lat: number, lng: number) => {
+  const n = 2 ** MAP_ZOOM;
+  const latRad = (lat * Math.PI) / 180;
+  return {
+    x: ((lng + 180) / 360) * n * TILE,
+    y: (1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * n * TILE,
+  };
+};
+
+const setPx = (buf: Uint8Array, x: number, y: number, r: number, g: number, b: number) => {
+  if (x < 0 || x >= MAP_W || y < 0 || y >= MAP_H) return;
+  const i = (MAP_W * y + x) * 4;
+  buf[i] = r; buf[i + 1] = g; buf[i + 2] = b; buf[i + 3] = 255;
+};
+
+// Simple teardrop pin centred on the point: white outline, red head+tail,
+// white hole — drawn flat onto the RGBA buffer.
+const drawPin = (buf: Uint8Array, cx: number, cy: number) => {
+  const R = 11;
+  const headY = cy - R - 4; // pin tip sits exactly on the incident point
+  for (let y = cy - 34; y <= cy; y++) {
+    for (let x = cx - R - 2; x <= cx + R + 2; x++) {
+      const dHead = Math.hypot(x - cx, y - headY);
+      const tailT = y < headY ? -1 : (y - headY) / (cy - headY);
+      const halfW = 4.5 * tailT;
+      const inTail = y >= headY && Math.abs(x - cx) <= halfW + 1;
+      const inHead = dHead <= R + 1;
+      if (inHead || inTail) setPx(buf, x, y, 255, 255, 255);
+      if (dHead <= R || (y >= headY && Math.abs(x - cx) <= halfW)) {
+        setPx(buf, x, y, 220, 38, 38);
+      }
+      if (dHead <= 4) setPx(buf, x, y, 255, 255, 255);
+    }
+  }
+};
+
+const incidentMapAttachment = async (lat: unknown, lng: unknown): Promise<EmailAttachment | null> => {
+  if (typeof lat !== 'number' || typeof lng !== 'number') return null;
+  try {
+    const { x: px, y: py } = mercator(lat, lng);
+    const left = px - MAP_W / 2, top = py - MAP_H / 2;
+    const n = 2 ** MAP_ZOOM;
+    const canvas = new Uint8Array(MAP_W * MAP_H * 4);
+    for (let i = 0; i < canvas.length; i += 4) {
+      canvas[i] = 234; canvas[i + 1] = 236; canvas[i + 2] = 239; canvas[i + 3] = 255;
+    }
+
+    const tx0 = Math.floor(left / TILE), tx1 = Math.floor((left + MAP_W) / TILE);
+    const ty0 = Math.floor(top / TILE), ty1 = Math.floor((top + MAP_H) / TILE);
+    const jobs: Promise<void>[] = [];
+    for (let ty = ty0; ty <= ty1; ty++) {
+      for (let tx = tx0; tx <= tx1; tx++) {
+        if (ty < 0 || ty >= n) continue; // nothing north/south of the poles
+        const fx = ((tx % n) + n) % n;   // wrap around the antimeridian
+        jobs.push((async () => {
+          const res = await fetch(`https://tile.openstreetmap.org/${MAP_ZOOM}/${fx}/${ty}.png`, {
+            headers: { 'User-Agent': 'KalubihanEmergency/1.0 (incident-alerts)' },
+          });
+          if (!res.ok) return;
+          const tile = PNG.sync.read(Buffer.from(new Uint8Array(await res.arrayBuffer())));
+          const offX = tx * TILE - left, offY = ty * TILE - top;
+          for (let y = 0; y < tile.height; y++) {
+            const dy = Math.floor(offY) + y;
+            if (dy < 0 || dy >= MAP_H) continue;
+            for (let x = 0; x < tile.width; x++) {
+              const dx = Math.floor(offX) + x;
+              if (dx < 0 || dx >= MAP_W) continue;
+              const si = (tile.width * y + x) * 4, di = (MAP_W * dy + dx) * 4;
+              canvas[di] = tile.data[si]; canvas[di + 1] = tile.data[si + 1];
+              canvas[di + 2] = tile.data[si + 2]; canvas[di + 3] = tile.data[si + 3];
+            }
+          }
+        })());
+      }
+    }
+    await Promise.all(jobs);
+
+    drawPin(canvas, MAP_W / 2, MAP_H / 2);
+    const out = new PNG({ width: MAP_W, height: MAP_H });
+    out.data = Buffer.from(canvas);
+    const pngBuf: Uint8Array = PNG.sync.write(out);
+    let bin = '';
+    for (let i = 0; i < pngBuf.length; i += 0x8000) {
+      bin += String.fromCharCode(...pngBuf.subarray(i, i + 0x8000));
+    }
+    return { name: 'incident-map.png', content: btoa(bin) };
+  } catch (e) {
+    console.warn('incident map render failed:', e instanceof Error ? e.message : e);
+    return null; // email still sends, just without the image
+  }
 };
 
 const dataUrlToAttachment = (src: string, name: string): EmailAttachment | null => {
@@ -175,8 +275,10 @@ Deno.serve(async (req: Request) => {
       if (ann.report_id) {
         const { data: rep } = await admin.from('emergency_reports').select('attachments').eq('id', ann.report_id).single();
         const mapLink = rep ? mapLinkFor(rep.attachments?.latitude, rep.attachments?.longitude) : null;
-        if (mapLink) {
-          linkedMap = `<p style="margin:14px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#475569;">Related incident location: <a href="${mapLink}" style="color:#2563eb;">view on map</a></p>`;
+        const mapAtt = rep ? await incidentMapAttachment(rep.attachments?.latitude, rep.attachments?.longitude) : null;
+        if (mapAtt) attachments.push(mapAtt);
+        if (mapLink || mapAtt) {
+          linkedMap = `<p style="margin:14px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#475569;">${mapAtt ? 'An incident map is attached. ' : ''}${mapLink ? `Location: <a href="${mapLink}" style="color:#2563eb;">view on map</a>` : ''}</p>`;
         }
       }
       const sevColor = { info: '#2563eb', warning: '#d97706', critical: '#dc2626' }[ann.severity as string] ?? '#2563eb';
@@ -190,6 +292,8 @@ Deno.serve(async (req: Request) => {
       if (error || !report) return json({ error: 'not_found' }, 404);
 
       const at = report.attachments ?? {};
+      const mapAtt = await incidentMapAttachment(at.latitude, at.longitude);
+      if (mapAtt) attachments.push(mapAtt);
 
       if (kind === 'reported') {
         // Reporter may announce their own incident; staff may announce any.
@@ -206,7 +310,7 @@ Deno.serve(async (req: Request) => {
             ['Priority', esc(report.priority ?? 'standard')],
             ['Reported', fmt(report.created_at)],
           ])}
-          ${attachNote(attachments.length, 'evidence photos')}`);
+          ${attachNote(attachments.length, 'incident map and evidence photos')}`);
       } else { // resolved
         if (report.status !== 'resolved') return json({ skipped: true, reason: 'report not resolved' });
         if (!STAFF.includes(me?.role) && report.assigned_to !== user.id) return json({ error: 'forbidden' }, 403);
@@ -241,7 +345,7 @@ Deno.serve(async (req: Request) => {
             ['Resolved', fmt(report.resolved_at || report.updated_at)],
           ])}
           ${unitNames.length ? `<p style="margin:14px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#475569;">Proof from assisting departments: ${esc(unitNames.join(', '))}.</p>` : ''}
-          ${attachNote(attachments.length, 'resolution proof photos')}`);
+          ${attachNote(attachments.length, 'incident map and resolution proof photos')}`);
       }
     }
 
