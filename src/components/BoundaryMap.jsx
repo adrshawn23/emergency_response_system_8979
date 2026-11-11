@@ -29,9 +29,11 @@ const FitView = ({ positions }) => {
  *   <BoundaryMap />                       // boundary only
  *   <BoundaryMap marker={...} className="h-56" />
  */
-const BoundaryMap = ({ marker = null, markers = [], route = null, radius = null, className = 'h-full w-full' }) => {
+const BoundaryMap = ({ marker = null, markers, route = null, radius = null, className = 'h-full w-full' }) => {
   const { points } = useServiceBoundary();
   const polygon = points.map(p => [p.lat, p.lng]);
+  // Default-param [] doesn't catch an explicit markers={null} prop.
+  const markerList = Array.isArray(markers) ? markers : [];
   // `route` may be one line ([[lat,lng],[lat,lng]]), a list of lines, or a
   // list of { positions, color } entries for differently colored routes.
   const routeList = route
@@ -41,7 +43,7 @@ const BoundaryMap = ({ marker = null, markers = [], route = null, radius = null,
             .map(r => (Array.isArray(r) ? { positions: r } : r))
             .filter(r => Array.isArray(r?.positions) && r.positions.length > 1))
     : [];
-  const extraPositions = [...markers.map(m => m.position), ...routeList.flatMap(r => r.positions)];
+  const extraPositions = [...markerList.map(m => m.position), ...routeList.flatMap(r => r.positions)];
 
   const fitPositions = polygon.length >= 3
     ? (marker ? [...polygon, marker, ...extraPositions] : [...polygon, ...extraPositions])
@@ -67,7 +69,7 @@ const BoundaryMap = ({ marker = null, markers = [], route = null, radius = null,
           <Circle center={marker} radius={radius} color="#dc2626" fillColor="#dc2626" fillOpacity={0.08} weight={1.5} dashArray="4 6" />
         )}
         {marker && <Marker position={marker} />}
-        {markers.map((m, i) => (
+        {markerList.map((m, i) => (
           <Marker key={i} position={m.position} icon={m.icon || undefined} />
         ))}
         <FitView positions={fitPositions} />

@@ -657,7 +657,15 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
     { key: 'profile', label: 'Profile', icon: 'User', path: '/profile' }
   ]
     .filter(link => sectionAllowed(link.key, profile?.role) && canAccessPage(link.key, profile?.role))
-    .map(link => ({ ...link, ...(linkVariants[profile?.role]?.[link.key] || {}) }));
+    .map(link => ({ ...link, ...(linkVariants[profile?.role]?.[link.key] || {}) }))
+    // Match the resident-home sidebar order (Report emergency before My
+    // reports); without this the two items swap places between pages.
+    .sort((a, b) => {
+      const order = { resident: ['command', 'new', 'queue'] }[profile?.role];
+      if (!order) return 0;
+      const rank = k => (order.indexOf(k) + 1) || 99;
+      return rank(a.key) - rank(b.key);
+    });
   const current = sectionCopy[section];
   const filteredReports = searchQuery 
     ? reports.filter(report => {
