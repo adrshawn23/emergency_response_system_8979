@@ -33,8 +33,27 @@ const sendViaBrevo = async (
   attachments?: EmailAttachment[],
 ): Promise<Response> => {
   const sender = parseFrom(from);
+  // Brevo validates URL attachments by the URL's file extension, not the
+  // name we supply — the staticmap provider's URL ends in .php and gets
+  // rejected ("Unsupported file format"). Fetch remote files ourselves and
+  // send base64 content so the provider never sees the raw URL.
   const attachment = attachments?.length
-    ? attachments.map(a => (a.url ? { name: a.name, url: a.url } : { name: a.name, content: a.content }))
+    ? (await Promise.all(attachments.map(async a => {
+        if (!a.url) return { name: a.name, content: a.content };
+        try {
+          const res = await fetch(a.url);
+          if (!res.ok) throw new Error(`fetch ${res.status}`);
+          const buf = new Uint8Array(await res.arrayBuffer());
+          let bin = '';
+          for (let i = 0; i < buf.length; i += 0x8000) {
+            bin += String.fromCharCode(...buf.subarray(i, i + 0x8000));
+          }
+          return { name: a.name, content: btoa(bin) };
+        } catch (e) {
+          console.warn(`attachment fetch failed (${a.url}):`, e instanceof Error ? e.message : e);
+          return null; // drop the attachment, still send the email
+        }
+      }))).filter((a): a is { name: string; content?: string } => a !== null)
     : undefined;
   return fetch(BREVO_ENDPOINT, {
     method: 'POST',
