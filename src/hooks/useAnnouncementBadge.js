@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 
-const OPEN_STATUSES = ['pending', 'assigned', 'in-progress', 'arrived'];
+// 'arrived' is a status-history event, not a report_status enum value —
+// including it makes PostgREST reject the whole in() filter (400).
+const OPEN_STATUSES = ['pending', 'assigned', 'in-progress'];
 const SEEN_EVENT = 'announcement-seen';
 const seenKey = (uid) => `ann-seen-${uid}`;
 

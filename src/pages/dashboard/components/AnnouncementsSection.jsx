@@ -20,7 +20,9 @@ const SEVERITY = {
   critical: { chip: 'bg-red-100 text-red-700',      bar: 'border-l-red-500',     label: 'Critical' },
 };
 
-const OPEN_STATUSES = ['pending', 'assigned', 'in-progress', 'arrived'];
+// 'arrived' is a status-history event, not a report_status enum value —
+// including it makes PostgREST reject the whole in() filter (400).
+const OPEN_STATUSES = ['pending', 'assigned', 'in-progress'];
 
 const reportCoords = (r) => {
   const a = r?.attachments ?? {};
