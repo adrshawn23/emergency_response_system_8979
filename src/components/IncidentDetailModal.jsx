@@ -40,8 +40,8 @@ export default function IncidentDetailModal({
   const [mediaAttachments, setMediaAttachments] = useState(null);
 
   // List feeds ship slim attachments (media >8KB stripped). Pull the full
-  // row on open — succeeds for the reporter and staff; RLS quietly returns
-  // nothing for other residents, which is the intended PII boundary.
+  // row on open — reporter/staff get everything; other residents fall back
+  // to the incident_media RPC (photos + proof only, no reporter PII).
   useEffect(() => {
     setMediaAttachments(null);
     if (!report?.id) return undefined;
@@ -51,8 +51,15 @@ export default function IncidentDetailModal({
       .select('attachments')
       .eq('id', report.id)
       .maybeSingle()
-      .then(({ data }) => { if (alive && data?.attachments) setMediaAttachments(data.attachments); });
+      .then(({ data }) => {
+        if (!alive) return;
+        if (data?.attachments) { setMediaAttachments(data.attachments); return; }
+        supabase.rpc('incident_media', { p_report_id: report.id }).then(({ data: media }) => {
+          if (alive && media) setMediaAttachments(prev => ({ ...(prev || report.attachments || {}), ...media }));
+        });
+      });
     return () => { alive = false; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [report?.id]);
 
   if (!report) return null;

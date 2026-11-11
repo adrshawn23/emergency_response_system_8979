@@ -2220,11 +2220,11 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
               )}
               <ServiceAreaBadge report={selectedReport} />
               <IncidentTimeline report={selectedReport} />
-              {selectedReport.attachments?.images && selectedReport.attachments.images.length > 0 && (
+              {detailMedia.images && detailMedia.images.length > 0 && (
                 <div>
                   <p className="text-xs font-bold  text-slate-400 mb-2">Evidence Images</p>
                   <div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto">
-                    {selectedReport.attachments.images.map((image, index) => (
+                    {detailMedia.images.map((image, index) => (
                       <img
                         key={index}
                         src={image.url || image}
