@@ -15,6 +15,7 @@ import ServiceAreaBadge from '../../components/ServiceAreaBadge';
 import IncidentTimeline from '../../components/IncidentTimeline';
 import useAnnouncementBadge from '../../hooks/useAnnouncementBadge';
 import useIncidentHistory from '../../hooks/useIncidentHistory';
+import useAppSetting from '../../hooks/useAppSetting';
 import { haversineMeters } from '../../utils/distance';
 import useEscapeKey from '../../hooks/useEscapeKey';
 
@@ -213,18 +214,10 @@ export default function ResponderView() {
   const [arriving, setArriving] = useState(false);
   const [arriveMsg, setArriveMsg] = useState('');
   const [assistMsg, setAssistMsg] = useState('');
-  const [radiusM, setRadiusM] = useState(50);
+  const radiusM = useAppSetting('arrival_radius_m', 50);
+  const incidentRadius = useAppSetting('incident_radius_m', 150);
   const { rows: selHistory } = useIncidentHistory(selectedReport?.id, !!selectedReport);
   const hasArrived = selHistory.some(r => r.to_status === 'arrived');
-
-  useEffect(() => {
-    // Table may not exist until the migration is applied — default 50 stays.
-    supabase.from('app_settings').select('value').eq('key', 'arrival_radius_m').maybeSingle()
-      .then(({ data }) => {
-        const v = Number(data?.value);
-        if (Number.isFinite(v) && v > 0) setRadiusM(v);
-      });
-  }, []);
 
   const distM = haversineMeters(incidentPos, myPosition);
   const arriveBlock =
@@ -609,7 +602,7 @@ export default function ResponderView() {
                         marker={incidentPos}
                         markers={selfMarkers}
                         route={approachRoute}
-                        radius={150}
+                        radius={incidentRadius}
                       />
                     </div>
                     {myPosition && (

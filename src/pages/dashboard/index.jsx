@@ -27,6 +27,7 @@ import BoundaryMap from '../../components/BoundaryMap';
 import ServiceAreaBadge from '../../components/ServiceAreaBadge';
 import IncidentTimeline from '../../components/IncidentTimeline';
 import useIncidentHistory from '../../hooks/useIncidentHistory';
+import useAppSetting from '../../hooks/useAppSetting';
 import AppSidebar from '../../components/AppSidebar';
 import useServiceBoundary from '../../hooks/useServiceBoundary';
 import useResponderLocation from '../../hooks/useResponderLocation';
@@ -2183,7 +2184,7 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
                       <BoundaryMap
                         marker={selectedReport.attachments?.latitude && selectedReport.attachments?.longitude
                           ? [selectedReport.attachments.latitude, selectedReport.attachments.longitude] : null}
-                        radius={150}
+                        radius={incidentRadius}
                         markers={detailResponderLoc?.latitude
                           ? [{ position: [detailResponderLoc.latitude, detailResponderLoc.longitude], icon: RESPONDER_ICON }]
                           : []}
@@ -2574,7 +2575,7 @@ export default function Dashboard({ section = 'command' }) {
           <section className="grid gap-4 sm:grid-cols-2">
             {[['Active incidents', openCount], ['Awaiting verification review', forApprovalCount]].map(([label, value]) => <div key={label} className="rounded-lg border border-slate-200/70 bg-white p-5"><p className="text-sm font-medium text-slate-500">{label}</p><p className="mt-2 text-3xl tabular-nums">{value}</p></div>)}
           </section>
-          <CommandOps reports={reports} />
+          <CommandOps reports={reports} isAdmin={profile?.role === 'admin'} />
           {/* Response times is a Command center fixture, not a page — everyone
              who can open Command center sees it (admin + dispatcher). */}
           <section className="rounded-lg border border-slate-200/70 bg-white p-5">

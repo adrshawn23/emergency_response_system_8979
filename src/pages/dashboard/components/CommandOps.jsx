@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import Icon from '../../../components/AppIcon';
 import { supabase } from '../../../lib/supabase';
+import useAppSetting from '../../../hooks/useAppSetting';
 
 const STALE_ASSIGNED_MS = 10 * 60 * 1000; // assigned >10m with no response = stale
 
@@ -16,8 +17,39 @@ const fmtAge = ms => {
 // Live ops snapshot for the command center — current workload only, so it
 // complements the Reports page (historical trends) instead of duplicating it.
 // Every tile answers "what needs attention right now".
-const CommandOps = ({ reports }) => {
+const CommandOps = ({ reports, isAdmin = false }) => {
   const [cdaOpen, setCdaOpen] = useState(0);
+
+  // Admin-tunable radii (app_settings). arrival_radius_m gates GPS arrival
+  // server-side; incident_radius_m sizes the circle drawn on incident maps.
+  const arrivalRadius = useAppSetting('arrival_radius_m', 50);
+  const incidentRadius = useAppSetting('incident_radius_m', 150);
+  const [radiusDraft, setRadiusDraft] = useState(null); // {key: value} edits
+  const [savingRadius, setSavingRadius] = useState(false);
+  const [radiusMsg, setRadiusMsg] = useState('');
+  const draftArrival = radiusDraft?.arrival_radius_m ?? arrivalRadius;
+  const draftIncident = radiusDraft?.incident_radius_m ?? incidentRadius;
+  const radiusDirty = radiusDraft != null
+    && (Number(draftArrival) !== arrivalRadius || Number(draftIncident) !== incidentRadius);
+
+  const saveRadius = async () => {
+    // value is jsonb — must serialize as a NUMBER, or value::text on the
+    // server yields '"150"' and the arrival RPC's ::double cast fails.
+    const rows = [
+      { key: 'arrival_radius_m', value: Number(draftArrival) },
+      { key: 'incident_radius_m', value: Number(draftIncident) },
+    ];
+    if (rows.some(r => !Number.isFinite(r.value) || r.value <= 0)) {
+      setRadiusMsg('Radii must be positive numbers.');
+      return;
+    }
+    setSavingRadius(true);
+    setRadiusMsg('');
+    const { error } = await supabase.from('app_settings').upsert(rows);
+    setSavingRadius(false);
+    setRadiusMsg(error ? `Save failed: ${error.message}` : 'Saved — applies to new arrivals and reopened incident maps.');
+    if (!error) setRadiusDraft(null);
+  };
 
   useEffect(() => {
     let live = true;
@@ -106,6 +138,41 @@ const CommandOps = ({ reports }) => {
           </div>
         ))}
       </div>
+      {isAdmin && (
+        <div className="border-t border-slate-100 px-5 py-4">
+          <p className="flex items-center gap-1.5 text-xs font-bold text-slate-500">
+            <Icon name="Settings2" size={13}/> Operational settings
+          </p>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <label className="block">
+              <span className="text-xs text-slate-500">Arrival radius (m) — GPS gate for "Arrived"</span>
+              <input
+                type="number" min="1" value={draftArrival}
+                onChange={e => setRadiusDraft(d => ({ ...(d || {}), arrival_radius_m: e.target.value }))}
+                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+              />
+            </label>
+            <label className="block">
+              <span className="text-xs text-slate-500">Incident map radius (m) — circle on incident maps</span>
+              <input
+                type="number" min="1" value={draftIncident}
+                onChange={e => setRadiusDraft(d => ({ ...(d || {}), incident_radius_m: e.target.value }))}
+                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+              />
+            </label>
+          </div>
+          <div className="mt-3 flex items-center gap-3">
+            <button
+              onClick={saveRadius}
+              disabled={savingRadius || !radiusDirty}
+              className="rounded-lg bg-taste-500 px-4 py-2 text-xs font-semibold text-white hover:bg-taste-600 disabled:bg-slate-300 disabled:cursor-not-allowed"
+            >
+              {savingRadius ? 'Saving…' : 'Save settings'}
+            </button>
+            {radiusMsg && <p className="text-xs text-slate-500">{radiusMsg}</p>}
+          </div>
+        </div>
+      )}
     </section>
   );
 };

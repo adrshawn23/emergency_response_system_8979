@@ -6,6 +6,7 @@ import ServiceAreaBadge from './ServiceAreaBadge';
 import IncidentTimeline from './IncidentTimeline';
 import IncidentChat from './IncidentChat';
 import useEscapeKey from '../hooks/useEscapeKey';
+import useAppSetting from '../hooks/useAppSetting';
 import { reportCoords } from '../utils/reportCoords';
 
 /**
@@ -38,6 +39,9 @@ export default function IncidentDetailModal({
 }) {
   useEscapeKey(onClose, !!report);
   const [mediaAttachments, setMediaAttachments] = useState(null);
+  // Admin-tunable (app_settings.incident_radius_m) — falls back to 150
+  // until the settings row exists.
+  const incidentRadius = useAppSetting('incident_radius_m', 150);
 
   // List feeds ship slim attachments (media >8KB stripped). Pull the full
   // row on open — reporter/staff get everything; other residents fall back
@@ -124,7 +128,7 @@ export default function IncidentDetailModal({
                     marker={coords}
                     markers={markers}
                     route={route}
-                    radius={150}
+                    radius={incidentRadius}
                   />
                 </div>
                 {mapNote && (
