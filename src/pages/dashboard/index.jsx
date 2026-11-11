@@ -163,7 +163,7 @@ const sectionCopy = {
 // matrix, so the "admin sees only 5 pages" rule must live here. Reporting
 // and triage stay with dispatchers/responders/residents who own them.
 const SECTION_ROLES = {
-  command: ['admin', 'dispatcher'],
+  command: ['admin', 'dispatcher', 'responder', 'resident'],
   queue: ['dispatcher', 'responder', 'department_admin'],
   new: ['dispatcher', 'responder', 'resident'],
   residents: ['admin'],
