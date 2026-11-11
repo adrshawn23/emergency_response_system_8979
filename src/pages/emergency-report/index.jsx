@@ -186,6 +186,14 @@ const EmergencyReport = () => {
         reportData = data;
       }
 
+      // Resident-wide "incident reported" email — same news-style card the
+      // reporter receives, sent to every active resident. Fire-and-forget:
+      // a mail failure must never block the submission confirmation.
+      if (!useMock && reportData?.id) {
+        supabase.functions.invoke('broadcast-incident', { body: { kind: 'reported', report_id: reportData.id } })
+          .catch(e => console.warn('broadcast-incident failed:', e?.message ?? e));
+      }
+
       console.log('Setting report number to:', reportData.id);
       setReportNumber(reportData.id);
       console.log('Setting isSubmitted to true');

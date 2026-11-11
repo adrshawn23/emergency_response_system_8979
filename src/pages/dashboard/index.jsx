@@ -686,15 +686,22 @@ function WorkspacePage({ section, profile, signOut, onSectionChange }) {
   const visibleReports = status === 'all' ? filteredReports : filteredReports.filter(report => report.status === status);
   const pendingCount = reports.filter(r => r.status === 'pending').length;
   const setReportStatus = async (id, nextStatus) => {
-    const { error } = await supabase
+    const { data: updated, error } = await supabase
       .from('emergency_reports')
       .update({ status: nextStatus })
-      .eq('report_id', id);
+      .eq('report_id', id)
+      .select('id');
     if (error) {
       console.error('Status update failed:', error);
       return;
     }
     setReports(items => items.map(item => item.report_id === id ? { ...item, status: nextStatus } : item));
+    // Resident-wide resolved email — same news card responder/turnover
+    // resolves already trigger. Fire-and-forget.
+    if (nextStatus === 'resolved' && updated?.[0]?.id) {
+      supabase.functions.invoke('broadcast-incident', { body: { kind: 'resolved', report_id: updated[0].id } })
+        .catch(e => console.warn('broadcast-incident failed:', e?.message ?? e));
+    }
   };
 
   // Busy = primary, backup, or accepted-assistance responder on any
