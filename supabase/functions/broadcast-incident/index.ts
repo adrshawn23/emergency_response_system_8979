@@ -43,12 +43,20 @@ const STAFF = ['admin', 'dispatcher', 'department_admin'];
 // separate from STAFF which gates who may call 'resolved'.
 const STAFF_ROLES = ['admin', 'dispatcher', 'responder', 'department_admin'];
 
-// Static map image for the incident pin — attached by URL so providers fetch
-// it (data-URI <img> doesn't render in Gmail/Outlook).
-const mapUrlFor = (lat: unknown, lng: unknown) =>
+// The free staticmap providers (staticmap.openstreetmap.de et al.) are
+// unreliable — dead DNS/hosts killed email delivery. Link out to the
+// incident pin on Google Maps instead; no API key, always reachable.
+const mapLinkFor = (lat: unknown, lng: unknown) =>
   (typeof lat === 'number' && typeof lng === 'number')
-    ? `https://staticmap.openstreetmap.de/staticmap.php?center=${lat},${lng}&zoom=16&size=600x300&markers=${lat},${lng},red-pushpin`
+    ? `https://maps.google.com/?q=${lat},${lng}`
     : null;
+
+const mapLinkHtml = (lat: unknown, lng: unknown) => {
+  const url = mapLinkFor(lat, lng);
+  return url
+    ? ` <a href="${url}" style="color:#2563eb;">View on map</a>`
+    : '';
+};
 
 const dataUrlToAttachment = (src: string, name: string): EmailAttachment | null => {
   const m = src.match(/^data:(image\/[\w+.-]+);base64,([\s\S]+)$/);
@@ -166,10 +174,9 @@ Deno.serve(async (req: Request) => {
       let linkedMap = '';
       if (ann.report_id) {
         const { data: rep } = await admin.from('emergency_reports').select('attachments').eq('id', ann.report_id).single();
-        const url = rep ? mapUrlFor(rep.attachments?.latitude, rep.attachments?.longitude) : null;
-        if (url) {
-          attachments.push({ name: 'incident-map.png', url });
-          linkedMap = `<p style="margin:14px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#475569;">An incident map is attached.</p>`;
+        const mapLink = rep ? mapLinkFor(rep.attachments?.latitude, rep.attachments?.longitude) : null;
+        if (mapLink) {
+          linkedMap = `<p style="margin:14px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#475569;">Related incident location: <a href="${mapLink}" style="color:#2563eb;">view on map</a></p>`;
         }
       }
       const sevColor = { info: '#2563eb', warning: '#d97706', critical: '#dc2626' }[ann.severity as string] ?? '#2563eb';
@@ -183,8 +190,6 @@ Deno.serve(async (req: Request) => {
       if (error || !report) return json({ error: 'not_found' }, 404);
 
       const at = report.attachments ?? {};
-      const mapUrl = mapUrlFor(at.latitude, at.longitude);
-      if (mapUrl) attachments.push({ name: 'incident-map.png', url: mapUrl });
 
       if (kind === 'reported') {
         // Reporter may announce their own incident; staff may announce any.
@@ -197,11 +202,11 @@ Deno.serve(async (req: Request) => {
           </p>
           ${detailsTable([
             ['Incident', esc(`${report.report_type ?? 'incident'} emergency`)],
-            ['Location', esc(reportLocation(report))],
+            ['Location', esc(reportLocation(report)) + mapLinkHtml(at.latitude, at.longitude)],
             ['Priority', esc(report.priority ?? 'standard')],
             ['Reported', fmt(report.created_at)],
           ])}
-          ${attachNote(attachments.length, 'incident map and evidence photos')}`);
+          ${attachNote(attachments.length, 'evidence photos')}`);
       } else { // resolved
         if (report.status !== 'resolved') return json({ skipped: true, reason: 'report not resolved' });
         if (!STAFF.includes(me?.role) && report.assigned_to !== user.id) return json({ error: 'forbidden' }, 403);
@@ -231,12 +236,12 @@ Deno.serve(async (req: Request) => {
           </p>
           ${detailsTable([
             ['Incident', esc(`${report.report_type ?? 'incident'} emergency`)],
-            ['Location', esc(reportLocation(report))],
+            ['Location', esc(reportLocation(report)) + mapLinkHtml(at.latitude, at.longitude)],
             ['Reported', fmt(report.created_at)],
             ['Resolved', fmt(report.resolved_at || report.updated_at)],
           ])}
           ${unitNames.length ? `<p style="margin:14px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#475569;">Proof from assisting departments: ${esc(unitNames.join(', '))}.</p>` : ''}
-          ${attachNote(attachments.length, 'incident map and resolution proof photos')}`);
+          ${attachNote(attachments.length, 'resolution proof photos')}`);
       }
     }
 
