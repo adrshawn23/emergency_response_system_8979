@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Icon from './AppIcon';
+import { supabase } from '../lib/supabase';
 import BoundaryMap from './BoundaryMap';
 import ServiceAreaBadge from './ServiceAreaBadge';
 import IncidentTimeline from './IncidentTimeline';
@@ -36,13 +37,32 @@ export default function IncidentDetailModal({
   footer = null,
 }) {
   useEscapeKey(onClose, !!report);
+  const [mediaAttachments, setMediaAttachments] = useState(null);
+
+  // List feeds ship slim attachments (media >8KB stripped). Pull the full
+  // row on open — succeeds for the reporter and staff; RLS quietly returns
+  // nothing for other residents, which is the intended PII boundary.
+  useEffect(() => {
+    setMediaAttachments(null);
+    if (!report?.id) return undefined;
+    let alive = true;
+    supabase
+      .from('emergency_reports')
+      .select('attachments')
+      .eq('id', report.id)
+      .maybeSingle()
+      .then(({ data }) => { if (alive && data?.attachments) setMediaAttachments(data.attachments); });
+    return () => { alive = false; };
+  }, [report?.id]);
+
   if (!report) return null;
 
+  const attachments = mediaAttachments || report.attachments || {};
   const coords = reportCoords(report);
   const type = report.report_type || report.incident_type || report.emergency_type || 'incident';
   const ref = report.report_id || report.id?.slice(0, 8);
-  const contactName = report.attachments?.contact_name;
-  const contactPhone = report.attachments?.contact_phone;
+  const contactName = attachments.contact_name;
+  const contactPhone = attachments.contact_phone;
 
   return (
     <div
@@ -82,7 +102,7 @@ export default function IncidentDetailModal({
             <p className="text-xs font-bold text-slate-500">Location</p>
             <div className="mt-1 flex items-center gap-1.5">
               <Icon name="MapPin" size={14} className="shrink-0 text-taste-500"/>
-              <p className="text-sm text-slate-700">{report.attachments?.location || report.location || 'No location recorded'}</p>
+              <p className="text-sm text-slate-700">{attachments.location || report.location || 'No location recorded'}</p>
             </div>
             {coords && (
               <p className="mt-0.5 pl-5 font-mono text-xs text-slate-400">GPS: {coords[0].toFixed(6)}, {coords[1].toFixed(6)}</p>
@@ -117,11 +137,27 @@ export default function IncidentDetailModal({
             )}
           </div>
 
-          {report.attachments?.resolution_proof && (
+          {Array.isArray(attachments.images) && attachments.images.length > 0 && (
+            <div>
+              <p className="text-xs font-bold text-slate-500">Evidence photos</p>
+              <div className="mt-1 grid max-h-48 grid-cols-3 gap-2 overflow-y-auto">
+                {attachments.images.map((img, i) => (
+                  <img
+                    key={i}
+                    src={img.url || img}
+                    alt={`Evidence ${i + 1}`}
+                    className="h-20 w-full rounded-lg border border-slate-200 object-cover"
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {attachments.resolution_proof && (
             <div>
               <p className="text-xs font-bold text-slate-500">Resolution proof</p>
               <img
-                src={report.attachments.resolution_proof}
+                src={attachments.resolution_proof}
                 alt="Resolution proof"
                 className="mt-1 h-28 w-40 rounded-lg border border-slate-200 object-cover"
               />

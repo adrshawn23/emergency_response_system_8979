@@ -179,8 +179,7 @@ function useCdaUnits(reportId) {
       const { data } = await supabase
         .from('cross_department_assistance')
         .select('id, status, assigned_at, acknowledged_at, arrived_at, resolved_at, resolution_proof, responder:user_profiles!responder_id(full_name), dept:departments!assisting_department_id(name)')
-        .eq('report_id', reportId)
-        .in('status', ['pending', 'accepted']);
+        .eq('report_id', reportId);
       if (alive && data) setUnits(data);
     };
     fetchUnits();

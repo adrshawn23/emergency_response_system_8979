@@ -148,7 +148,18 @@ const EmergencyReport = () => {
         // Supabase mode - match actual database schema (old schema with attachments)
         console.log('Submitting report with actual database schema');
         console.log('Form data:', formData);
-        
+
+        // Evidence photos — File objects → base64, same encoding as the
+        // dispatcher report form so every surface renders them identically.
+        const imageDataUrls = await Promise.all(
+          (formData.images || []).map(img => new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(img.file || img);
+          }))
+        );
+
         const { data, error: reportError } = await supabase.from('emergency_reports').insert({
           incident_id: null,
           reporter_id: user.id,
@@ -162,7 +173,8 @@ const EmergencyReport = () => {
             priority: formData.priority,
             contact_name: profile?.full_name || 'Command user',
             contact_phone: profile?.phone,
-            service_area_status: formData.locationMetadata?.serviceArea || 'manual'
+            service_area_status: formData.locationMetadata?.serviceArea || 'manual',
+            images: imageDataUrls
           }
         }).select().single();
 
