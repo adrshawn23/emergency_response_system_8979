@@ -91,7 +91,7 @@ const IncidentHotspotMap = ({ rows }) => {
         <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Incident hotspot map</p>
         <p className="text-xs text-slate-500">
           {pts.length
-            ? <>{pts.length} located incident{pts.length === 1 ? '' : 's'} · red circles = {HOTSPOT_MIN}+ same-type reports within {RADIUS_M} m</>
+            ? <>{pts.length} located incident{pts.length === 1 ? '' : 's'} · dashed circles = {HOTSPOT_MIN}+ same-type reports within {RADIUS_M} m, colored by type</>
             : 'No geolocated incidents in this period'}
         </p>
       </div>
@@ -118,18 +118,21 @@ const IncidentHotspotMap = ({ rows }) => {
               </Popup>
             </Marker>
           ))}
-          {hotspots.map((h, i) => (
+          {hotspots.map((h, i) => {
+            const c = (INCIDENT_TYPE_STYLE[h.type] || INCIDENT_TYPE_STYLE.other).c;
+            return (
             <Circle
               key={`hot-${i}`}
               center={h.center}
               radius={RADIUS_M}
-              pathOptions={{ color: '#dc2626', weight: 2, dashArray: '6 4', fillColor: '#dc2626', fillOpacity: 0.13 }}
+              pathOptions={{ color: c, weight: 2, dashArray: '6 4', fillColor: c, fillOpacity: 0.14 }}
             >
               <Tooltip permanent direction="center" className="hotspot-tip">
                 <span style={{ fontWeight: 700 }}>{h.count}× {typeLabel(h.type)}</span>
               </Tooltip>
             </Circle>
-          ))}
+            );
+          })}
         </MapContainer>
 
         {/* Legend — sits above Leaflet panes (z-400-ish) */}
@@ -149,8 +152,8 @@ const IncidentHotspotMap = ({ rows }) => {
               );
             })}
             <div className="mt-1.5 flex items-center gap-1.5 border-t border-slate-100 pt-1.5 text-[11px] text-slate-600">
-              <span className="h-4 w-4 rounded-full border-2 border-dashed border-red-600 bg-red-600/10" />
-              Hotspot ({HOTSPOT_MIN}+ / {RADIUS_M} m)
+              <span className="h-4 w-4 rounded-full border-2 border-dashed border-slate-500 bg-slate-200/60" />
+              Hotspot ({HOTSPOT_MIN}+ / {RADIUS_M} m) — type color
             </div>
           </div>
         )}
