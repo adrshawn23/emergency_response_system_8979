@@ -35,7 +35,13 @@ async function signOut(page) {
 }
 
 test.describe.serial('Full incident lifecycle (resident -> dispatch -> responder)', () => {
-  test.use({ viewport: { width: 1280, height: 800 } });
+  test.use({
+    viewport: { width: 1280, height: 800 },
+    // The 'new' composer auto-captures GPS and gates submit on coords —
+    // inside the Kalubihan polygon so the resident hard-geofence passes.
+    geolocation: { latitude: 10.2968, longitude: 123.8979 },
+    permissions: ['geolocation'],
+  });
 
   test.afterAll(async () => {
     await deleteReportsByContent(DESC, 'resident@example.com', 'resident123');
@@ -51,9 +57,9 @@ test.describe.serial('Full incident lifecycle (resident -> dispatch -> responder
       page.getByRole('button', { name: 'Report an emergency' }).click(),
     ]);
 
-    await page.getByLabel('Emergency type').selectOption('fire');
-    await page.getByLabel('Priority').selectOption('high');
-    await submitIncident(page, { location: '789 Lifecycle Road', description: DESC });
+    // Dashboard 'new' composer — GPS-only location, select defaults
+    // (fire/high), description + evidence filled by submitIncident.
+    await submitIncident(page, { description: DESC });
     await signOut(page);
   });
 
@@ -81,19 +87,19 @@ test.describe.serial('Full incident lifecycle (resident -> dispatch -> responder
     await deptSelect.selectOption(deptValue);
     await modal.getByRole('button', { name: 'Assign department' }).click();
 
-    // Modal closes; the row now shows 'assigned' and offers Resolve
+    // Modal closes; the row now shows 'assigned'. The queue's Resolve action
+    // is admin-only — dispatchers assign, they don't resolve.
     await expect(modal).toBeHidden();
     await expect(row.locator('span.capitalize')).toHaveText('assigned', { timeout: 30000 });
-    await expect(row.locator('button:has-text("Resolve")')).toBeVisible();
 
     // Dept-admin stand-in: write assigned_to for the resident-facing responder.
-    await assignResponderToReport(DESC, 'responder@emergency.gov');
+    await assignResponderToReport(DESC, 'healthandfirstaidteam.responder1@emergency.gov');
 
     await signOut(page);
   });
 
   test('Phase 3 (responder): acknowledge then resolve', async ({ page }) => {
-    await login(page, 'responder@emergency.gov', 'responder123');
+    await login(page, 'healthandfirstaidteam.responder1@emergency.gov', 'responder123');
     await expect(page.locator('h1:has-text("Response board")')).toBeVisible({ timeout: 30000 });
 
     const card = page.locator('article').filter({ hasText: DESC });

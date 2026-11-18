@@ -32,7 +32,7 @@ const SuspendedScreen = ({ previewReason = null }) => {
 };
 
 const ProtectedRoute = ({ children }) => {
-  const { user, profile, loading } = useAuth();
+  const { user, profile, profileLoaded, loading } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -41,7 +41,10 @@ const ProtectedRoute = ({ children }) => {
     }
   }, [user, loading, navigate]);
 
-  if (loading) {
+  // Wait for the profile fetch too — without this, the dashboard mounts with
+  // profile=null and flashes the staff view before the role view replaces it
+  // (remounting any open UI, e.g. the notification menu).
+  if (loading || (user && !profileLoaded)) {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
   }
 

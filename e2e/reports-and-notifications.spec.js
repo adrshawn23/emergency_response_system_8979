@@ -48,7 +48,7 @@ test.describe('Reports page', () => {
     await page.goto('/reports');
 
     await expect(page.getByText('Reports & system activity').first()).toBeVisible({ timeout: 30000 });
-    await expect(page.getByText('Incident records')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Incident records' })).toBeVisible();
     await expect(page.getByText('System activity', { exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: /Export CSV/ })).toBeVisible();
 
@@ -63,10 +63,10 @@ test.describe('Reports page', () => {
   });
 
   test('responder is bounced off /reports (page permission)', async ({ page }) => {
-    await login(page, 'responder@emergency.gov', 'responder123');
+    await login(page, 'healthandfirstaidteam.responder1@emergency.gov', 'responder123');
     await page.goto('/reports');
     await page.waitForTimeout(3000); // let RoleRoute decide
-    await expect(page.getByText('Incident records')).toBeHidden();
+    await expect(page.getByRole('heading', { name: 'Incident records' })).toBeHidden();
   });
 });
 
@@ -79,16 +79,16 @@ test.describe('Assignment notification deep-link', () => {
     const sb = client();
     await signInWithRetry(sb, 'admin@emergency.gov', 'admin123');
     const { data: resp } = await sb.from('user_profiles')
-      .select('id').eq('email', 'responder@emergency.gov').single();
+      .select('id').eq('email', 'healthandfirstaidteam.responder1@emergency.gov').single();
     const { error: e1 } = await sb.from('emergency_reports')
       .update({ assigned_to: resp.id, status: 'assigned' }).eq('id', report.id);
     await sb.auth.signOut();
     if (e1) throw new Error(`assign failed: ${e1.message}`);
 
-    await login(page, 'responder@emergency.gov', 'responder123');
-    await page.getByRole('button', { name: /Notifications/ }).click();
+    await login(page, 'healthandfirstaidteam.responder1@emergency.gov', 'responder123');
     // The menu must be open before item matching — under suite load the bell
     // opens late and the row arrives on the realtime poll after that.
+    await page.getByRole('button', { name: /Notifications/ }).click();
     await expect(page.locator('div[role="menu"]')).toBeVisible({ timeout: 15000 });
     const item = page.getByRole('menuitem').filter({ hasText: 'New incident assignment' }).first();
     await expect(item).toBeVisible({ timeout: 30000 });
@@ -114,9 +114,11 @@ test.describe('Stale-assignment flag', () => {
 
     await login(page, 'dispatcher@emergency.gov', 'dispatcher123');
 
-    // CommandOps pill.
+    // CommandOps pill — renders only after the reports fetch lands; under
+    // suite load (plus the one-time post-mount remount refetch) that can
+    // outlast the default 15s.
     await expect(page.getByText('Live operations')).toBeVisible({ timeout: 30000 });
-    await expect(page.getByText(/assigned — no response/)).toBeVisible();
+    await expect(page.getByText(/assigned — no response/)).toBeVisible({ timeout: 60000 });
 
     // Queue row badge.
     await page.goto('/report-management');

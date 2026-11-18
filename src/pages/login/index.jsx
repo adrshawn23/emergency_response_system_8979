@@ -4,6 +4,7 @@ import LoginForm from './components/LoginForm';
 import LoginHeader from './components/LoginHeader';
 import LoginFooter from './components/LoginFooter';
 import TrustSignals from './components/TrustSignals';
+import EmergencyContactsPanel from './components/EmergencyContactsPanel';
 import { useAuth } from '../../contexts/AuthContext';
 
 const Login = () => {
@@ -60,6 +61,8 @@ const Login = () => {
           />
           <TrustSignals />
         </div>
+
+        <EmergencyContactsPanel />
         
         <div className="mt-6 text-center">
           <p className="text-xs text-slate-600">

@@ -29,7 +29,7 @@ async function seedAssignedInProgress(content) {
   const { data: resp, error: respErr } = await sb
     .from('user_profiles')
     .select('id')
-    .eq('email', 'responder@emergency.gov')
+    .eq('email', 'healthandfirstaidteam.responder1@emergency.gov')
     .single();
   if (respErr) throw new Error(`responder lookup failed: ${respErr.message}`);
   const { data: report, error } = await sb.from('emergency_reports').insert({
@@ -56,7 +56,7 @@ const NEARBY = { latitude: INCIDENT_COORDS.latitude + 0.0002, longitude: INCIDEN
 
 async function seedResponderLocationNearIncident() {
   const sb = client();
-  await signInWithRetry(sb, 'responder@emergency.gov', 'responder123');
+  await signInWithRetry(sb, 'healthandfirstaidteam.responder1@emergency.gov', 'responder123');
   const { data: me } = await sb.auth.getUser();
   const { error } = await sb.from('responder_locations').upsert({
     responder_id: me.user.id,
@@ -87,7 +87,7 @@ test.describe('Incident timeline — responder modal', () => {
     const desc = `E2E timeline ${Date.now()}`;
     await seedAssignedInProgress(desc);
 
-    await login(page, 'responder@emergency.gov', 'responder123');
+    await login(page, 'healthandfirstaidteam.responder1@emergency.gov', 'responder123');
     const card = page.locator('article').filter({ hasText: desc });
     await expect(card).toBeVisible({ timeout: 30000 });
     await card.getByRole('button', { name: 'Resolve' }).click();
@@ -119,7 +119,7 @@ test.describe('Incident timeline — arrival happy path', () => {
     const { reportId } = await seedAssignedInProgress(desc);
     await seedResponderLocationNearIncident();
 
-    await login(page, 'responder@emergency.gov', 'responder123');
+    await login(page, 'healthandfirstaidteam.responder1@emergency.gov', 'responder123');
     const card = page.locator('article').filter({ hasText: desc });
     await expect(card).toBeVisible({ timeout: 30000 });
     await card.getByRole('button', { name: 'Resolve' }).click();
@@ -150,7 +150,7 @@ test.describe('Incident timeline — GPS unavailable', () => {
     const desc = `E2E timeline nogps ${Date.now()}`;
     await seedAssignedInProgress(desc);
 
-    await login(page, 'responder@emergency.gov', 'responder123');
+    await login(page, 'healthandfirstaidteam.responder1@emergency.gov', 'responder123');
     const card = page.locator('article').filter({ hasText: desc });
     await expect(card).toBeVisible({ timeout: 30000 });
     await card.getByRole('button', { name: 'Resolve' }).click();

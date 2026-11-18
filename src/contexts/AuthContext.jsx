@@ -31,6 +31,9 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null)
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
+  // Separate from `profile`: a signed-in user whose user_profiles row is
+  // missing still counts as loaded — the gate waits for the FETCH, not a row.
+  const [profileLoaded, setProfileLoaded] = useState(false)
   const [pageRoles, setPageRoles] = useState(DEFAULT_PAGE_ROLES)
 
   // ⚠️ PROTECTED FUNCTION - DO NOT MODIFY OR ADD ASYNC OPERATIONS
@@ -62,9 +65,11 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     if (!user) return;
 
+    setProfileLoaded(false);
     const fetchProfile = () =>
       supabase.from('user_profiles').select('*').eq('id', user.id).single()
-        .then(({ data }) => setProfile(data || null));
+        .then(({ data }) => setProfile(data || null))
+        .finally(() => setProfileLoaded(true));
 
     fetchProfile();
 
@@ -81,7 +86,10 @@ export const AuthProvider = ({ children }) => {
       .subscribe();
 
     return () => supabase.removeChannel(channel);
-  }, [user])
+    // Depend on the id, not the object — onAuthStateChange hands a new user
+    // object on every event (login, token refresh); re-running this would
+    // flicker profileLoaded and remount the entire protected tree.
+  }, [user?.id])
 
   // Page-permission matrix: admin edits push to every live session in
   // realtime so a role's sidebar/route access changes without re-login.
@@ -106,7 +114,8 @@ export const AuthProvider = ({ children }) => {
       .subscribe();
 
     return () => supabase.removeChannel(channel);
-  }, [user])
+    // Id-only dep — same-user auth events shouldn't resubscribe this channel.
+  }, [user?.id])
 
   // Admin bypasses every gate (prevents self-lockout); unknown pages stay open.
   const canAccessPage = (pageKey, role) => {
@@ -119,6 +128,7 @@ export const AuthProvider = ({ children }) => {
   const value = {
     user,
     profile,
+    profileLoaded,
     loading,
     pageRoles,
     canAccessPage,
@@ -150,6 +160,7 @@ export const AuthProvider = ({ children }) => {
       sessionStorage.clear();
       setUser(null);
       setProfile(null);
+      setProfileLoaded(false);
       return { error };
     },
     getCurrentUserProfile: async () => {

@@ -81,13 +81,14 @@ test.describe('TESTING.md remaining tests', () => {
     await page.goto('/login');
   });
 
-  test('Test 10: Community verification section', async ({ page }) => {
+  test('Test 10: Residents & ID review section', async ({ page }) => {
     await login(page, 'admin@emergency.gov', 'admin123');
     await page.click('button[title="Residents & review"]');
 
-    await expect(page.locator('h3:has-text("Community verification")')).toBeVisible({ timeout: 30000 });
-    await expect(page.locator('text=Duplicate prevention enabled')).toBeVisible();
-    await page.click('button:has-text("View duplicates")');
+    // The standalone 'Community verification' card was folded into the
+    // status tabs — assert the review surface renders instead.
+    await expect(page.getByRole('tab', { name: /For Approval/ })).toBeVisible({ timeout: 30000 });
+    await expect(page.locator('h3:has-text("Registrations awaiting review")')).toBeVisible();
 
     await page.goto('/login');
   });
@@ -127,6 +128,8 @@ test.describe('TESTING.md remaining tests', () => {
     // Seed an assigned incident owned by dispatcher (deletable after)
     await createReport(RESOLVE_DESC, 'assigned');
 
+    // Dispatchers own queue triage — Resolve renders alongside Assign/Reassign
+    // on open rows (admins are bounced off the queue by SECTION_ROLES).
     await login(page, 'dispatcher@emergency.gov', 'dispatcher123');
     await page.click('button[title="Incident queue"]');
     await page.click('button:has-text("assigned")');

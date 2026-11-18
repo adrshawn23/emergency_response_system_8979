@@ -9,7 +9,12 @@ const TEST_INCIDENT_DESC = 'Test incident with image upload';
 let createdDeptName = null;
 
 test.describe('Manual Test Automation', () => {
-  test.use({ viewport: { width: 1280, height: 800 } });
+  test.use({
+    viewport: { width: 1280, height: 800 },
+    // The 'new' composer auto-captures GPS; submit stays disabled without it.
+    geolocation: { latitude: 10.2968, longitude: 123.8979 },
+    permissions: ['geolocation'],
+  });
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
   });
@@ -60,12 +65,19 @@ test.describe('Manual Test Automation', () => {
     const modal = page.locator('div.fixed.inset-0');
     await expect(modal.locator('h3:has-text("Assign members to")')).toBeVisible();
 
-    // 8. Click "Assign" next to the dispatcher (any user verifies the feature;
-    // using the responder would race with the workflow spec, which owns the
-    // responder's department membership while running in parallel)
-    const dispatcherRow = modal.locator('div.p-3.border').filter({ hasText: 'dispatcher' }).first();
-    await dispatcherRow.getByText('Assign', { exact: true }).click();
-    await expect(dispatcherRow.getByText('Remove', { exact: true })).toBeVisible({ timeout: 30000 });
+    // 8. Click "Assign" on the first assignable member row — for a new,
+    // empty department the modal only lists dept-less responders/admins, so
+    // any row with an Assign button works. Deleting the department afterward
+    // restores the member's null department_id, so no fixture is disturbed.
+    const memberRow = modal.locator('div.p-3.border')
+      .filter({ has: page.getByText('Assign', { exact: true }) }).first();
+    await expect(memberRow).toBeVisible({ timeout: 15000 });
+    await memberRow.getByText('Assign', { exact: true }).click();
+    // The row's button flips Assign→Remove — re-locate instead of reusing
+    // memberRow (its Assign filter no longer matches after the click).
+    await expect(modal.locator('div.p-3.border')
+      .filter({ has: page.getByText('Remove', { exact: true }) }).first())
+      .toBeVisible({ timeout: 30000 });
 
     // 9. Close the modal and verify member count updates to 1
     await modal.locator('div.border-b button').click();
@@ -88,26 +100,29 @@ test.describe('Manual Test Automation', () => {
     await page.click('button[type="submit"]');
     await page.waitForURL('/', { timeout: 30000 });
 
-    // 2. Go to the composer (sidebar exposes no title="New incident" button;
-    // text= also matches the command-center header button and trips strict mode)
+    // 2. Go to the composer — /emergency-report mounts the dashboard 'new'
+    // section (GPS-only location, native selects, 'New incident report').
     await page.goto('/emergency-report');
+    await expect(page.getByRole('heading', { level: 2, name: 'New incident report' })).toBeVisible({ timeout: 30000 });
+    await expect(page.locator('text=Current GPS location captured')).toBeVisible({ timeout: 30000 });
 
-    // 3. Fill in incident details — the dashboard composer only needs
-    // location + description (type/priority were removed with the redesign)
-    await page.getByLabel('Incident location').fill('123 Test Street');
+    // 3. Type/priority are native selects (defaults fire/high); description
+    // is the 'What is happening?' textarea.
+    await page.getByLabel('Emergency type').selectOption('fire');
+    await page.getByLabel('Priority').selectOption('high');
     await page.getByLabel('What is happening?').fill('Test incident with image upload');
 
-    // 4. Upload an image as evidence
+    // 4. Upload an image as evidence — preview uses the file name as alt.
     await page.setInputFiles('input[type="file"]', EVIDENCE_PNG);
     await expect(page.locator('img[alt="evidence.png"]')).toBeVisible();
 
-    // 5. Submit — button is disabled until profile.id loads, so wait enabled
-    const submit = page.getByRole('button', { name: 'Submit report' });
+    // 5. Submit — the button enables once GPS coords land.
+    const submit = page.getByRole('button', { name: /Submit report|Waiting for GPS/ });
     await page.waitForFunction(el => el && !el.disabled, await submit.elementHandle(), { timeout: 30000 });
     await submit.click();
 
-    // 6. Verify success message with report ID appears
-    await expect(page.locator('h3:has-text("Report submitted")')).toBeVisible();
+    // 6. Verify success state — the composer's 'Report submitted' heading.
+    await expect(page.getByRole('heading', { name: 'Report submitted' })).toBeVisible({ timeout: 30000 });
 
     // 7. Sign out
     await page.goto('/login');

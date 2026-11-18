@@ -14,7 +14,7 @@ import { client, signInWithRetry, deleteReportsByContent, deleteAssistanceReques
  * file name when the columns are missing.
  */
 
-const RESP = { email: 'police.responder1@emergency.gov', password: 'responder123' };
+const RESP = { email: 'barangaytanodpeaceandorder.responder1@emergency.gov', password: 'responder123' };
 const INCIDENT_COORDS = { latitude: 10.297085, longitude: 123.907249 };
 const NEARBY = { latitude: INCIDENT_COORDS.latitude + 0.0002, longitude: INCIDENT_COORDS.longitude };
 const FAR_AWAY = { latitude: 10.45, longitude: 124.0 };

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 
 /**
@@ -13,9 +13,17 @@ import { supabase } from '../lib/supabase';
  * offline), the local copy still saves so mock mode keeps working.
  */
 export default function useServiceBoundary() {
-  const [points, setPoints] = useState([]);
+  const [points, setPointsState] = useState([]);
   const [name, setName] = useState(null);
   const [loaded, setLoaded] = useState(false);
+  // Once the user edits (Clear / map click / save), the initial fetch must
+  // not clobber their changes — a slow load would otherwise overwrite the
+  // cleared/edited polygon when it finally resolves.
+  const dirtyRef = useRef(false);
+  const setPoints = useCallback((updater) => {
+    dirtyRef.current = true;
+    setPointsState(updater);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -26,8 +34,8 @@ export default function useServiceBoundary() {
           .select('name, points')
           .eq('is_active', true)
           .maybeSingle();
-        if (!cancelled && data?.points?.length >= 3) {
-          setPoints(data.points.map(p => ({
+        if (!cancelled && !dirtyRef.current && data?.points?.length >= 3) {
+          setPointsState(data.points.map(p => ({
             lat: p.latitude ?? p.lat,
             lng: p.longitude ?? p.lng
           })));
@@ -42,8 +50,8 @@ export default function useServiceBoundary() {
       try {
         const saved = localStorage.getItem('service_boundary');
         const parsed = saved && JSON.parse(saved);
-        if (!cancelled && parsed?.points?.length >= 3) {
-          setPoints(parsed.points.map(p => ({
+        if (!cancelled && !dirtyRef.current && parsed?.points?.length >= 3) {
+          setPointsState(parsed.points.map(p => ({
             lat: p.latitude ?? p.lat,
             lng: p.longitude ?? p.lng
           })));
@@ -63,7 +71,8 @@ export default function useServiceBoundary() {
     try {
       localStorage.setItem('service_boundary', JSON.stringify({ points: stored }));
     } catch {}
-    setPoints(nextPoints);
+    dirtyRef.current = true;
+    setPointsState(nextPoints);
     setName(boundaryName);
     try {
       await supabase

@@ -14,7 +14,7 @@ const CONTACT_NAME = `E2E Contact ${Date.now()}`;
 const ACCOUNTS = {
   admin: { email: 'admin@emergency.gov', password: 'admin123' },
   dispatcher: { email: 'dispatcher@emergency.gov', password: 'dispatcher123' },
-  responder: { email: 'responder@emergency.gov', password: 'responder123' },
+  responder: { email: 'healthandfirstaidteam.responder1@emergency.gov', password: 'responder123' },
   resident: { email: 'resident@example.com', password: 'resident123' },
 };
 
@@ -246,8 +246,9 @@ test.describe('Full UI button coverage', () => {
     await page.click('button[title="Profile"]');
     await expect(page.getByRole('heading', { level: 2, name: 'Your profile' })).toBeVisible({ timeout: 15000 });
 
-    // Workspace sidebar now gives responders a 'Response board' link back.
-    await page.click('button[title="Response board"]');
+    // The responder sidebar has no 'Response board' link (command section is
+    // their dedicated view, not a workspace link) — '/' lands on the board.
+    await page.goto('/');
     await expect(page.getByRole('heading', { name: 'Response board' })).toBeVisible({ timeout: 15000 });
 
     // Desktop sign-out lives in the Account menu dropdown; the mobile-bar

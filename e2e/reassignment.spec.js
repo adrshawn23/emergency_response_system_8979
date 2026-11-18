@@ -6,7 +6,7 @@ import { client, createReport, deleteReportsByContent, signInWithRetry } from '.
 const DESC = `E2E reassign ${Date.now()}`;
 const LOC = 'E2E Reassign Avenue';
 const REASON = 'Wrong department — this is a medical incident';
-const DEPT_ADMIN = { email: 'deptadmin.fire@emergency.gov', password: 'deptadmin123' };
+const DEPT_ADMIN = { email: 'deptadmin.healthandfirstaidteam@emergency.gov', password: 'deptadmin123' };
 const DISPATCHER = { email: 'dispatcher@emergency.gov', password: 'dispatcher123' };
 
 async function login(page, email, password) {
@@ -28,10 +28,9 @@ async function signOut(page) {
 let deptAdminDeptId = null;
 
 test.beforeAll(async () => {
-  // deptadmin.fire@emergency.gov only exists after running
-  // supabase/create_deptadmin_fire.sql — skip gracefully until then
-  // (same gating as department_dispatch.spec.js, but auto-detected).
-  // Sign in as the dept admin: user_profiles RLS only exposes your own row.
+  // Any department_admin works — the seed assigns the report to whatever
+  // department the admin actually owns. Sign in as the dept admin:
+  // user_profiles RLS only exposes your own row.
   try {
     const sb = client();
     await signInWithRetry(sb, DEPT_ADMIN.email, DEPT_ADMIN.password);
@@ -45,7 +44,7 @@ test.beforeAll(async () => {
 test.describe.serial('Reassignment requests', () => {
   test('dept admin files a request with a required reason', async ({ page }) => {
     test.skip(!deptAdminDeptId,
-      'deptadmin.fire@emergency.gov missing — run supabase/create_deptadmin_fire.sql');
+      'dept admin account missing or has no department — check seed_deptadmins');
     // Seed: a report assigned to the dept admin's department. The client
     // needs a session — user_profiles + report update are RLS-gated.
     const sb = client();
@@ -80,7 +79,7 @@ test.describe.serial('Reassignment requests', () => {
 
   test('dispatcher sees the request and dismisses it', async ({ page }) => {
     test.skip(!deptAdminDeptId,
-      'deptadmin.fire@emergency.gov missing — run supabase/create_deptadmin_fire.sql');
+      'dept admin account missing or has no department — check seed_deptadmins');
     await login(page, DISPATCHER.email, DISPATCHER.password);
     await page.goto('/report-management');
 

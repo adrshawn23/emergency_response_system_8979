@@ -64,7 +64,7 @@ test.describe('Authentication', () => {
   });
 
   test('should login as responder', async ({ page }) => {
-    await page.fill('input[type="email"]', 'responder@emergency.gov');
+    await page.fill('input[type="email"]', 'healthandfirstaidteam.responder1@emergency.gov');
     await page.fill('input[type="password"]', 'responder123');
     await page.click('button[type="submit"]');
     

@@ -9,7 +9,12 @@ import { deleteReportsByContent, assignResponderToReport, submitIncident } from 
  * Phases run serially and share state via module variables.
  */
 test.describe.serial('End-to-End Incident Workflow', () => {
-  test.use({ viewport: { width: 1280, height: 800 } });
+  test.use({
+  viewport: { width: 1280, height: 800 },
+  // The 'new' composer auto-captures GPS; submit stays disabled without it.
+  geolocation: { latitude: 10.2968, longitude: 123.8979 },
+  permissions: ['geolocation'],
+});
 
   const uniqueDesc = `E2E workflow incident ${Date.now()}`;
   let departmentName = null;
@@ -35,17 +40,20 @@ test.describe.serial('End-to-End Incident Workflow', () => {
     const deptList = page.locator('h4.font-bold').or(page.getByText('No departments found'));
     await expect(deptList.first()).toBeVisible();
 
-    // Prefer the stable seed department 'Fire Department' — picking "the first
-    // card" is racy because a parallel test may have created (and will delete)
-    // a temp department that happens to sort first.
+    // Prefer the stable barangay department 'Health and First Aid Team' —
+    // picking "the first card" is racy because a parallel test may have
+    // created (and will delete) a temp department that happens to sort first.
     let deptCard = page.locator('div.rounded-2xl')
-      .filter({ has: page.locator('h4.font-bold:has-text("Fire Department")') });
+      .filter({ has: page.locator('h4.font-bold:has-text("Health and First Aid Team")') });
 
     // Fallback: create a dedicated department if the seed is absent
     if (!(await deptCard.count())) {
       if (!(await page.locator('h4.font-bold:has-text("E2E Workflow Department")').count())) {
         await page.click('button:has-text("Create Department")');
         await page.getByLabel('Department Name').fill('E2E Workflow Department');
+        // Department Type is required — custom listbox Select
+        await page.getByLabel('Department Type').click();
+        await page.locator('div.absolute.z-50').getByText('Fire Department').click();
         await page.getByLabel('Description').fill('Created by end-to-end workflow test');
         await page.locator('button:has-text("Create Department")').last().click();
       }
@@ -95,17 +103,17 @@ test.describe.serial('End-to-End Incident Workflow', () => {
     await page.waitForURL('/', { timeout: 30000 });
     await expect(page.getByRole('heading', { name: /Command Center/ })).toBeVisible();
 
-    // Create a new incident with a unique description. Navigate by URL —
-    // 'New incident' exists in both desktop and hidden mobile navs.
+    // Create a new incident with a unique description — the redesigned
+    // composer's type/priority buttons are clicked inside submitIncident.
     await page.goto('/emergency-report');
-    await expect(page.getByLabel('Emergency type')).toBeVisible({ timeout: 30000 });
-    await page.getByLabel('Emergency type').selectOption('fire');
-    await page.getByLabel('Priority').selectOption('high');
-    await submitIncident(page, { location: '456 Workflow Avenue', description: uniqueDesc });
+    await expect(page.getByRole('heading', { level: 2, name: 'New incident report' })).toBeVisible({ timeout: 30000 });
+    await expect(page.locator('text=Current GPS location captured')).toBeVisible({ timeout: 30000 });
+    await submitIncident(page, { description: uniqueDesc });
 
-    // Go to the incident queue by URL — the sidebar click races the
-    // dashboard's initial render (same fix as department_dispatch.spec.js).
-    await page.goto('/report-management');
+    // Go to the incident queue — the sidebar nav button opens the dashboard
+    // 'queue' section where 'Status / action' is the table header.
+    await page.goto('/');
+    await page.click('button[title="Incident queue"]');
     await expect(page.getByText('Status / action')).toBeVisible({ timeout: 30000 });
     const row = page.locator('div.cursor-pointer').filter({ hasText: uniqueDesc });
     await expect(row).toBeVisible();
@@ -148,13 +156,13 @@ test.describe.serial('End-to-End Incident Workflow', () => {
   // their own department. No dept-admin seed account exists, so the admin
   // API writes the same fields (assigned_to + assigned_department_id).
   test('Phase 2.5 (dept admin stand-in): assign the responder via API', async () => {
-    await assignResponderToReport(uniqueDesc, 'responder@emergency.gov');
+    await assignResponderToReport(uniqueDesc, 'healthandfirstaidteam.responder1@emergency.gov');
   });
 
   test('Phase 3 (responder): acknowledge and resolve the incident', async ({ page }) => {
     // Login as responder - lands directly on the Response board
     await page.goto('/');
-    await page.fill('input[type="email"]', 'responder@emergency.gov');
+    await page.fill('input[type="email"]', 'healthandfirstaidteam.responder1@emergency.gov');
     await page.fill('input[type="password"]', 'responder123');
     await page.click('button[type="submit"]');
     await page.waitForURL('/', { timeout: 30000 });

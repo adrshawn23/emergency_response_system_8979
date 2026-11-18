@@ -16,15 +16,16 @@ export const EVIDENCE_PNG = {
 
 /**
  * Submit a report via the dashboard 'new' composer (/emergency-report).
- * The form requires Incident location + What is happening? (submitIncident
- * silently returns without them); residents also need ≥1 photo (F-03).
+ * The composer auto-captures GPS — the location field is read-only and the
+ * submit stays disabled ('Waiting for GPS…') until coords land, so callers
+ * MUST grant geolocation permission + a position via test.use. Description
+ * is the only text field; residents also need ≥1 photo (F-03).
  */
-export async function submitIncident(page, { location, description }) {
-  if (location) await page.getByLabel('Incident location').fill(location);
+export async function submitIncident(page, { description }) {
   await page.getByLabel('What is happening?').fill(description);
   await page.locator('input[type="file"]').setInputFiles(EVIDENCE_PNG);
-  // Button is disabled until profile.id loads — clicking early is a no-op.
-  const submit = page.getByRole('button', { name: 'Submit report' });
+  // Button enables once draft.latitude/longitude are captured.
+  const submit = page.getByRole('button', { name: /Submit report|Waiting for GPS/ });
   await submit.waitFor({ state: 'visible', timeout: 30000 });
   await page.waitForFunction(
     el => el && !el.disabled,
@@ -88,7 +89,7 @@ export function client() {
  */
 export async function assignResponderToReport(
   content,
-  responderEmail = 'responder@emergency.gov'
+  responderEmail = 'healthandfirstaidteam.responder1@emergency.gov'
 ) {
   const sb = client();
   await signInWithRetry(sb, 'admin@emergency.gov', 'admin123');

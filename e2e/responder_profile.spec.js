@@ -7,7 +7,7 @@ import { test, expect } from '@playwright/test';
  */
 test('responder can open their profile page from the response board', async ({ page }) => {
   await page.goto('/');
-  await page.fill('input[type="email"]', 'responder@emergency.gov');
+  await page.fill('input[type="email"]', 'healthandfirstaidteam.responder1@emergency.gov');
   await page.fill('input[type="password"]', 'responder123');
   await page.click('button[type="submit"]');
 
