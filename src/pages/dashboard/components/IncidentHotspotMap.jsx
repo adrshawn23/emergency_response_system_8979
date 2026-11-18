@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo } from 'react';
-import { MapContainer, TileLayer, Circle, Marker, Popup, Tooltip, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Circle, Marker, Polygon, Popup, Tooltip, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import '../../../utils/leafletIcon';
 import { incidentIcon, INCIDENT_TYPE_STYLE } from '../../../utils/leafletIcon';
 import { reportCoords } from '../../../utils/reportCoords';
 import { haversineMeters } from '../../../utils/distance';
 import { RESPONSE_GUIDE } from '../../../utils/incidentResponse';
+import useServiceBoundary from '../../../hooks/useServiceBoundary';
 import Icon from '../../../components/AppIcon';
 
 // Kalubihan service-area center — same origin as the command map.
@@ -58,18 +59,28 @@ const findHotspots = (pts) => {
   return spots.sort((a, b) => b.count - a.count);
 };
 
-const FitBounds = ({ pts }) => {
+// The map always frames the barangay service boundary — incident spread
+// inside it doesn't pull the zoom out. Falls back to incident extents when
+// no boundary is configured.
+const FitBounds = ({ bounds }) => {
   const map = useMap();
   useEffect(() => {
-    if (pts.length) map.fitBounds(pts.map(p => p.pos), { padding: [40, 40], maxZoom: 17 });
-  }, [pts, map]);
+    if (bounds?.length) map.fitBounds(bounds, { padding: [30, 30], maxZoom: 17 });
+  }, [bounds, map]);
   return null;
 };
 
 const IncidentHotspotMap = ({ rows }) => {
+  const { points: boundaryPoints } = useServiceBoundary();
   const pts = useMemo(() => (rows || [])
     .map(r => ({ r, type: typeOf(r), pos: reportCoords(r) }))
     .filter(p => p.pos), [rows]);
+
+  const focusBounds = useMemo(() =>
+    boundaryPoints.length > 2
+      ? boundaryPoints.map(p => [p.lat, p.lng])
+      : pts.map(p => p.pos),
+    [boundaryPoints, pts]);
 
   const hotspots = useMemo(() => findHotspots(pts), [pts]);
   const presentTypes = useMemo(() => [...new Set(pts.map(p => p.type))].sort(), [pts]);
@@ -88,7 +99,13 @@ const IncidentHotspotMap = ({ rows }) => {
       <div className="relative mt-3 h-[380px] overflow-hidden rounded-xl border border-slate-200">
         <MapContainer center={CENTER} zoom={15} zoomAnimation={false} style={{ height: '100%', width: '100%' }}>
           <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-          <FitBounds pts={pts} />
+          <FitBounds bounds={focusBounds} />
+          {boundaryPoints.length > 2 && (
+            <Polygon
+              positions={focusBounds}
+              pathOptions={{ color: '#14335c', weight: 2, dashArray: '8 4', fillOpacity: 0.04 }}
+            />
+          )}
           {pts.map((p, i) => (
             <Marker key={p.r.id || p.r.report_id || i} position={p.pos} icon={incidentIcon(p.type)}>
               <Popup>
