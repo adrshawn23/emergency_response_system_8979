@@ -11,7 +11,7 @@ import Icon from '../../../components/AppIcon';
 
 // Kalubihan service-area center — same origin as the command map.
 const CENTER = [10.3172, 123.8951];
-const RADIUS_M = 100;   // hotspot circle radius, per spec
+const RADIUS_M = 75;    // hotspot circle radius — barangay-scale middle ground (100m too broad, 50m too tight for GPS jitter)
 const HOTSPOT_MIN = 4;  // "more than 3" same-type incidents in the radius
 
 const typeOf = r => (r.report_type || r.emergency_type || r.incident_type || 'other');
