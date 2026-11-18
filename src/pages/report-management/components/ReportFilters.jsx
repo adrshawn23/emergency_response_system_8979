@@ -31,20 +31,21 @@ const ReportFilters = ({
 
   const incidentTypeOptions = [
     { value: 'all', label: 'All Types' },
-    { value: 'fire', label: 'Fire Emergency' },
+    { value: 'flood', label: 'Flood' },
+    { value: 'fire', label: 'Fire' },
+    { value: 'theft', label: 'Theft / Pickpocketing' },
     { value: 'medical', label: 'Medical Emergency' },
-    { value: 'police', label: 'Police Matter' },
-    { value: 'accident', label: 'Traffic Accident' },
-    { value: 'natural', label: 'Natural Disaster' },
+    { value: 'accident', label: 'Road Accident' },
+    { value: 'assault', label: 'Assault / Robbery / Fight' },
+    { value: 'structural', label: 'Fallen Tree / Structural' },
     { value: 'other', label: 'Other' }
   ];
 
   const departmentOptions = [
     { value: 'all', label: 'All Departments' },
-    { value: 'fire', label: 'Fire Department' },
-    { value: 'police', label: 'Police Department' },
-    { value: 'medical', label: 'Medical Services' },
-    { value: 'emergency', label: 'Emergency Management' }
+    { value: 'Disaster Response Team (BDRRMC)', label: 'Disaster Response Team (BDRRMC)' },
+    { value: 'Barangay Tanod / Peace and Order', label: 'Barangay Tanod / Peace and Order' },
+    { value: 'Health and First Aid Team', label: 'Health and First Aid Team' }
   ];
 
   const handleFilterChange = (key, value) => {

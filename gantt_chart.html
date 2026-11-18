@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  @page { size: A4 landscape; margin: 1.6cm 1.6cm; }
+  body { font-family: 'Times New Roman', Times, serif; font-size: 11.5pt; color: #000; margin: 0; }
+  h3 { font-weight: bold; margin: 0 0 10px; }
+  .caption { text-align: center; font-weight: bold; margin: 4px 0 10px; }
+  .caption .t { display: block; }
+  table.gantt { border-collapse: collapse; width: 100%; table-layout: fixed; font-family: Arial, sans-serif; font-size: 6.8pt; }
+  table.gantt th, table.gantt td { border: 1px solid #b9b9b9; padding: 1px 3px; overflow: hidden; white-space: nowrap; }
+  table.gantt thead th { background: #d9d9d9; font-weight: bold; text-align: center; }
+  td.no, th.no { width: 22px; text-align: center; }
+  td.name, th.name { width: 175px; }
+  td.dur, th.dur { width: 38px; text-align: center; }
+  tr.striped td { background: #f2f2f2; }
+  tr.phase td { background: #595959; color: #fff; font-weight: bold; }
+  tr.parent td.name { font-weight: bold; }
+  td.track { position: relative; padding: 0; }
+  .bar { position: absolute; top: 2px; height: 9px; background: #2e74b5; border-radius: 2px; }
+  .bar.phasebar { background: #1f3864; height: 10px; top: 1px; }
+  .bar.parentbar { background: #44546a; }
+  .bar .lbl { position: absolute; left: 100%; margin-left: 3px; top: 0; font-size: 6.3pt; color: #333; white-space: nowrap; }
+  .bar .lbl.left { left: auto; right: 100%; margin-left: 0; margin-right: 3px; }
+  .timeline-head { position: relative; height: 26px; }
+  .timeline-head .mlabel { position: absolute; top: 4px; font-size: 6.3pt; color: #333; white-space: nowrap; }
+  .expl { font-family: 'Times New Roman', Times, serif; font-size: 11.5pt; text-align: justify; text-indent: 1.25cm; line-height: 1.5; margin-top: 14px; }
+</style>
+</head>
+<body>
+
+<h3>Gantt Chart</h3>
+<div class="caption"><span class="t">Table 3.</span><span class="t">Gantt Chart</span></div>
+
+<table class="gantt" id="g">
+  <thead>
+    <tr>
+      <th class="no">ID</th>
+      <th class="name">Task Name</th>
+      <th class="dur">Duration</th>
+      <th><div class="timeline-head" id="months"></div></th>
+    </tr>
+  </thead>
+  <tbody id="rows"></tbody>
+</table>
+
+<p class="expl">The Gantt chart for the Kalubihan Emergency Response System provides a detailed project schedule spanning the initiation and planning activities from February to May 2025, the system development work from September to November 2026, and the control and closure activities in November 2026. The work is broken into five phases&mdash;Initiation, Planning, Execution, Control, and Closure&mdash;each subdivided into tasks with assigned durations and responsible team members. Shawn Michael Dagatan leads the database implementation, backend integration, and system activity monitoring; Cindy Frejoles is in charge of the front-end integration, user interface work, user profiles, and documentation; Kryshan Aleizel Las Pi&ntilde;as handles requirements definition, technical specifications, analytics, and reporting tasks. Tasks are scheduled to overlap where possible, allowing parallel progress on different components, with dependencies ensuring a logical workflow from project identification and literature review through technical design, module development, testing, and final documentation.</p>
+
+<script>
+var RANGE_START = new Date(2025, 1, 1);        // Feb 1, 2025
+var RANGE_END   = new Date(2026, 10, 30);      // Nov 30, 2026
+var TOTAL = (RANGE_END - RANGE_START) / 86400000 + 1;
+
+// [no, name, owner, start, finish, kind] kind: P=phase, p=parent, ''=task
+var T = [
+['1','Initiation Phase','Frejoles, Las Pi\u00f1as, Dagatan','2025-02-03','2025-03-28','P'],
+['1.1','Project Identification','Frejoles, Las Pi\u00f1as, Dagatan','2025-02-03','2025-02-08','p'],
+['1.1.1','Identify business gaps and objectives','Frejoles, Las Pi\u00f1as, Dagatan','2025-02-03','2025-02-04',''],
+['1.1.2','Identify stakeholders','Frejoles, Las Pi\u00f1as, Dagatan','2025-02-07','2025-02-08',''],
+['1.2','Requirement Elicitation','Frejoles, Las Pi\u00f1as, Dagatan','2025-02-10','2025-02-12','p'],
+['1.2.1','Conduct stakeholder interviews','Frejoles, Las Pi\u00f1as, Dagatan','2025-02-10','2025-02-12',''],
+['1.3','Pitch Deck Formation','Frejoles, Las Pi\u00f1as, Dagatan','2025-02-13','2025-03-10','p'],
+['1.3.1','Define problem and opportunity','Las Pi\u00f1as','2025-02-13','2025-02-14',''],
+['1.3.2','Define value proposition','Dagatan','2025-02-15','2025-02-17',''],
+['1.3.3','Define functional requirements','Frejoles, Las Pi\u00f1as','2025-02-18','2025-02-21',''],
+['1.3.4','Define Business Model','Dagatan','2025-02-22','2025-02-24',''],
+['1.3.5','Define Go-To-Market Plan','Dagatan','2025-02-25','2025-02-28',''],
+['1.3.6','Define Competition Analysis','Las Pi\u00f1as','2025-03-03','2025-03-06',''],
+['1.3.7','Define Management Team','Frejoles, Las Pi\u00f1as, Dagatan','2025-03-09','2025-03-10',''],
+['1.4','Approval Process','Frejoles, Las Pi\u00f1as, Dagatan','2025-03-13','2025-03-18','p'],
+['1.4.1','Title hearing proposal','Frejoles, Las Pi\u00f1as, Dagatan','2025-03-13','2025-03-13',''],
+['1.4.2','Revise title proposal','Frejoles, Las Pi\u00f1as, Dagatan','2025-03-14','2025-03-18',''],
+['1.4.3','Obtain formal approval','Frejoles, Las Pi\u00f1as, Dagatan','2025-03-17','2025-03-17',''],
+['1.5','Scheduling and Task Management','Las Pi\u00f1as','2025-03-19','2025-03-28','p'],
+['1.5.1','Tasks and Date Assignment','Frejoles','2025-03-19','2025-03-26',''],
+['1.5.2','Gantt Chart','Dagatan','2025-03-26','2025-03-28',''],
+
+['2','Planning Phase','Frejoles, Las Pi\u00f1as, Dagatan','2025-03-02','2025-05-28','P'],
+['2.1','Project Risk Plan','Dagatan','2025-03-02','2025-03-04','p'],
+['2.1.1','Define risk identification','Dagatan','2025-03-02','2025-03-02',''],
+['2.1.2','Define risk register','Dagatan','2025-03-03','2025-03-04',''],
+['2.2','Project Overview','Frejoles, Las Pi\u00f1as, Dagatan','2025-03-06','2025-03-12','p'],
+['2.2.1','Define Objectives of the Study','Las Pi\u00f1as','2025-03-06','2025-03-06',''],
+['2.2.2','Define Scope and Limitations of the Study','Dagatan','2025-03-07','2025-03-07',''],
+['2.2.3','Define Significance of the Study','Dagatan','2025-03-08','2025-03-08',''],
+['2.2.4','Define Flow of the Study','Frejoles','2025-03-11','2025-03-11',''],
+['2.2.5','Define Technical and Key Terms','Frejoles','2025-03-12','2025-03-12',''],
+['2.2.6','Define Rationale of the Study','Las Pi\u00f1as','2025-03-12','2025-03-12',''],
+['2.3','Review of Related Literature and Studies','Frejoles, Las Pi\u00f1as, Dagatan','2025-03-13','2025-03-17','p'],
+['2.3.1','Research on Related Literature','Dagatan','2025-03-13','2025-03-14',''],
+['2.3.2','Research on Related Studies','Frejoles, Las Pi\u00f1as','2025-03-15','2025-03-17',''],
+['2.4','Methodology and Planning Tools','Dagatan','2025-03-18','2025-04-01','p'],
+['2.4.1','Define Software Engineering Methodology','Frejoles, Las Pi\u00f1as, Dagatan','2025-03-18','2025-03-19',''],
+['2.4.2','Define Business Model Canvas','Frejoles, Las Pi\u00f1as, Dagatan','2025-03-20','2025-03-23',''],
+['2.4.3','Develop Program Workflow','Frejoles, Las Pi\u00f1as','2025-03-24','2025-03-25',''],
+['2.4.4','Develop Functional Decomposition Diagram','Las Pi\u00f1as','2025-03-29','2025-04-01',''],
+['2.5','System Design','Las Pi\u00f1as, Dagatan','2025-04-02','2025-04-13','p'],
+['2.5.1','Develop Use-Case Diagram','Frejoles, Las Pi\u00f1as, Dagatan','2025-04-02','2025-04-04',''],
+['2.5.2','Develop Storyboard','Frejoles','2025-04-05','2025-04-06',''],
+['2.5.3','Establish ERD','Frejoles, Las Pi\u00f1as, Dagatan','2025-04-07','2025-04-10',''],
+['2.5.4','Develop Data Dictionary','Frejoles','2025-04-11','2025-04-13',''],
+['2.6','Network Design','Frejoles, Dagatan','2025-04-14','2025-04-16','p'],
+['2.6.1','Develop Network Model','Frejoles','2025-04-14','2025-04-14',''],
+['2.6.2','Develop Network Topology','Frejoles','2025-04-15','2025-04-16',''],
+['2.7','Technical Specifications','Las Pi\u00f1as','2025-04-17','2025-04-25','p'],
+['2.7.1','Develop Technology Stack Diagram','Frejoles, Las Pi\u00f1as, Dagatan','2025-04-17','2025-04-17',''],
+['2.7.2','List Software Specification','Las Pi\u00f1as','2025-04-18','2025-04-20',''],
+['2.7.3','List Hardware Specification','Las Pi\u00f1as','2025-04-21','2025-04-22',''],
+['2.7.4','Develop List of Modules','Frejoles','2025-04-23','2025-04-23',''],
+['2.7.5','Develop Test Plan','Frejoles','2025-04-24','2025-04-25',''],
+['2.8','Approval Process','Frejoles, Las Pi\u00f1as, Dagatan','2025-05-14','2025-05-28','p'],
+['2.8.1','Present Proposal Hearing','Frejoles, Las Pi\u00f1as, Dagatan','2025-05-14','2025-05-14',''],
+['2.8.2','Make Revisions','Frejoles, Las Pi\u00f1as, Dagatan','2025-05-15','2025-05-20',''],
+['2.8.3','Obtain Formal Approval','Frejoles, Las Pi\u00f1as, Dagatan','2025-05-21','2025-05-23',''],
+['2.8.4','Submit Hardbound Copy','Frejoles, Las Pi\u00f1as, Dagatan','2025-05-28','2025-05-28',''],
+
+['3','Execution Phase','Dagatan, Las Pi\u00f1as, Frejoles','2026-09-01','2026-11-11','P'],
+['3.1','Database Implementation','Frejoles, Las Pi\u00f1as, Dagatan','2026-09-01','2026-09-12','p'],
+['3.1.1','Create database tables','Frejoles, Las Pi\u00f1as','2026-09-01','2026-09-08',''],
+['3.1.2','Establish relationships and indexing','Dagatan','2026-09-09','2026-09-12',''],
+['3.2','Frontend and Backend Integration','Dagatan, Las Pi\u00f1as, Frejoles','2026-09-14','2026-10-03','p'],
+['3.2.1','API development and testing','Dagatan','2026-09-14','2026-09-21',''],
+['3.2.2','UI integration','Frejoles, Las Pi\u00f1as, Dagatan','2026-09-22','2026-09-27',''],
+['3.2.3','Connect frontend with backend logic','Dagatan, Las Pi\u00f1as, Frejoles','2026-09-28','2026-10-03',''],
+['3.3','Module Development','Dagatan, Las Pi\u00f1as, Frejoles','2026-10-05','2026-11-11','p'],
+['3.3.1','Registration','Dagatan, Las Pi\u00f1as, Frejoles','2026-10-05','2026-10-07',''],
+['3.3.2','User Authentication','Dagatan, Las Pi\u00f1as, Frejoles','2026-10-08','2026-10-09',''],
+['3.3.3','User Accounts Management','Dagatan, Frejoles','2026-10-10','2026-10-11',''],
+['3.3.4','Approvals Management','Dagatan, Las Pi\u00f1as, Frejoles','2026-10-12','2026-10-13',''],
+['3.3.5','Residents & Responders Management','Dagatan, Las Pi\u00f1as, Frejoles','2026-10-14','2026-10-16',''],
+['3.3.6','Emergency Incident Reporting','Dagatan, Las Pi\u00f1as, Frejoles','2026-10-17','2026-10-20',''],
+['3.3.7','Emergency Dispatch & Tracking','Dagatan, Las Pi\u00f1as, Frejoles','2026-10-21','2026-10-25',''],
+['3.3.8','Incident History & Audit Logs','Dagatan','2026-10-26','2026-10-27',''],
+['3.3.9','User Profile & Settings','Frejoles','2026-10-28','2026-10-29',''],
+['3.3.10','Emergency Contacts & Resources','Dagatan','2026-10-30','2026-10-31',''],
+['3.3.11','Analytics & Public Safety Reports','Las Pi\u00f1as, Frejoles','2026-11-01','2026-11-05',''],
+['3.3.12','System Activity Monitoring','Dagatan','2026-11-06','2026-11-11',''],
+
+['4','Control Phase','Frejoles, Las Pi\u00f1as, Dagatan','2026-11-12','2026-11-12','P'],
+['4.1','Testing Phase','Frejoles, Las Pi\u00f1as, Dagatan','2026-11-12','2026-11-12','p'],
+['4.1.1','Conduct functional and usability testing','Frejoles','2026-11-12','2026-11-12',''],
+['4.1.2','Perform security and performance testing','Dagatan','2026-11-12','2026-11-12',''],
+['4.1.3','Conduct User Acceptance Testing (UAT)','Las Pi\u00f1as','2026-11-12','2026-11-12',''],
+['4.1.4','Unit Testing','Dagatan','2026-11-12','2026-11-12',''],
+['4.1.5','Integration Testing','Dagatan','2026-11-12','2026-11-12',''],
+['4.1.6','Alpha Testing','Frejoles','2026-11-12','2026-11-12',''],
+['4.1.7','Acceptance Testing','Frejoles','2026-11-12','2026-11-12',''],
+['4.2','Monitor development milestones','Dagatan, Las Pi\u00f1as','2026-11-12','2026-11-12',''],
+['4.3','Debugging and refinement','Dagatan','2026-11-12','2026-11-12',''],
+
+['5','Closure Phase','Dagatan, Las Pi\u00f1as, Frejoles','2026-11-12','2026-11-12','P'],
+['5.1','System Deployment','Dagatan, Las Pi\u00f1as, Frejoles','2026-11-12','2026-11-12','p'],
+['5.1.1','Deploy to university','Dagatan, Las Pi\u00f1as, Frejoles','2026-11-12','2026-11-12',''],
+['5.1.2','Verify system stability','Dagatan, Las Pi\u00f1as','2026-11-12','2026-11-12',''],
+['5.2','Documentation','Las Pi\u00f1as, Frejoles','2026-11-12','2026-11-12','p'],
+['5.2.1','Compile technical documentation','Dagatan, Las Pi\u00f1as, Frejoles','2026-11-12','2026-11-12',''],
+['5.2.2','User manual and deployment guide','Las Pi\u00f1as, Frejoles','2026-11-12','2026-11-12',''],
+['5.3','Panel Presentation','Dagatan, Las Pi\u00f1as, Frejoles',null,null,'p'],
+['5.3.1','Prepare capstone defense materials','Dagatan, Las Pi\u00f1as, Frejoles',null,null,''],
+['5.3.2','Conduct capstone defense','Dagatan, Las Pi\u00f1as, Frejoles',null,null,''],
+['5.4','Submission of Deliverables','Dagatan, Las Pi\u00f1as, Frejoles',null,null,'p'],
+['5.4.1','Submit source code','Dagatan, Las Pi\u00f1as, Frejoles',null,null,''],
+['5.4.2','Submit final documents','Dagatan, Las Pi\u00f1as, Frejoles',null,null,''],
+['5.5','Project Archiving and Handover','Dagatan, Las Pi\u00f1as, Frejoles',null,null,'p'],
+['5.5.1','Backup final system','Dagatan, Las Pi\u00f1as, Frejoles',null,null,''],
+['5.5.2','Handover to university/department','Dagatan, Las Pi\u00f1as, Frejoles',null,null,'']
+];
+
+function d(s){ return new Date(s+'T00:00:00'); }
+
+// month labels + gridlines
+var months = [];
+var cur = new Date(2025,1,1);
+while (cur <= RANGE_END) { months.push(new Date(cur)); cur = new Date(cur.getFullYear(), cur.getMonth()+1, 1); }
+var MN = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+var mh = document.getElementById('months'), gridStops = [];
+months.forEach(function(m,i){
+  var off = (m - RANGE_START)/86400000/TOTAL*100;
+  var lab = document.createElement('div');
+  lab.className='mlabel'; lab.style.left = off+'%';
+  lab.textContent = MN[m.getMonth()]+' '+String(m.getFullYear()).slice(2);
+  mh.appendChild(lab);
+  gridStops.push('transparent '+off+'%', '#c9c9c9 '+off+'%', '#c9c9c9 '+(off+0.12)+'%', 'transparent '+(off+0.12)+'%');
+});
+var gridCss = 'linear-gradient(to right, '+gridStops.join(', ')+')';
+
+var tb = document.getElementById('rows');
+T.forEach(function(r,i){
+  var tr = document.createElement('tr');
+  if (r[5]==='P') tr.className='phase'; else if (r[5]==='p') tr.className='parent'; else if (i%2) tr.className='striped';
+  var dur = (r[3]&&r[4]) ? Math.round((d(r[4])-d(r[3]))/86400000)+1+' days' : '';
+  tr.innerHTML = '<td class="no">'+r[0]+'</td><td class="name">'+r[1]+'</td><td class="dur">'+dur+'</td><td class="track"></td>';
+  var track = tr.lastChild;
+  track.style.backgroundImage = gridCss;
+  if (r[3] && r[4]) {
+    var L = (d(r[3])-RANGE_START)/86400000/TOTAL*100;
+    var W = (d(r[4])-d(r[3]))/86400000/TOTAL*100;
+    var b = document.createElement('div');
+    b.className = 'bar' + (r[5]==='P'?' phasebar':r[5]==='p'?' parentbar':'');
+    b.style.left = Math.max(0,L)+'%'; b.style.width = Math.max(0.3,W)+'%';
+    b.title = r[1];
+    var lbl = document.createElement('span'); lbl.className='lbl' + (L + W > 72 ? ' left' : ''); lbl.textContent = r[2];
+    b.appendChild(lbl);
+    track.appendChild(b);
+  }
+  tb.appendChild(tr);
+});
+</script>
+
+</body>
+</html>

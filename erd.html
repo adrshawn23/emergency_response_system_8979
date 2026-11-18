@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  @page { size: A4 portrait; margin: 1.9cm 2cm; }
+  body { font-family: 'Times New Roman', Times, serif; font-size: 11.5pt; color: #000; margin: 0; }
+  h3 { font-weight: bold; margin: 0 0 6px; }
+  .figwrap { page-break-inside: avoid; }
+  svg { display: block; margin: 0 auto; }
+  .cap { text-align: center; font-weight: bold; margin: 10px 0 14px; }
+  .expl { text-align: justify; text-indent: 1.25cm; line-height: 1.5; margin: 10px 0 0; }
+  .brk { page-break-before: always; }
+  .dd { font-weight: bold; margin: 24px 0 10px; }
+  table.dict { border-collapse: collapse; width: 100%; margin: 0 auto 30px; font-size: 11pt; page-break-inside: auto; table-layout: fixed; }
+  table.dict th:nth-child(1), table.dict td:nth-child(1) { width: 21%; }
+  table.dict th:nth-child(2), table.dict td:nth-child(2) { width: 18%; }
+  table.dict th:nth-child(3), table.dict td:nth-child(3) { width: 24%; }
+  table.dict th:nth-child(4), table.dict td:nth-child(4) { width: 37%; }
+  table.dict caption { text-align: center; font-weight: bold; margin-bottom: 6px; }
+  table.dict th, table.dict td { border: 1px solid #000; padding: 6px 10px; text-align: left; vertical-align: top; }
+  table.dict th { font-weight: bold; }
+  .tname { font-family: Arial, sans-serif; font-size: 11px; font-weight: bold; fill: #ededed; }
+  .cname { font-family: Consolas, monospace; font-size: 9px; fill: #d4d4d4; }
+  .ctype { font-family: Consolas, monospace; font-size: 8px; fill: #8a8a8a; }
+</style>
+</head>
+<body>
+
+<h3>Database Design</h3>
+<h3>Entity Relationship Diagram</h3>
+
+<div id="erd"></div>
+<div class="cap">Figure 49: Entity Relationship Diagram</div>
+
+<p class="expl">The Entity Relationship Diagram (ERD) of the Kalubihan Emergency Response System showcases a relational structure built on Supabase (PostgreSQL) to manage emergency reporting and user roles efficiently. At the center is the <b>user_profiles</b> table, which links to <b>auth.users</b> for login credentials and stores the role classification&mdash;whether the user is an Admin, Dispatcher, Responder, Resident, or Department Administrator&mdash;along with the account status and approval fields that gate platform access. The <b>id_verifications</b> table is responsible for validating user identity documents before full access is granted, while <b>departments</b> organizes responders and department administrators by service type.</p>
+
+<p class="expl">The <b>emergency_reports</b> table handles all submitted emergency reports and connects with several key entities: <b>user_profiles</b> (reporter, assigned responder, and backup responder), <b>departments</b> (assigned unit), and <b>incident_media</b> (visual proof of the incident). Each report carries a status, priority, location, and coordinates. Activity around a report is captured by <b>report_updates</b>, <b>incident_status_history</b>, and <b>incident_messages</b>, while <b>notifications</b> keep every role informed. This structure ensures that emergency cases are not only documented but are traceable, verifiable, and organized for quick response.</p>
+
+<p class="expl">Departmental coordination is handled through <b>cross_department_assistance</b>, <b>responder_backup_requests</b>, and <b>reassignment_requests</b>, which let departments request help or re-route incidents between units. Responder field positions are tracked in <b>responder_locations</b>, and resident contacts are stored in <b>emergency_contacts</b> alongside the public directory in <b>department_contacts</b>. Advisory broadcasts live in <b>announcements</b>. The <b>audit_logs</b> table further enhances accountability by tracking user actions and their timestamps, <b>page_permissions</b> drives the role-based access matrix, and <b>geofence_boundaries</b> stores the service-area polygon used to validate report locations. Together, these entities form a robust, role-based emergency management system capable of handling real-time data, securing user validation, and ensuring proper departmental response to emergencies.</p>
+
+<h3 class="dd">DATA DICTIONARY</h3>
+<p class="expl">This data dictionary provides a comprehensive overview of the database schema for the Kalubihan Emergency Response System. It defines the structure and relationships of key entities such as users, reports, departments, and notifications. Each table includes column names, data types, keys, and concise descriptions, ensuring clarity on how data is stored, linked, and utilized across the system. This documentation supports accurate implementation and maintenance of the database, aiding developers and stakeholders in understanding the data model.</p>
+
+<div id="dict"></div>
+
+<script>
+// ============ ERD DATA ============
+// cols: [name, type, key] key: 'PK','FK','PKFK',''
+var T = [
+{name:'user_profiles', x:10, y:10, cols:[['id','uuid','PK'],['email','text',''],['full_name','text',''],['first_name','text',''],['last_name','text',''],['phone','text',''],['role','user_role',''],['department_id','uuid','FK'],['residency_type','text',''],['address','text',''],['birthdate','date',''],['employee_id','text',''],['avatar_url','text',''],['account_status','text',''],['status','text',''],['notification_prefs','jsonb',''],['approved_by','uuid','FK'],['approved_at','timestamptz',''],['suspension_reason','text',''],['created_at','timestamptz',''],['updated_at','timestamptz','']]},
+{name:'emergency_reports', x:285, y:10, cols:[['id','uuid','PK'],['report_id','text',''],['incident_type','incident_type',''],['priority','priority_level',''],['status','report_status',''],['location','text',''],['coordinates','jsonb',''],['description','text',''],['reporter_id','uuid','FK'],['reporter_name','text',''],['reporter_phone','text',''],['assigned_to','uuid','FK'],['assigned_department_id','uuid','FK'],['backup_responder_id','uuid','FK'],['attachments','jsonb',''],['decline_reason','text',''],['service_area_status','text',''],['resolved_at','timestamptz',''],['created_at','timestamptz',''],['updated_at','timestamptz','']]},
+{name:'departments', x:560, y:10, cols:[['id','uuid','PK'],['name','text',''],['type','department_type',''],['description','text',''],['contact_email','text',''],['contact_phone','text',''],['address','text',''],['is_active','bool',''],['created_at','timestamptz',''],['updated_at','timestamptz','']]},
+{name:'report_updates', x:560, y:165, cols:[['id','uuid','PK'],['report_id','uuid','FK'],['user_id','uuid','FK'],['update_type','text',''],['message','text',''],['old_status','report_status',''],['new_status','report_status',''],['created_at','timestamptz','']]},
+{name:'incident_status_history', x:560, y:295, cols:[['id','uuid','PK'],['report_id','uuid','FK'],['from_status','text',''],['to_status','text',''],['changed_by','uuid','FK'],['created_at','timestamptz','']]},
+{name:'incident_messages', x:560, y:400, cols:[['id','uuid','PK'],['report_id','uuid','FK'],['sender_id','uuid','FK'],['sender_name','text',''],['body','text',''],['created_at','timestamptz','']]},
+{name:'incident_media', x:560, y:500, cols:[['id','uuid','PK'],['incident_id','uuid','FK'],['private_storage_path','text',''],['created_at','timestamptz',''],['deleted_at','timestamptz','']]},
+{name:'notifications', x:560, y:595, cols:[['id','uuid','PK'],['recipient_id','uuid','FK'],['incident_id','uuid','FK'],['type','text',''],['title','text',''],['message','text',''],['channel','text',''],['delivery_status','text',''],['read_at','timestamptz',''],['sent_at','timestamptz',''],['metadata','jsonb',''],['created_at','timestamptz','']]},
+{name:'id_verifications', x:10, y:295, cols:[['id','uuid','PK'],['user_id','uuid','FK'],['document_storage_path','text',''],['verification_status','text',''],['submission_revision','int',''],['decision_reason','text',''],['decision_at','timestamptz',''],['created_at','timestamptz','']]},
+{name:'emergency_contacts', x:10, y:430, cols:[['id','uuid','PK'],['user_id','uuid','FK'],['name','text',''],['relationship','text',''],['phone_number','text',''],['is_primary','bool',''],['created_at','timestamptz','']]},
+{name:'cross_department_assistance', x:835, y:10, cols:[['id','uuid','PK'],['report_id','uuid','FK'],['assisting_department_id','uuid','FK'],['responder_id','uuid','FK'],['status','text',''],['assigned_at','timestamptz',''],['acknowledged_at','timestamptz',''],['arrived_at','timestamptz',''],['resolved_at','timestamptz',''],['created_at','timestamptz','']]},
+{name:'responder_backup_requests', x:835, y:175, cols:[['id','uuid','PK'],['report_id','uuid','FK'],['department_id','uuid','FK'],['requested_by','uuid','FK'],['status','text',''],['created_at','timestamptz','']]},
+{name:'reassignment_requests', x:835, y:295, cols:[['id','uuid','PK'],['report_id','uuid','FK'],['department_id','uuid','FK'],['requested_by','uuid','FK'],['status','text',''],['created_at','timestamptz','']]},
+{name:'responder_locations', x:835, y:410, cols:[['responder_id','uuid','PKFK'],['latitude','float8',''],['longitude','float8',''],['updated_at','timestamptz','']]},
+{name:'announcements', x:835, y:505, cols:[['id','uuid','PK'],['title','text',''],['body','text',''],['created_by','uuid','FK'],['created_at','timestamptz','']]},
+{name:'department_contacts', x:835, y:595, cols:[['id','uuid','PK'],['department_id','uuid','FK'],['label','text',''],['phone','text',''],['created_at','timestamptz','']]},
+{name:'audit_logs', x:10, y:560, cols:[['id','uuid','PK'],['actor_id','uuid','FK'],['action','text',''],['table_name','text',''],['record_id','uuid',''],['old_value','jsonb',''],['new_value','jsonb',''],['reason','text',''],['created_at','timestamptz','']]},
+{name:'page_permissions', x:10, y:700, cols:[['page_key','text','PK'],['allowed_roles','text[]','']]},
+{name:'geofence_boundaries', x:285, y:295, cols:[['id','uuid','PK'],['name','text',''],['points','jsonb',''],['is_active','bool',''],['created_at','timestamptz','']]}
+];
+
+// links: [table, col, targetTable] → target 'id' row
+var L = [
+['emergency_reports','reporter_id','user_profiles'],
+['emergency_reports','assigned_to','user_profiles'],
+['emergency_reports','backup_responder_id','user_profiles'],
+['emergency_reports','assigned_department_id','departments'],
+['user_profiles','department_id','departments'],
+['report_updates','report_id','emergency_reports'],
+['report_updates','user_id','user_profiles'],
+['incident_status_history','report_id','emergency_reports'],
+['incident_status_history','changed_by','user_profiles'],
+['incident_messages','report_id','emergency_reports'],
+['incident_messages','sender_id','user_profiles'],
+['incident_media','incident_id','emergency_reports'],
+['notifications','recipient_id','user_profiles'],
+['notifications','incident_id','emergency_reports'],
+['id_verifications','user_id','user_profiles'],
+['emergency_contacts','user_id','user_profiles'],
+['cross_department_assistance','report_id','emergency_reports'],
+['cross_department_assistance','assisting_department_id','departments'],
+['cross_department_assistance','responder_id','user_profiles'],
+['responder_backup_requests','report_id','emergency_reports'],
+['responder_backup_requests','department_id','departments'],
+['reassignment_requests','report_id','emergency_reports'],
+['reassignment_requests','department_id','departments'],
+['responder_locations','responder_id','user_profiles'],
+['announcements','created_by','user_profiles'],
+['department_contacts','department_id','departments'],
+['audit_logs','actor_id','user_profiles']
+];
+
+var CW=265, HH=20, RH=11.5;
+function th(t){ return HH + t.cols.length*RH + 4; }
+function colY(t, cname){ var i=t.cols.findIndex(function(c){return c[0]===cname;}); return t.y+HH+(i+0.5)*RH; }
+var byName={}; T.forEach(function(t){ byName[t.name]=t; });
+
+var W=1110, H=760;
+var s='<svg width="'+W+'" height="'+H+'" xmlns="http://www.w3.org/2000/svg" style="background:#16181d;border-radius:8px">';
+
+// edges first (under cards) — curved bezier connectors like the
+// Supabase schema visualizer: horizontal exit/entry at each card edge.
+L.forEach(function(l){
+  var a=byName[l[0]], b=byName[l[2]]; if(!a||!b) return;
+  var y1=colY(a,l[1]), y2=colY(b,'id');
+  var aRight=a.x+CW, aLeft=a.x, bRight=b.x+CW, bLeft=b.x;
+  var x1, x2, c1, c2, k=55;
+  if (b.x > a.x + CW - 1) {          // target to the right
+    x1=aRight; x2=bLeft;  c1=x1+k;   c2=x2-k;
+  } else if (a.x > b.x + CW - 1) {   // target to the left
+    x1=aLeft;  x2=bRight; c1=x1-k;   c2=x2+k;
+  } else if (a===b) {                 // self link — skip
+    return;
+  } else {                            // same column, stacked — arc out the right side
+    x1=aRight; x2=bRight; c1=x1+k+30; c2=x2+k+30;
+  }
+  s+='<path d="M '+x1+','+y1+' C '+c1+','+y1+' '+c2+','+y2+' '+x2+','+y2+'" fill="none" stroke="#5c6470" stroke-width="1" stroke-dasharray="4,3"/>';
+});
+
+// cards
+T.forEach(function(t){
+  var h=th(t);
+  s+='<rect x="'+t.x+'" y="'+t.y+'" width="'+CW+'" height="'+h+'" rx="6" fill="#23262d" stroke="#3a3f49"/>';
+  s+='<rect x="'+t.x+'" y="'+t.y+'" width="'+CW+'" height="'+HH+'" rx="6" fill="#2c3038"/>';
+  s+='<text x="'+(t.x+8)+'" y="'+(t.y+14)+'" class="tname">'+t.name+'</text>';
+  t.cols.forEach(function(c,i){
+    var y=t.y+HH+(i+0.72)*RH;
+    var mark = c[2].indexOf('PK')>=0 ? '\u25C6' : (c[2]==='FK' ? '\u25C7' : '\u25CB');
+    var mkcol = c[2].indexOf('PK')>=0 ? '#e8b339' : (c[2]==='FK' ? '#d4d4d4' : '#6b7280');
+    s+='<text x="'+(t.x+7)+'" y="'+y+'" class="cname" fill="'+mkcol+'">'+mark+'</text>';
+    s+='<text x="'+(t.x+18)+'" y="'+y+'" class="cname">'+c[0]+'</text>';
+    s+='<text x="'+(t.x+CW-8)+'" y="'+y+'" class="ctype" text-anchor="end">'+c[1]+'</text>';
+  });
+});
+s+='</svg>';
+document.getElementById('erd').innerHTML=s;
+
+// ============ DATA DICTIONARY ============
+var DD = [
+['User Profiles',[
+ ['id','UUID','PK → auth.users','User identifier linked to the Supabase auth account.'],
+ ['email','TEXT','','User\u2019s login email address.'],
+ ['full_name','TEXT','','User\u2019s display name.'],
+ ['first_name','TEXT','','User\u2019s given name.'],
+ ['last_name','TEXT','','User\u2019s family name.'],
+ ['phone','TEXT','','User\u2019s contact number.'],
+ ['role','user_role (enum)','','Role/category: admin, dispatcher, responder, resident, department_admin.'],
+ ['department_id','UUID','FK → departments.id','Department the staff member belongs to.'],
+ ['residency_type','TEXT','','Whether the user is a resident or a boarder.'],
+ ['address','TEXT','','User\u2019s residential address.'],
+ ['birthdate','DATE','','User\u2019s date of birth.'],
+ ['employee_id','TEXT','','Employee/staff ID number for responders.'],
+ ['avatar_url','TEXT','','Profile photo URL.'],
+ ['account_status','TEXT','','Account state (active, suspended, etc.).'],
+ ['status','TEXT','','Workflow status of the account (pending, approved, rejected).'],
+ ['notification_prefs','JSONB','','Per-category notification opt-in settings.'],
+ ['approved_by','UUID','FK → user_profiles.id','Admin who approved the account.'],
+ ['approved_at','TIMESTAMPTZ','','Timestamp of account approval.'],
+ ['suspension_reason','TEXT','','Reason shown when an account is suspended.'],
+ ['created_at','TIMESTAMPTZ','','Record creation timestamp.'],
+ ['updated_at','TIMESTAMPTZ','','Last update timestamp.']]],
+['Departments',[
+ ['id','UUID','PK','Unique identifier for the department.'],
+ ['name','TEXT','','Department name (e.g., Fire Department).'],
+ ['type','department_type (enum)','','Service type: fire, medical, police, emergency_management.'],
+ ['description','TEXT','','Description of the department\u2019s mandate.'],
+ ['contact_email','TEXT','','Department contact email.'],
+ ['contact_phone','TEXT','','Department contact number.'],
+ ['address','TEXT','','Department office address.'],
+ ['is_active','BOOLEAN','','Whether the department is active.'],
+ ['created_at','TIMESTAMPTZ','','Record creation timestamp.'],
+ ['updated_at','TIMESTAMPTZ','','Last update timestamp.']]],
+['Emergency Reports',[
+ ['id','UUID','PK','Unique identifier for each report.'],
+ ['report_id','TEXT','','Human-readable report number (RPT-001 format).'],
+ ['incident_type','incident_type (enum)','','Type of emergency (fire, medical, police, accident, natural).'],
+ ['priority','priority_level (enum)','','Priority level (low, medium, high, critical).'],
+ ['status','report_status (enum)','','Current status (pending, assigned, in-progress, resolved, declined).'],
+ ['location','TEXT','','Text description of the incident location.'],
+ ['coordinates','JSONB','','Geographic coordinates {lat, lng}.'],
+ ['description','TEXT','','Narrative description of the incident.'],
+ ['reporter_id','UUID','FK → user_profiles.id','Resident who filed the report.'],
+ ['reporter_name','TEXT','','Reporter\u2019s name snapshot.'],
+ ['reporter_phone','TEXT','','Reporter\u2019s contact number snapshot.'],
+ ['assigned_to','UUID','FK → user_profiles.id','Responder assigned to the report.'],
+ ['assigned_department_id','UUID','FK → departments.id','Department handling the report.'],
+ ['backup_responder_id','UUID','FK → user_profiles.id','Backup responder on the report.'],
+ ['attachments','JSONB','','Attached photos/evidence including resolution proof.'],
+ ['decline_reason','TEXT','','Reason recorded when a report is declined.'],
+ ['service_area_status','TEXT','','Whether the location falls inside the service area.'],
+ ['resolved_at','TIMESTAMPTZ','','Timestamp when the report was resolved.'],
+ ['created_at','TIMESTAMPTZ','','Date and time the report was filed.'],
+ ['updated_at','TIMESTAMPTZ','','Last update timestamp.']]],
+['Report Updates',[
+ ['id','UUID','PK','Unique identifier for the update record.'],
+ ['report_id','UUID','FK → emergency_reports.id','Report the update belongs to.'],
+ ['user_id','UUID','FK → user_profiles.id','User who made the update.'],
+ ['update_type','TEXT','','Update kind (status_change, assignment, note, location_update).'],
+ ['message','TEXT','','Update message content.'],
+ ['old_status','report_status','','Previous report status.'],
+ ['new_status','report_status','','New report status.'],
+ ['created_at','TIMESTAMPTZ','','Timestamp of the update.']]],
+['Incident Status History',[
+ ['id','UUID','PK','Unique identifier for the history record.'],
+ ['report_id','UUID','FK → emergency_reports.id','Report whose status changed.'],
+ ['from_status','TEXT','','Status before the change (NULL on first hop).'],
+ ['to_status','TEXT','','Status after the change.'],
+ ['changed_by','UUID','FK → user_profiles.id','User or trigger actor of the change.'],
+ ['created_at','TIMESTAMPTZ','','Timestamp of the status change.']]],
+['Incident Messages',[
+ ['id','UUID','PK','Unique identifier for the message.'],
+ ['report_id','UUID','FK → emergency_reports.id','Incident thread the message belongs to.'],
+ ['sender_id','UUID','FK → user_profiles.id','User who sent the message.'],
+ ['sender_name','TEXT','','Sender display name snapshot.'],
+ ['body','TEXT','','Message content.'],
+ ['created_at','TIMESTAMPTZ','','Timestamp the message was sent.']]],
+['Incident Media',[
+ ['id','UUID','PK','Unique identifier for the media record.'],
+ ['incident_id','UUID','FK → emergency_reports.id','Report the media is attached to.'],
+ ['private_storage_path','TEXT','','Storage path to the photo evidence file.'],
+ ['created_at','TIMESTAMPTZ','','Upload timestamp.'],
+ ['deleted_at','TIMESTAMPTZ','','Soft-delete timestamp.']]],
+['Notifications',[
+ ['id','UUID','PK','Unique identifier for the notification.'],
+ ['recipient_id','UUID','FK → user_profiles.id','User the notification is addressed to.'],
+ ['incident_id','UUID','FK → emergency_reports.id','Related incident, if any.'],
+ ['type','TEXT','','Notification category.'],
+ ['title','TEXT','','Notification title.'],
+ ['message','TEXT','','Notification body text.'],
+ ['channel','TEXT','','Delivery channel (in_app, email).'],
+ ['delivery_status','TEXT','','Delivery state (sent, failed, retried).'],
+ ['read_at','TIMESTAMPTZ','','When the user read the notification.'],
+ ['sent_at','TIMESTAMPTZ','','When the notification was sent.'],
+ ['metadata','JSONB','','Extra payload (deep links, context).'],
+ ['created_at','TIMESTAMPTZ','','Record creation timestamp.']]],
+['ID Verifications',[
+ ['id','UUID','PK','Unique identifier for the verification record.'],
+ ['user_id','UUID','FK → user_profiles.id','User whose ID is being verified.'],
+ ['document_storage_path','TEXT','','Path to the uploaded ID document.'],
+ ['verification_status','TEXT','','Review outcome (pending, approved, rejected, correction_required).'],
+ ['submission_revision','INT','','Submission attempt number.'],
+ ['decision_reason','TEXT','','Reason recorded for the decision.'],
+ ['decision_at','TIMESTAMPTZ','','When the reviewer decided.'],
+ ['created_at','TIMESTAMPTZ','','Timestamp the ID was uploaded.']]],
+['Emergency Contacts',[
+ ['id','UUID','PK','Unique identifier for the contact record.'],
+ ['user_id','UUID','FK → user_profiles.id','Owner of the emergency contact.'],
+ ['name','TEXT','','Contact person\u2019s name.'],
+ ['relationship','TEXT','','Relationship to the user.'],
+ ['phone_number','TEXT','','Contact\u2019s phone number.'],
+ ['is_primary','BOOLEAN','','Whether this is the primary contact.'],
+ ['created_at','TIMESTAMPTZ','','Record creation timestamp.']]],
+['Cross Department Assistance',[
+ ['id','UUID','PK','Unique identifier for the assistance request.'],
+ ['report_id','UUID','FK → emergency_reports.id','Incident needing cross-department support.'],
+ ['assisting_department_id','UUID','FK → departments.id','Department asked to assist.'],
+ ['responder_id','UUID','FK → user_profiles.id','Responder dispatched by the assisting department.'],
+ ['status','TEXT','','Request status.'],
+ ['assigned_at','TIMESTAMPTZ','','When a responder was picked.'],
+ ['acknowledged_at','TIMESTAMPTZ','','When the responder went en route.'],
+ ['arrived_at','TIMESTAMPTZ','','When the unit arrived on scene.'],
+ ['resolved_at','TIMESTAMPTZ','','When the assisting unit finished.'],
+ ['created_at','TIMESTAMPTZ','','Request creation timestamp.']]],
+['Responder Backup Requests',[
+ ['id','UUID','PK','Unique identifier for the backup request.'],
+ ['report_id','UUID','FK → emergency_reports.id','Incident needing backup.'],
+ ['department_id','UUID','FK → departments.id','Department requested for backup.'],
+ ['requested_by','UUID','FK → user_profiles.id','User who requested backup.'],
+ ['status','TEXT','','Request status.'],
+ ['created_at','TIMESTAMPTZ','','Request creation timestamp.']]],
+['Reassignment Requests',[
+ ['id','UUID','PK','Unique identifier for the reassignment request.'],
+ ['report_id','UUID','FK → emergency_reports.id','Incident being reassigned.'],
+ ['department_id','UUID','FK → departments.id','Target department for reassignment.'],
+ ['requested_by','UUID','FK → user_profiles.id','User who initiated the reassignment.'],
+ ['status','TEXT','','Request status.'],
+ ['created_at','TIMESTAMPTZ','','Request creation timestamp.']]],
+['Responder Locations',[
+ ['responder_id','UUID','PK, FK → user_profiles.id','Responder whose location is tracked.'],
+ ['latitude','FLOAT8','','Current latitude.'],
+ ['longitude','FLOAT8','','Current longitude.'],
+ ['updated_at','TIMESTAMPTZ','','Last location update timestamp.']]],
+['Announcements',[
+ ['id','UUID','PK','Unique identifier for the announcement.'],
+ ['title','TEXT','','Announcement title.'],
+ ['body','TEXT','','Announcement content.'],
+ ['created_by','UUID','FK → user_profiles.id','Staff member who posted it.'],
+ ['created_at','TIMESTAMPTZ','','Publication timestamp.']]],
+['Department Contacts',[
+ ['id','UUID','PK','Unique identifier for the directory entry.'],
+ ['department_id','UUID','FK → departments.id','Department the contact belongs to (NULL = general hotline).'],
+ ['label','TEXT','','Contact label (e.g., Barangay Hall).'],
+ ['phone','TEXT','','Contact phone number.'],
+ ['created_at','TIMESTAMPTZ','','Record creation timestamp.']]],
+['Audit Logs',[
+ ['id','UUID','PK','Unique identifier for the log record.'],
+ ['actor_id','UUID','FK → user_profiles.id','User who performed the action.'],
+ ['action','TEXT','','Action taken (create, update, delete, assign, resolve).'],
+ ['table_name','TEXT','','Table the action affected.'],
+ ['record_id','UUID','','Identifier of the affected record.'],
+ ['old_value','JSONB','','Field values before the change.'],
+ ['new_value','JSONB','','Field values after the change.'],
+ ['reason','TEXT','','Reason recorded for the action.'],
+ ['created_at','TIMESTAMPTZ','','Timestamp of the action.']]],
+['Page Permissions',[
+ ['page_key','TEXT','PK','Page identifier (queue, new, reports, residents, departments, access).'],
+ ['allowed_roles','TEXT[]','','Roles permitted to open the page.']]],
+['Geofence Boundaries',[
+ ['id','UUID','PK','Unique identifier for the boundary.'],
+ ['name','TEXT','','Boundary name.'],
+ ['points','JSONB','','Polygon vertices [{lat, lng}] defining the service area.'],
+ ['is_active','BOOLEAN','','Whether this boundary version is active.'],
+ ['created_at','TIMESTAMPTZ','','Record creation timestamp.']]]
+];
+
+var out='';
+DD.forEach(function(t,i){
+  out+='<table class="dict"><caption>Table '+(4+i)+': '+t[0]+'</caption>'+
+    '<tr><th>Field Name</th><th>Data Type</th><th>Key</th><th>Description</th></tr>';
+  t[1].forEach(function(r){
+    out+='<tr><td>'+r[0]+'</td><td>'+r[1]+'</td><td>'+r[2]+'</td><td>'+r[3]+'</td></tr>';
+  });
+  out+='</table>';
+});
+document.getElementById('dict').innerHTML=out;
+</script>
+
+</body>
+</html>

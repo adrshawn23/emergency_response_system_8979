@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  @page { size: A4 portrait; margin: 1.9cm 2cm; }
+  body { font-family: 'Times New Roman', Times, serif; font-size: 11.5pt; color: #000; margin: 0; }
+  h3 { font-weight: bold; margin: 0 0 14px; }
+  svg { display: block; margin: 0 auto; }
+  .cap { text-align: center; font-weight: bold; margin: 12px 0 0; }
+  .expl { text-align: justify; text-indent: 1.25cm; line-height: 1.5; margin: 16px 0 0; }
+  .brk { page-break-before: always; }
+  .bx { font-family: Arial, sans-serif; font-size: 10px; }
+</style>
+</head>
+<body>
+
+<h3>Functional Decomposition Diagram</h3>
+
+<p class="expl">The FDD organizes an elaborate breakdown for the entire Kalubihan Emergency Response System by detailing the responsibilities and activities of distinct users: Resident or Boarder, Admin, Dispatcher, Responder, and Department Administrator. It eases complexity of the system as well as user interactions which enhances system development and implementation. Functionally, the FDD brings responsibility distribution for the system which is critical for clarity and communication to facilitate efficient emergency response.</p>
+
+<div id="tree"></div>
+<div class="cap">Figure 12: Functional Decomposition Diagram</div>
+
+<div class="brk">
+<p class="expl">The diagram illustrates the structure of the Kalubihan Emergency Response System, organized into five key user roles: Resident/Boarder, Admin, Responder, Dispatcher, and Department Administrator. Residents or boarders are end-users who can log in, manage their profiles, report emergencies with photo evidence, track report status, view notifications, and check emergency contacts. Their role centers on reporting incidents and receiving essential updates during emergencies.</p>
+<p class="expl">Admins have the most comprehensive access and control within the system. They are responsible for logging in, updating passwords, managing user accounts, validating user IDs, configuring role page access, managing departments, assigning responder roles, auditing response reports, and sending alerts. Their role ensures proper system configuration, user management, and overall oversight of emergency operations.</p>
+<p class="expl">Responders are users tasked with addressing emergencies directly. Their functions include logging in, updating passwords, receiving emergency alerts, viewing assigned incidents, accepting or declining assignments, and resolving incidents with resolution notes and photos. Dispatchers coordinate emergency responses by receiving alerts, accepting or declining cases, assigning responders, documenting response actions, viewing location maps, submitting turnover reports, and broadcasting announcements. Department Administrators oversee their assigned department by viewing members, updating department information, monitoring department incidents, and dispatching responders. Together, these roles work in coordination to ensure a swift and organized response to emergency situations.</p>
+</div>
+
+<script>
+var ROOT = 'Kalubihan Emergency\nResponse System';
+var COLS = [
+  { role:'Resident/\nBoarder', f:['Log In','Manage\nProfile','Report\nEmergency','Track Report\nStatus','View\nNotifications','Check Emergency\nContacts'] },
+  { role:'Admin', f:['Log In','Update\nPassword','Manage User\nAccounts','Validate\nUser IDs','Manage Page\nAccess','Manage\nDepartments','Assign Responder\nRoles','Send\nAlerts'] },
+  { role:'Responder', f:['Log In','Update\nPassword','Receive Emergency\nAlerts','View Assigned\nIncidents','Accept/Decline\nAssignment','Resolve Incident\n(w/ Photos)'] },
+  { role:'Dispatcher', f:['Log In','Receive Emergency\nAlerts','Accept/\nDecline Cases','Assign\nResponders','Document Response\nActions','View Location\nMaps','Submit Turnover\nReports','Broadcast\nAnnouncements'] },
+  { role:'Department\nAdmin', f:['Log In','Update\nPassword','View Department\nMembers','Update Dept.\nInfo','View Department\nIncidents','Dispatch\nResponders'] }
+];
+
+var W=720, bw=118, bh=30, roleY=95, funcY=140, step=52;
+var n=COLS.length, gap=30;
+var totalW = n*bw + (n-1)*gap;
+var x0 = (W-totalW)/2;
+var maxDepth = Math.max.apply(null, COLS.map(function(c){return c.f.length;}));
+var H = funcY + maxDepth*step + 20;
+
+function box(x,y,w,h,lines){
+  var s='<rect x="'+(x-w/2)+'" y="'+y+'" width="'+w+'" height="'+h+'" rx="4" fill="#fff" stroke="#000"/>';
+  lines.forEach(function(ln,i){
+    s+='<text x="'+x+'" y="'+(y+h/2+(i-(lines.length-1)/2)*11+4)+'" text-anchor="middle" class="bx">'+ln+'</text>';
+  });
+  return s;
+}
+
+var s='<svg width="'+W+'" height="'+H+'" xmlns="http://www.w3.org/2000/svg">';
+var cx=W/2;
+
+// root
+s+=box(cx,18,190,34,ROOT.split('\n'));
+// drop + horizontal bus
+var busY=68;
+s+='<line x1="'+cx+'" y1="52" x2="'+cx+'" y2="'+busY+'" stroke="#000"/>';
+
+COLS.forEach(function(c,i){
+  var x = x0 + i*(bw+gap) + bw/2;
+  // bus horizontal + drop to role box
+  s+='<line x1="'+Math.min(cx,x)+'" y1="'+busY+'" x2="'+Math.max(cx,x)+'" y2="'+busY+'" stroke="#000"/>';
+  s+='<line x1="'+x+'" y1="'+busY+'" x2="'+x+'" y2="'+roleY+'" stroke="#000"/>';
+  s+=box(x,roleY,bw,bh+8,c.role.split('\n'));
+  // chain
+  var py = roleY+bh+8;
+  c.f.forEach(function(f,j){
+    var y = funcY + j*step;
+    s+='<line x1="'+x+'" y1="'+py+'" x2="'+x+'" y2="'+y+'" stroke="#000"/>';
+    s+=box(x,y,bw,bh,f.split('\n'));
+    py = y+bh;
+  });
+});
+s+='</svg>';
+document.getElementById('tree').innerHTML=s;
+</script>
+
+</body>
+</html>

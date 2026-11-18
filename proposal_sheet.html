@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  @page { size: A4; margin: 2.5cm 2.8cm; }
+  body { font-family: 'Times New Roman', Times, serif; font-size: 11.5pt; line-height: 1.55; color: #000; margin: 0; }
+  .appx { text-align: center; margin-bottom: 18px; }
+  .appx div { margin: 2px 0; }
+  .box { border: 1.5px solid #000; }
+  .sec { padding: 12px 20px; border-top: 1.5px solid #000; }
+  .hd { text-align: center; font-weight: bold; letter-spacing: 1px; padding: 8px; }
+  .cols2 { display: flex; border-top: 1.5px solid #000; }
+  .cols2 > div { width: 50%; padding: 12px 20px; }
+  .cols2 > div + div { border-left: 1.5px solid #000; }
+  .lbl { font-weight: bold; margin-bottom: 10px; }
+  p { margin: 8px 0; text-align: justify; }
+  p.ind { text-indent: 40px; }
+  ol.obj { margin: 8px 0 12px; padding-left: 30px; }
+  ol.obj li { margin: 8px 0; text-align: justify; }
+  ul.bul { margin: 6px 0 12px; padding-left: 34px; }
+  ul.bul li { margin: 5px 0; text-align: justify; }
+  .lvl1 { margin: 10px 0 4px 20px; }
+  .lvl2 { margin: 10px 0 4px 40px; }
+  .panel { text-align: center; margin: 26px 0 10px; font-weight: bold; }
+  .sigrow { margin-top: 40px; text-align: center; }
+  .sigline { display: inline-block; width: 240px; border-bottom: 1px solid #000; }
+  .sigrole { text-align: center; margin-top: 2px; }
+  .cols { display: flex; justify-content: space-around; margin-top: 40px; }
+  .cols .col { text-align: center; }
+  .noted { margin-top: 34px; font-weight: bold; }
+</style>
+</head>
+<body>
+
+<div class="appx">
+  <div><strong>Appendix Z</strong></div>
+  <div><strong>System Proposal Sheet</strong></div>
+</div>
+
+<div class="box">
+  <div class="hd">SYSTEM PROPOSAL SHEET</div>
+  <div class="cols2">
+    <div>
+      <div class="lbl">Title of the Project:</div>
+      <p>KALUBIHAN EMERGENCY RESPONSE SYSTEM:<br>STREAMLINING BARANGAY INCIDENT REPORTING AND RESPONSE COORDINATION</p>
+    </div>
+    <div>
+      <div class="lbl">Name of Proponents:</div>
+      <p>Dagatan, Shawn Michael</p>
+      <p>Frejoles, Cindy</p>
+      <p>Las Pi&ntilde;as, Kryshan Aleizel</p>
+    </div>
+  </div>
+  <div class="cols2">
+    <div><strong>Semester:</strong> 1st Semester</div>
+    <div><strong>Academic Year:</strong> 2026-2027</div>
+  </div>
+  <div class="sec">
+      <div class="lbl">Brief Description of the System:</div>
+      <p class="ind">Kalubihan Emergency Response System is a web-based incident management platform designed to streamline emergency reporting and response operations within the barangay. The system connects residents, dispatchers, responders, and administrators through role-based interfaces that automate incident triage, responder assignment, and status tracking. Residents file emergency reports with photo evidence and GPS location and monitor announcements, while dispatchers triage incoming reports and dispatch the appropriate departments from a command center. Department admins and responders act on dispatched incidents and resolve cases with proof documentation. An admin panel oversees resident ID verification, user management, page-access control, departments, and report generation to ensure system integrity and accountability.</p>
+
+      <div class="lbl" style="margin-top:16px">Statement of the Problem:</div>
+      <p class="ind">Currently, barangay emergency response relies on manual processes such as walk-in reports, phone calls, and radio coordination, which lead to delayed response times, incomplete incident information, fragmented communication between residents and responders, and the absence of centralized records for monitoring and accountability. These challenges result in slower dispatch, inconsistent incident details, difficulty tracking response status, and no reliable data for post-incident review and reporting. The lack of an integrated platform for managing emergency reports, responder assignments, and resident verification often results in errors, delays, and reduced public trust.</p>
+
+      <div class="lbl" style="margin-top:16px">Objectives of the System:</div>
+      <p>The primary objectives of the Kalubihan Emergency Response System are:</p>
+      <ol class="obj">
+        <li>Develop a web-based system that enables residents to file emergency reports with photo evidence, incident details, and automatic GPS location pinning, and to track the status of their reports.</li>
+        <li>Implement a dispatcher command center that allows real-time triage of incoming reports, filing of incidents on behalf of callers, and assignment of departments and responders.</li>
+        <li>Provide role-based portals for department admins and responders to act on dispatched incidents, mark arrival on scene, and resolve cases with proof documentation.</li>
+        <li>Integrate real-time notifications and an announcement feed to keep residents and responders informed during emergencies.</li>
+        <li>Establish resident ID verification and role-based access control to ensure that only authorized users can access and modify system functions and records.</li>
+        <li>Develop reporting and analytics tools that provide operational metrics and exportable incident records for accountability and data-driven decision-making.</li>
+      </ol>
+
+      <div class="lbl" style="margin-top:16px">Scope and Limitation of the System:</div>
+      <p class="ind">The scope is focused on developing the Kalubihan Emergency Response System, a digital platform aimed to improve emergency reporting and response operations within the barangay.</p>
+      <p class="ind" style="margin-top:14px">The following are the scopes of the Kalubihan Emergency Response System:</p>
+
+      <p class="lvl1">Develop a Web-Based System for Barangay Staff</p>
+      <p class="lvl1">1.1 Login</p>
+      <p class="lvl1">1.2 Oversee the following:</p>
+      <p class="lvl2">1.2.1 Incident Management</p>
+      <ul class="bul">
+        <li>Triage incoming emergency reports and file incidents on behalf of callers</li>
+        <li>Assign departments and responders to dispatched incidents</li>
+        <li>Update and monitor incident status through the response pipeline</li>
+      </ul>
+      <p class="lvl2">1.2.2 Department and Responder Management</p>
+      <ul class="bul">
+        <li>Create and manage response departments and member rosters</li>
+        <li>Track responder assignments and resolution documentation</li>
+      </ul>
+      <p class="lvl2">1.2.3 Resident Verification and Access Control</p>
+      <ul class="bul">
+        <li>Review submitted ID documents and approve or reject registrations</li>
+        <li>Suspend or reactivate accounts and manage role-based page access</li>
+      </ul>
+      <p class="lvl2">1.2.4 Announcements and Reports</p>
+      <ul class="bul">
+        <li>Post emergency advisories and view the live incident feed</li>
+        <li>View operational metrics and export filtered incident records</li>
+      </ul>
+      <p class="lvl1">1.3 View the following:</p>
+      <p class="lvl2">1.3.1 Incident queue with map, timeline, and evidence</p>
+      <p class="lvl2">1.3.2 Real-time notifications for new incidents and status updates</p>
+      <p class="lvl2">1.3.3 Emergency contacts directory</p>
+
+      <p class="lvl1" style="margin-top:16px">Develop a Mobile-Responsive Interface for Residents</p>
+      <p class="lvl1">2.1 Login/Register</p>
+      <ul class="bul">
+        <li>Register with a valid ID for admin verification</li>
+      </ul>
+      <p class="lvl1">2.2 Manage the following:</p>
+      <p class="lvl2">2.2.1 Emergency Reporting</p>
+      <ul class="bul">
+        <li>File emergency reports with incident details and photo evidence</li>
+        <li>Confirm incident location through GPS or map pinning</li>
+      </ul>
+      <p class="lvl2">2.2.2 Report Tracking</p>
+      <ul class="bul">
+        <li>Track the status of submitted reports under My Reports</li>
+        <li>Receive realtime notifications on report updates</li>
+      </ul>
+      <p class="lvl1">2.3 View the following:</p>
+      <p class="lvl2">2.3.1 Announcements and live incident feed</p>
+      <p class="lvl2">2.3.2 Emergency contacts directory</p>
+
+      <p class="lvl1" style="margin-top:16px">3. Develop an Admin Web Panel</p>
+      <p class="lvl1">3.1 Login as Admin</p>
+      <p class="lvl1">3.2 Manage the following:</p>
+      <p class="lvl2">3.2.1 User Management and Access Control</p>
+      <ul class="bul">
+        <li>Assign roles and grant page access per role in the access matrix</li>
+        <li>Suspend or reactivate user accounts when necessary</li>
+      </ul>
+      <p class="lvl2">3.2.2 Resident Review</p>
+      <ul class="bul">
+        <li>Approve or reject pending resident registrations with documented reasons</li>
+      </ul>
+      <p class="lvl2">3.2.3 Departments and Reports</p>
+      <ul class="bul">
+        <li>Manage departments, view operational metrics, and generate reports</li>
+      </ul>
+
+      <p class="ind" style="margin-top:16px">The following are the limitations of the Kalubihan Emergency Response System:</p>
+      <ul class="bul">
+        <li>The system requires a stable internet connection because it is a web-based platform that relies on cloud-hosted services for data storage, realtime updates, and map rendering.</li>
+        <li>The system serves only Barangay Kalubihan and does not cover multi-barangay or municipal-level coordination.</li>
+        <li>The system does not include SMS alerting or offline reporting; notifications are delivered through in-app realtime channels and email.</li>
+        <li>The system does not support voice calls; coordination between users is done through the platform's incident workflow.</li>
+        <li>Incident location accuracy depends on the reporting device's GPS and browser permissions.</li>
+      </ul>
+  </div>
+  <div class="sec">
+      <div class="panel">PANEL OF EXAMINEERS</div>
+
+      <div class="sigrow"><span class="sigline"></span></div>
+      <div class="sigrole">Chairman</div>
+
+      <div class="cols">
+        <div class="col">
+          <span class="sigline"></span>
+          <div class="sigrole">Member</div>
+        </div>
+        <div class="col">
+          <span class="sigline"></span>
+          <div class="sigrole">Member</div>
+        </div>
+      </div>
+
+      <div class="noted">Noted by:</div>
+      <div class="cols">
+        <div class="col">
+          <span class="sigline"></span>
+          <div class="sigrole">Instructor</div>
+        </div>
+        <div class="col">
+          <span class="sigline"></span>
+          <div class="sigrole">Program Chair - BSIS</div>
+        </div>
+      </div>
+  </div>
+</div>
+
+</body>
+</html>

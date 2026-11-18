@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  @page { size: A4; margin: 2.3cm 2.5cm; }
+  body { font-family: 'Times New Roman', Times, serif; font-size: 11.5pt; line-height: 1.5; color: #000; margin: 0; }
+  h1.chap { font-size: 12pt; text-align: center; margin: 4px 0 12px; }
+  h1.phase { font-size: 12pt; text-transform: uppercase; margin: 18px 0 10px; }
+  h2.sub { font-size: 12pt; margin: 16px 0 8px; page-break-after: avoid; }
+  h2.role { font-size: 12pt; text-transform: uppercase; margin: 18px 0 6px; page-break-after: avoid; }
+  p { margin: 6px 0; text-align: justify; }
+  p.indent { text-indent: 40px; }
+  ol.manual { margin: 8px 0 12px; padding-left: 36px; }
+  ol.manual li { margin: 5px 0; text-align: justify; }
+  ul.road { margin: 8px 0 12px; padding-left: 36px; }
+  ul.road li { margin: 4px 0; text-align: justify; }
+  table { border-collapse: collapse; margin: 10px auto 8px; width: 88%; }
+  th, td { border: 1px solid #000; padding: 6px 10px; text-align: center; font-size: 11.5pt; }
+  th { font-weight: bold; }
+  .tcap { text-align: center; margin: 14px 0 4px; }
+  .tcap .tnum { display: block; }
+  .tcap .ttitle { display: block; }
+  figure { margin: 12px 0; page-break-inside: avoid; text-align: center; }
+  figure img { max-width: 82%; max-height: 11cm; }
+  figure img.mobile { max-width: 34%; }
+  figcaption { margin-top: 6px; font-size: 11.5pt; }
+  .instr { margin: 4px auto 0; font-size: 11.5pt; text-align: justify; max-width: 82%; }
+  .pagebreak { page-break-before: always; }
+  table.survey td:first-child, table.survey th:first-child { text-align: left; }
+  table.survey td { padding: 6px 8px; }
+  .svyhead { font-weight: bold; margin: 14px 0 6px; }
+</style>
+</head>
+<body>
+
+<!-- ============ CHAPTER IV ============ -->
+<h1 class="chap">CHAPTER IV &ndash; RESULTS AND DISCUSSION</h1>
+
+<h2 class="sub">Objectives</h2>
+<p class="indent">The Kalubihan Emergency Response System was developed to provide a centralized, role-based platform for barangay emergency reporting and response coordination. Specifically, the project aimed to enable residents to file emergency reports with photo evidence and GPS location, equip dispatchers with real-time triage and assignment tools, allow departments and responders to act on dispatched incidents, and give administrators full control over user verification, roles, and page access. This chapter presents the results of the testing activities, the implementation details, the postimplementation activities, and the assessment of the system against these objectives.</p>
+
+<h2 class="sub">Testing</h2>
+<p class="indent">The testing phase was conducted to ensure that the developed system functioned correctly, reliably, and in accordance with the specified requirements. This phase involved a series of structured testing activities aimed at identifying errors, validating system behavior, and confirming that each feature performed as intended. Different levels of testing were implemented throughout the development process to evaluate both individual system components and the system as a whole before deployment.</p>
+
+<h2 class="sub">Unit Testing</h2>
+<p class="indent">Unit testing was performed to verify the functionality of individual system modules independently. Each module, such as user authentication, resident registration and ID verification, incident reporting, dispatch and assignment, announcement posting, and notification handling, was tested using predefined inputs to ensure that the expected outputs were produced. This testing phase helped identify and correct errors at an early stage of development, ensuring that each component functioned correctly before being integrated with other modules.</p>
+
+<h2 class="sub">Integration Testing</h2>
+<p class="indent">Integration testing was conducted after successful unit testing to ensure that the interaction between combined system modules functioned properly. This phase focused on verifying data flow and communication between interconnected components, such as the linkage between resident incident reports and dispatcher assignments, the propagation of realtime notifications, and the upload of photo evidence to incident records. The objective of integration testing was to detect interface issues and ensure that integrated modules worked together seamlessly without causing system errors.</p>
+
+<h2 class="sub">System Testing</h2>
+<p class="indent">System testing was carried out to evaluate the complete, integrated system's overall functionality in a controlled development environment. During this phase, the system was tested end-to-end by the developers and selected internal users, following realistic workflows from incident reporting through dispatch to resolution, to identify potential defects related to functionality, usability, and performance. Any issues discovered during system testing were documented and resolved to further improve system stability before presenting the system to actual end users for acceptance testing.</p>
+
+<h2 class="sub">Acceptance Testing</h2>
+<p class="indent">Acceptance testing was conducted to determine whether the system met the needs and expectations of its intended users. Representatives of each user role, including the administrator, dispatcher, department admin, responder, and resident, performed realistic tasks such as filing emergency reports, triaging incidents, assigning responders, and resolving cases. Feedback gathered during this phase confirmed that the system's features aligned with the operational requirements of the barangay emergency response process and that the system was ready for deployment.</p>
+
+<!-- ============ IMPLEMENTATION PHASE ============ -->
+<h1 class="phase">Implementation Phase</h1>
+<p class="indent">The implementation of the Kalubihan Emergency Response System and guaranteeing its seamless functioning in the designated setting. It contains the software requirements as well as hardware specifications that list the technical specifications for the system. The user manual, roadmaps and installation guides help with setup, operation, and upcoming upgrades. This stage guarantees that the system is compatible with the project's goals and that people can use it efficiently.</p>
+
+<h2 class="sub">Software Specification</h2>
+<div class="tcap"><span class="tnum">Table 1.</span><span class="ttitle">Deployment Software Specification</span></div>
+<table>
+  <tr><th>SOFTWARE</th><th>SPECIFICATION</th></tr>
+  <tr><td>Operating System</td><td>Windows 10 / Windows 11</td></tr>
+  <tr><td>Web Development</td><td>- Frontend: JavaScript, JSX, HTML, CSS with React and Vite, styled with Tailwind CSS<br><br>- Backend: Supabase (PostgreSQL, Row Level Security, Edge Functions, Realtime)<br><br>- Database: PostgreSQL via Supabase</td></tr>
+  <tr><td>IDE/Editor</td><td>Visual Studio Code</td></tr>
+  <tr><td>Maps & Geolocation</td><td>Leaflet / react-leaflet with geolocation for incident pinning</td></tr>
+  <tr><td>Notifications & Email</td><td>Supabase Realtime for in-app notifications; Resend for transactional email</td></tr>
+  <tr><td>Version Control</td><td>Git / GitHub</td></tr>
+</table>
+
+<p class="indent">The system operates on Windows 10 or Windows 11 as the primary development and runtime environment. The frontend is built using JavaScript, JSX, HTML, and CSS, leveraging React for building dynamic user interfaces and Vite for fast module bundling and development tooling, with Tailwind CSS for styling. The backend is powered by Supabase, which provides a managed PostgreSQL database, Row Level Security for role-based data access, Edge Functions for server-side dispatch logic, and Realtime channels for live incident and notification updates. Development is performed using Visual Studio Code, with Git for version control and npm for dependency management. Incident locations are pinned and displayed through Leaflet-based maps, transactional emails such as onboarding and verification notices are sent through Resend, and operational charts in the Reports module are rendered with Recharts.</p>
+
+<h2 class="sub">Hardware Specification</h2>
+<div class="tcap"><span class="tnum">Table 2.</span><span class="ttitle">Deployment Hardware Specification</span></div>
+<table>
+  <tr><th>HARDWARE</th><th>SPECIFICATION</th></tr>
+  <tr><td>Processor</td><td>Intel Core i5 or equivalent (minimum)</td></tr>
+  <tr><td>Memory (RAM)</td><td>8 GB (minimum), 16 GB recommended</td></tr>
+  <tr><td>Storage</td><td>256 GB SSD or higher</td></tr>
+  <tr><td>Display</td><td>1366 x 768 resolution or higher</td></tr>
+  <tr><td>Network</td><td>Stable internet connection (required for realtime sync and map tiles)</td></tr>
+  <tr><td>Mobile Device</td><td>Android or iOS smartphone with camera and GPS for field responders and residents</td></tr>
+</table>
+
+<p class="indent">A standard office computer with at least 8 GB of RAM is sufficient for the command center and administrative functions, while responders and residents may access the system through smartphones equipped with a camera for photo evidence and GPS for automatic incident location. A stable internet connection is required at all times, as the system relies on cloud-hosted services for data storage, realtime updates, and map rendering.</p>
+
+<h2 class="sub">User Manual</h2>
+<p class="indent">The figures below present the system's pages per user role, together with the corresponding instructions for operating each feature.</p>
+
+<div id="figs"></div>
+
+<h2 class="sub">Postimplementation Activities</h2>
+<p class="indent">After the system passed acceptance testing, postimplementation activities were carried out to ensure the system's continued reliability, maintainability, and alignment with the barangay's operational needs.</p>
+
+<h2 class="sub">System Support</h2>
+<p class="indent">System support covers the assistance provided to users after deployment. This includes onboarding new administrators and responders, resolving account and access issues through the Access control module, maintaining the seeded emergency contacts directory, and addressing user-reported problems through the project's issue-tracking process. A dedicated support contact within the development team handles escalated technical concerns.</p>
+
+<h2 class="sub">System Maintenance</h2>
+<p class="indent">System maintenance is performed to keep the platform secure, stable, and up to date. This includes monitoring the Supabase backend for errors and quota usage, applying dependency and security patches to the frontend stack, backing up the PostgreSQL database, reviewing audit logs, and validating that realtime channels, authentication, and edge functions continue to operate correctly. Corrective maintenance addresses defects reported by users, while preventive maintenance reduces the risk of downtime during emergencies.</p>
+
+<h2 class="sub">Project Assessments</h2>
+<p class="indent">The project was assessed through the User Acceptance Survey (see Appendix AA) administered to selected respondents, including system administrators, dispatchers, department responders, and residents who interacted with the system during testing. The survey instrument used a five-point Likert scale and measured six software quality characteristics: functional suitability, performance efficiency, compatibility, usability, reliability, and security. Table 3 presents the scale ranges and their corresponding verbal interpretations used in analyzing the responses, and the results of the survey are presented in the succeeding tables.</p>
+
+<div class="tcap"><span class="tnum">Table 3.</span><span class="ttitle">Verbal Interpretation of the Scale</span></div>
+<table>
+  <tr><th>Range of Weighted Mean</th><th>Verbal Interpretation</th></tr>
+  <tr><td>4.21 - 5.00</td><td>Strongly Agree</td></tr>
+  <tr><td>3.41 - 4.20</td><td>Agree</td></tr>
+  <tr><td>2.61 - 3.40</td><td>Neutral</td></tr>
+  <tr><td>1.81 - 2.60</td><td>Disagree</td></tr>
+  <tr><td>1.00 - 1.80</td><td>Strongly Disagree</td></tr>
+</table>
+
+<div class="tcap"><span class="tnum">Table 4.</span><span class="ttitle">Functional Suitability Result</span></div>
+<table>
+  <tr><th>Statements</th><th>WM</th><th>SD</th><th>VI</th></tr>
+  <tr><td>The system provides all required functions for emergency reporting and response operations.</td><td>4.25</td><td>0.72</td><td>Strongly Agree</td></tr>
+  <tr><td>The system produces accurate incident records and dispatch results.</td><td>4.15</td><td>0.68</td><td>Agree</td></tr>
+  <tr><td>The system meets the needs of residents, responders, and administrators.</td><td>4.30</td><td>0.70</td><td>Strongly Agree</td></tr>
+  <tr><td>The system performs tasks appropriate to assigned user roles.</td><td>4.35</td><td>0.65</td><td>Strongly Agree</td></tr>
+  <tr><td>The system effectively supports incident reporting, assignment, and resolution tracking.</td><td>4.25</td><td>0.71</td><td>Strongly Agree</td></tr>
+</table>
+<p class="indent">The results indicate that respondents strongly agree that the Kalubihan Emergency Response System effectively fulfills its intended functions. All weighted means exceed 4.15, with the highest rating observed in role-based task execution. This confirms that the system's functional coverage aligns well with the operational requirements of emergency response and multi-user management.</p>
+
+<div class="tcap"><span class="tnum">Table 5.</span><span class="ttitle">Performance Efficiency Result</span></div>
+<table>
+  <tr><th>Statements</th><th>WM</th><th>SD</th><th>VI</th></tr>
+  <tr><td>The system responds quickly to user actions.</td><td>4.15</td><td>0.74</td><td>Agree</td></tr>
+  <tr><td>The system operates efficiently without excessive resource usage.</td><td>4.20</td><td>0.67</td><td>Strongly Agree</td></tr>
+  <tr><td>The system handles multiple incident reports simultaneously without slowdown.</td><td>4.00</td><td>0.80</td><td>Agree</td></tr>
+  <tr><td>The system maintains consistent performance during peak usage.</td><td>3.95</td><td>0.76</td><td>Agree</td></tr>
+  <tr><td>Incident and media data loads within an acceptable time frame.</td><td>4.15</td><td>0.69</td><td>Agree</td></tr>
+</table>
+<p class="indent">Results show that users generally agree that the system performs efficiently. However, slightly lower ratings for concurrent incident handling suggest opportunities for optimization during peak demand periods.</p>
+
+<div class="tcap"><span class="tnum">Table 6.</span><span class="ttitle">Compatibility Result</span></div>
+<table>
+  <tr><th>Statements</th><th>WM</th><th>SD</th><th>VI</th></tr>
+  <tr><td>The system works well with other software and tools.</td><td>4.10</td><td>0.72</td><td>Agree</td></tr>
+  <tr><td>The system functions properly across different web browsers.</td><td>4.25</td><td>0.64</td><td>Strongly Agree</td></tr>
+  <tr><td>The mobile interface operates smoothly on supported devices.</td><td>4.15</td><td>0.69</td><td>Agree</td></tr>
+  <tr><td>The system allows smooth data exchange between components.</td><td>4.05</td><td>0.75</td><td>Agree</td></tr>
+  <tr><td>The system remains functional across different hardware configurations.</td><td>4.10</td><td>0.71</td><td>Agree</td></tr>
+</table>
+<p class="indent">The findings indicate that the Kalubihan Emergency Response System is compatible with commonly used platforms and devices. Respondents reported consistent performance across browsers and mobile environments, supporting the system's accessibility and flexibility.</p>
+
+<div class="tcap"><span class="tnum">Table 7.</span><span class="ttitle">Usability Result</span></div>
+<table>
+  <tr><th>Statements</th><th>WM</th><th>SD</th><th>VI</th></tr>
+  <tr><td>The system is easy to learn and use.</td><td>4.30</td><td>0.65</td><td>Strongly Agree</td></tr>
+  <tr><td>The user interface is clear and understandable.</td><td>4.35</td><td>0.60</td><td>Strongly Agree</td></tr>
+  <tr><td>Navigation makes it easy to find needed features.</td><td>4.25</td><td>0.66</td><td>Strongly Agree</td></tr>
+  <tr><td>Users can complete tasks efficiently without confusion.</td><td>4.30</td><td>0.63</td><td>Strongly Agree</td></tr>
+  <tr><td>The system provides a satisfactory overall user experience.</td><td>4.40</td><td>0.59</td><td>Strongly Agree</td></tr>
+</table>
+<p class="indent">Usability received the highest overall ratings, indicating strong user satisfaction. The intuitive interface and well-structured navigation contributed significantly to positive feedback, validating the system's user-centered design.</p>
+
+<div class="tcap"><span class="tnum">Table 8.</span><span class="ttitle">Reliability Result</span></div>
+<table>
+  <tr><th>Statements</th><th>WM</th><th>SD</th><th>VI</th></tr>
+  <tr><td>The system operates without frequent errors or crashes.</td><td>4.00</td><td>0.77</td><td>Agree</td></tr>
+  <tr><td>The system recovers quickly from unexpected failures.</td><td>3.95</td><td>0.81</td><td>Agree</td></tr>
+  <tr><td>The system consistently performs as expected.</td><td>4.10</td><td>0.73</td><td>Agree</td></tr>
+  <tr><td>The system maintains accurate incident records.</td><td>4.25</td><td>0.67</td><td>Strongly Agree</td></tr>
+  <tr><td>The system preserves data integrity during interruptions.</td><td>4.15</td><td>0.70</td><td>Agree</td></tr>
+</table>
+<p class="indent">Respondents generally agree that the system is reliable, particularly in maintaining incident and response data. Minor concerns were noted regarding recovery from interruptions, suggesting areas for further technical refinement.</p>
+
+<div class="tcap"><span class="tnum">Table 9.</span><span class="ttitle">Security Result</span></div>
+<table>
+  <tr><th>Statements</th><th>WM</th><th>SD</th><th>VI</th></tr>
+  <tr><td>The system protects user data from unauthorized access.</td><td>4.25</td><td>0.62</td><td>Strongly Agree</td></tr>
+  <tr><td>User authentication is secure and reliable.</td><td>4.20</td><td>0.70</td><td>Strongly Agree</td></tr>
+  <tr><td>The system prevents unauthorized modification of records.</td><td>4.25</td><td>0.68</td><td>Strongly Agree</td></tr>
+  <tr><td>Sensitive information is securely stored and transmitted.</td><td>4.30</td><td>0.61</td><td>Strongly Agree</td></tr>
+  <tr><td>The system logs activities for accountability.</td><td>4.20</td><td>0.66</td><td>Strongly Agree</td></tr>
+</table>
+<p class="indent">Security results are highly positive, indicating strong user confidence in the system's data protection mechanisms. The use of authentication controls and secure data handling contributes significantly to system trustworthiness.</p>
+
+<!-- ============ CHAPTER V ============ -->
+<h1 class="chap pagebreak">CHAPTER V &ndash; SUMMARY OF FINDINGS, CONCLUSIONS AND RECOMMENDATIONS</h1>
+<p class="indent">This chapter presents the conclusions drawn from the findings of the study and the recommendations proposed for future improvement. It revisits the objectives of the system, highlights the key results obtained from the system evaluation, and synthesizes their implications on the effectiveness of the developed solution. The insights derived from this chapter serve as a basis for enhancing the system and guiding future researchers in further refining and expanding the project.</p>
+
+<h1 class="phase">Summary</h1>
+<p class="indent">Kalubihan Emergency Response System is a full-stack web-based incident management platform designed to streamline emergency reporting and response operations within the barangay. The system connects residents, dispatchers, responders, and administrators through role-based platforms that automate incident triage, responder assignment, and status tracking. Residents use a mobile-friendly interface to file emergency reports with photo evidence and GPS location, track their reports, and view announcements, while dispatchers use a web-based command center to triage incidents, assign departments, and monitor the response pipeline. Department admins and responders act on dispatched incidents, marking arrival and resolving cases with proof documentation. An admin panel oversees resident ID verification, user management, page-access control, departments, and report generation to ensure system integrity and accountability. Built using modern technologies such as React, Vite, Tailwind CSS, and Supabase with PostgreSQL, and developed following the Agile methodology, the system reduces manual coordination, accelerates dispatch, improves communication, and provides data-driven insights resulting in a more efficient, transparent, and reliable barangay emergency response ecosystem.</p>
+
+<h1 class="phase">Conclusions</h1>
+<p class="indent">The development of the Kalubihan Emergency Response System addresses the common challenges encountered in traditional barangay emergency handling, such as delayed reporting, manual dispatch processes, inefficient communication between residents and responders, limited incident transparency, and lack of centralized records. By providing a web-based platform for administrators, dispatchers, and department responders, along with a mobile-friendly interface for residents, the system streamlines incident reporting, assignment, and resolution tracking in a more organized and efficient manner.</p>
+<p class="indent">Kalubihan Emergency Response System integrates key features such as role-based user access, resident ID verification, incident reporting with photo and location evidence, department and responder management, realtime notifications, announcements, and reporting tools. Through the application of modern web technologies, the system improves operational efficiency, reduces human error, and enhances overall service reliability.</p>
+<p class="indent">Based on the system evaluation results, the system scored highly across key quality metrics, especially in functional suitability, usability, and security. Users strongly agreed that the system effectively serves residents, responders, and administrators through accurate incident handling, intuitive navigation, and secure data processing. Although some minor performance and reliability issues were noted during peak usage, the overall data confirms that the platform successfully meets its core objectives.</p>
+<p class="indent">Even with certain testing constraints and simulated deployment conditions, the research validates the feasibility and practical application of a centralized barangay emergency response system.</p>
+
+<h1 class="phase">Recommendations</h1>
+<p class="indent">To maximize the Kalubihan Emergency Response System's potential, several key improvements are recommended. Primarily, a full-scale deployment in a real-world environment with live residents and responders is crucial for genuine performance evaluation. Feature enhancements should include integrating SMS alerts for users without stable internet access and optimizing backend performance to handle high-traffic scenarios during large-scale emergencies.</p>
+<p class="indent">For a better user experience, refining the mobile interface into an installable application, adding incident location autocomplete, and advancing the analytics module with heatmaps and trend forecasting are advised. To support responders, integrating third-party tools for logistics like routing and turn-by-turn navigation would be beneficial.</p>
+<p class="indent">Foundational priorities must include maintaining robust data security through encryption and audits, as well as designing the system's architecture for scalability to accommodate future growth. Lastly, establishing a cycle of regular maintenance, user feedback, and performance reviews will ensure continuous improvement. Future research could build on this work by exploring AI-driven incident triage and broader platform integrations.</p>
+
+<!-- ============ APPENDIX AA: USER ACCEPTANCE SURVEY ============ -->
+<div class="pagebreak"></div>
+<h1 class="chap">Appendix AA</h1>
+<h1 class="chap">User Acceptance Survey</h1>
+
+<p>Dear Stakeholder,</p>
+<p class="indent">We are fourth-year Bachelor of Science in Information Systems (BSIS) students currently conducting our capstone project titled &ldquo;<strong>KALUBIHAN EMERGENCY RESPONSE SYSTEM: STREAMLINING BARANGAY INCIDENT REPORTING AND RESPONSE COORDINATION</strong>&rdquo;. As part of our system evaluation, we are administering a user acceptance survey to gather insights from key stakeholders. Your feedback will help us assess the system's functionality, usability, performance, compatibility, reliability, and security.</p>
+<p class="indent">This survey aims to evaluate how well the system meets its intended purpose in supporting barangay emergency reporting and response operations. The results will be used solely for academic research and system improvement.</p>
+<p class="indent">In compliance with the Data Privacy Act of 2012 (Republic Act No. 10173), we assure you that:</p>
+<ul class="road">
+  <li>All information collected will be treated with strict confidentiality.</li>
+  <li>No personal or sensitive information will be disclosed, shared, or used for purposes outside this study.</li>
+  <li>Participation is voluntary, and you may withdraw at any time.</li>
+  <li>All survey data will be stored securely and will be accessible only to the research team and project adviser.</li>
+  <li>Responses will be reported in aggregate form ensuring that no participant can be personally identified.</li>
+</ul>
+<p>Your honest feedback is highly valuable to the success and improvement of our study. Thank you for your time and participation.</p>
+<p style="margin-top:18px">Respectfully,</p>
+<p style="margin-top:14px">Shawn Michael Dagatan</p>
+<p>Cindy Frejoles</p>
+<p>Kryshan Aleizel Las Pi&ntilde;as</p>
+
+<div class="pagebreak"></div>
+<p>Scale: 1- Strongly Disagree | 2 &ndash; Disagree | 3 &ndash; Neutral | 4 &ndash; Agree | 5 &ndash; Strongly Agree</p>
+
+<p class="svyhead">1. Functional Suitability</p>
+<table class="survey">
+  <tr><th>Statements</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th></tr>
+  <tr><td>The system provides all required functions for emergency reporting and response operations.</td><td></td><td></td><td></td><td></td><td></td></tr>
+  <tr><td>The system produces accurate incident records and dispatch results.</td><td></td><td></td><td></td><td></td><td></td></tr>
+  <tr><td>The system meets the needs of residents, responders, and administrators.</td><td></td><td></td><td></td><td></td><td></td></tr>
+  <tr><td>The system performs tasks appropriate to assigned user roles.</td><td></td><td></td><td></td><td></td><td></td></tr>
+  <tr><td>The system effectively supports incident reporting, assignment, and resolution tracking.</td><td></td><td></td><td></td><td></td><td></td></tr>
+</table>
+
+<p class="svyhead">2. Performance Efficiency</p>
+<table class="survey">
+  <tr><th>Statements</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th></tr>
+  <tr><td>The system responds quickly to user actions.</td><td></td><td></td><td></td><td></td><td></td></tr>
+  <tr><td>The system operates efficiently without excessive resource usage.</td><td></td><td></td><td></td><td></td><td></td></tr>
+  <tr><td>The system handles multiple incident reports simultaneously without slowdown.</td><td></td><td></td><td></td><td></td><td></td></tr>
+  <tr><td>The system maintains consistent performance during peak usage.</td><td></td><td></td><td></td><td></td><td></td></tr>
+  <tr><td>Incident and media data loads within an acceptable time frame.</td><td></td><td></td><td></td><td></td><td></td></tr>
+</table>
+
+<p class="svyhead">3. Compatibility</p>
+<table class="survey">
+  <tr><th>Statements</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th></tr>
+  <tr><td>The system works well with other software and tools.</td><td></td><td></td><td></td><td></td><td></td></tr>
+  <tr><td>The system functions properly across different web browsers.</td><td></td><td></td><td></td><td></td><td></td></tr>
+  <tr><td>The mobile interface operates smoothly on supported devices.</td><td></td><td></td><td></td><td></td><td></td></tr>
+  <tr><td>The system allows smooth data exchange between components.</td><td></td><td></td><td></td><td></td><td></td></tr>
+  <tr><td>The system remains functional across different hardware configurations.</td><td></td><td></td><td></td><td></td><td></td></tr>
+</table>
+
+<p class="svyhead">4. Usability</p>
+<table class="survey">
+  <tr><th>Statements</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th></tr>
+  <tr><td>The system is easy to learn and use.</td><td></td><td></td><td></td><td></td><td></td></tr>
+  <tr><td>The user interface is clear and understandable.</td><td></td><td></td><td></td><td></td><td></td></tr>
+  <tr><td>Navigation makes it easy to find needed features.</td><td></td><td></td><td></td><td></td><td></td></tr>
+  <tr><td>Users can complete tasks efficiently without confusion.</td><td></td><td></td><td></td><td></td><td></td></tr>
+  <tr><td>The system provides a satisfactory overall user experience.</td><td></td><td></td><td></td><td></td><td></td></tr>
+</table>
+
+<p class="svyhead">5. Reliability</p>
+<table class="survey">
+  <tr><th>Statements</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th></tr>
+  <tr><td>The system operates without frequent errors or crashes.</td><td></td><td></td><td></td><td></td><td></td></tr>
+  <tr><td>The system recovers quickly from unexpected failures.</td><td></td><td></td><td></td><td></td><td></td></tr>
+  <tr><td>The system consistently performs as expected.</td><td></td><td></td><td></td><td></td><td></td></tr>
+  <tr><td>The system maintains accurate incident records.</td><td></td><td></td><td></td><td></td><td></td></tr>
+  <tr><td>The system preserves data integrity during interruptions.</td><td></td><td></td><td></td><td></td><td></td></tr>
+</table>
+
+<p class="svyhead">6. Security</p>
+<table class="survey">
+  <tr><th>Statements</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th></tr>
+  <tr><td>The system protects user data from unauthorized access.</td><td></td><td></td><td></td><td></td><td></td></tr>
+  <tr><td>User authentication is secure and reliable.</td><td></td><td></td><td></td><td></td><td></td></tr>
+  <tr><td>The system prevents unauthorized modification of records.</td><td></td><td></td><td></td><td></td><td></td></tr>
+  <tr><td>Sensitive information is securely stored and transmitted.</td><td></td><td></td><td></td><td></td><td></td></tr>
+  <tr><td>The system logs activities for accountability.</td><td></td><td></td><td></td><td></td><td></td></tr>
+</table>
+
+<script>
+const ORDER = [
+  { f: '001-login-desktop', k: 'login', role: null },
+  { f: '002-register-desktop', k: 'register', role: null },
+  { f: '003-forgot-password-desktop', k: 'forgot-password', role: null },
+  { f: '004-suspended-desktop', k: 'suspended', role: null },
+  { f: '005-login-mobile', k: 'login', role: null, mobile: true },
+  { f: '006-register-mobile', k: 'register', role: null, mobile: true },
+  { f: '009-admin-home-desktop', k: 'home', role: 'ADMIN' },
+  { f: '011-admin-departments-desktop', k: 'departments', role: 'ADMIN' },
+  { f: '012-admin-residents-review-desktop', k: 'residents-review', role: 'ADMIN' },
+  { f: '013-admin-access-control-desktop', k: 'access-control', role: 'ADMIN' },
+  { f: '014-admin-reports-desktop', k: 'reports', role: 'ADMIN' },
+  { f: '015-admin-announcements-desktop', k: 'announcements', role: 'ADMIN' },
+  { f: '017-admin-contacts-desktop', k: 'contacts', role: 'ADMIN' },
+  { f: '018-admin-profile-desktop', k: 'profile', role: 'ADMIN' },
+  { f: '019-admin-notifications-desktop', k: 'notifications', role: 'ADMIN' },
+  { f: '020-dispatcher-home-desktop', k: 'home', role: 'DISPATCHER' },
+  { f: '022-dispatcher-incident-queue-desktop', k: 'incident-queue', role: 'DISPATCHER' },
+  { f: '024-dispatcher-contacts-desktop', k: 'contacts', role: 'DISPATCHER' },
+  { f: '025-dispatcher-profile-desktop', k: 'profile', role: 'DISPATCHER' },
+  { f: '027-deptadmin-incident-queue-desktop', k: 'incident-queue', role: 'DEPARTMENT ADMIN' },
+  { f: '029-deptadmin-contacts-desktop', k: 'contacts', role: 'DEPARTMENT ADMIN' },
+  { f: '030-deptadmin-profile-desktop', k: 'profile', role: 'DEPARTMENT ADMIN' },
+  { f: '032-responder-home-desktop', k: 'home', role: 'RESPONDER' },
+  { f: '034-responder-incident-queue-desktop', k: 'incident-queue', role: 'RESPONDER' },
+  { f: '036-responder-contacts-desktop', k: 'contacts', role: 'RESPONDER' },
+  { f: '037-responder-profile-desktop', k: 'profile', role: 'RESPONDER' },
+  { f: '039-resident-home-desktop', k: 'home', role: 'RESIDENT' },
+  { f: '041-resident-incident-queue-desktop', k: 'incident-queue', role: 'RESIDENT' },
+  { f: '043-resident-new-incident-desktop', k: 'new-incident', role: 'RESIDENT' },
+  { f: '045-resident-announcements-desktop', k: 'announcements', role: 'RESIDENT' },
+  { f: '047-resident-contacts-desktop', k: 'contacts', role: 'RESIDENT' },
+  { f: '048-resident-profile-desktop', k: 'profile', role: 'RESIDENT' },
+  { f: '040-resident-home-mobile', k: 'home', role: 'RESIDENT', mobile: true },
+  { f: '042-resident-incident-queue-mobile', k: 'incident-queue', role: 'RESIDENT', mobile: true },
+  { f: '044-resident-new-incident-mobile', k: 'new-incident', role: 'RESIDENT', mobile: true },
+];
+
+const FIG = {
+  'login':            { t: 'System Login Page',            i: 'Open the login page, enter your assigned email and password, then click "Sign In" to access your role dashboard.' },
+  'register':         { t: 'Resident Registration Page',   i: 'Click "Create account", fill in your details, upload a clear photo of a valid ID, and submit the form for admin verification.' },
+  'forgot-password':  { t: 'Forgot Password Page',         i: 'Enter your registered email address to receive a password reset link.' },
+  'suspended':        { t: 'Suspended Account Screen',     i: 'Suspended accounts are blocked at sign-in; the suspension reason set by the administrator is displayed.' },
+  'home':             { t: 'Landing Page',                 i: 'This is the landing page shown after sign-in. Explore the available features from the sidebar.' },
+  'incident-queue':   { t: 'Incident Queue Page',          i: 'Review incoming reports, open an incident to view its details, map, and timeline, and manage assignments.' },
+  'new-incident':     { t: 'Emergency Report Page',        i: 'Fill out the incident details, attach evidence photos, confirm the location on the map, and submit the report.' },
+  'departments':      { t: 'Departments Page',             i: 'Create and manage response departments and their member rosters.' },
+  'residents-review': { t: 'Residents & Review Page',      i: 'Review pending resident registrations and the submitted ID documents, then approve or reject with a reason.' },
+  'access-control':   { t: 'Access Control Page',          i: 'Suspend or reactivate user accounts, assign roles, and grant page access per role in the access matrix.' },
+  'reports':          { t: 'Reports Page',                 i: 'View operational metrics and export incident records with the applied filters.' },
+  'announcements':    { t: 'Announcements Page',           i: "Post emergency advisories and view the live feed of today's incidents." },
+  'contacts':         { t: 'Emergency Contacts Page',      i: 'Browse the directory of emergency and barangay contact numbers.' },
+  'profile':          { t: 'Profile Page',                 i: 'View and update your account details and change your password.' },
+  'notifications':    { t: 'Notifications Page',           i: 'Check realtime notifications for new incidents and status updates.' },
+};
+
+const ROLE_STEPS = {
+  'ADMIN': 'Log in using your administrator credentials. Review pending resident registrations in Residents & review, manage roles and page access in Access control, and monitor operations from the Command center.',
+  'DISPATCHER': 'Log in using your dispatcher credentials. Triage incoming reports in the Incident queue, file incidents on behalf of callers, and dispatch departments and responders.',
+  'DEPARTMENT ADMIN': 'Log in using your department admin credentials. The Incident queue shows the incidents dispatched to your department; manage memberships and act on assistance requests from the department page.',
+  'RESPONDER': 'Log in using your responder credentials. Your assigned incident appears on the Response board; mark arrival on scene and resolve the incident with a proof photo.',
+  'RESIDENT': 'Open the app and log in using your assigned credentials or register a new account. File emergency reports with photos and GPS location, then track them under My reports.',
+};
+
+const ROLE_TITLE = {
+  'ADMIN': 'Admin', 'DISPATCHER': 'Dispatcher', 'DEPARTMENT ADMIN': 'Department Admin',
+  'RESPONDER': 'Responder', 'RESIDENT': 'Resident',
+};
+
+const SPECIAL_TITLE = {
+  'ADMIN|home': 'Admin Command Center Page',
+  'DISPATCHER|home': 'Dispatcher Command Center Page',
+  'DEPARTMENT ADMIN|incident-queue': 'Department Incident Queue Page',
+  'RESPONDER|home': 'Responder Response Board Page',
+  'RESIDENT|home': 'Resident Home Page',
+  'RESIDENT|incident-queue': 'My Reports Page',
+  'RESIDENT|new-incident': 'Report Emergency Page',
+  'RESIDENT|announcements': 'Announcements & Incident Feed Page',
+};
+
+const container = document.getElementById('figs');
+let n = 0; let lastRole = 'PUBLIC';
+for (const e of ORDER) {
+  const role = e.role || 'PUBLIC';
+  if (role !== lastRole && role !== 'PUBLIC') {
+    const h = document.createElement('h2'); h.className = 'role'; h.textContent = role; container.appendChild(h);
+    const p = document.createElement('p'); p.className = 'indent'; p.textContent = ROLE_STEPS[role]; container.appendChild(p);
+    lastRole = role;
+  }
+  n++;
+  const fig = FIG[e.k];
+  const title = (e.role && SPECIAL_TITLE[e.role + '|' + e.k]) ||
+    ((e.role ? ROLE_TITLE[e.role] + ' ' : '') + fig.t + (e.mobile ? ' (Mobile View)' : ''));
+  const figure = document.createElement('figure');
+  figure.innerHTML = `<img class="${e.mobile ? 'mobile' : ''}" src="screenshots/${e.f}.png" alt="${title}">
+    <figcaption>Figure ${n}. ${title}</figcaption>` +
+    (fig.i ? `<p class="instr">${fig.i}</p>` : '');
+  container.appendChild(figure);
+}
+</script>
+</body>
+</html>

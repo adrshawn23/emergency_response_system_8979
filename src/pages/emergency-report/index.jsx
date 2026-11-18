@@ -115,6 +115,15 @@ const EmergencyReport = () => {
       return;
     }
 
+    // Hard geofence: residents can only file inside the service boundary.
+    // 'unverified'/'manual' pass through — no verdict means no basis to block.
+    if (profile?.role === 'resident' && formData.locationMetadata?.serviceArea === 'outside') {
+      setSubmissionError(
+        'This location is outside the Barangay Kalubihan service area — emergency reports can only be filed for incidents inside the boundary.'
+      );
+      return;
+    }
+
     setIsSubmitting(true);
     setSubmissionError(null);
 

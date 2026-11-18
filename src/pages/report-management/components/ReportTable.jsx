@@ -54,6 +54,10 @@ const ReportTable = ({
       case 'police': return 'Shield';
       case 'accident': return 'Car';
       case 'natural': return 'CloudRain';
+      case 'flood': return 'CloudRain';
+      case 'theft': return 'Shield';
+      case 'assault': return 'ShieldAlert';
+      case 'structural': return 'TreePine';
       default: return 'AlertTriangle';
     }
   };
@@ -196,19 +200,27 @@ const ReportTable = ({
                   <td className="p-4">
                     <div className="flex items-center space-x-2">
                       <Icon 
-                        name={getIncidentIcon(report?.incidentType)} 
+                        name={getIncidentIcon(report?.incidentType || report?.report_type)} 
                         size={16} 
                         className="text-muted-foreground" 
                       />
                       <span className="text-sm font-medium text-foreground capitalize">
-                        {report?.incidentType?.replace('-', ' ')}
+                        {(report?.incidentType || report?.report_type)?.replace('-', ' ')}
                       </span>
+                      {report?._cluster?.length > 1 && (
+                        <span
+                          className="px-2 py-0.5 text-xs font-medium rounded-full bg-primary/10 text-primary border border-primary/20"
+                          title={`${report._cluster.length} reports on this incident`}
+                        >
+                          ×{report._cluster.length}
+                        </span>
+                      )}
                     </div>
                   </td>
                   <td className="p-4">
                     <div className="flex items-center space-x-1">
                       <Icon name="MapPin" size={14} className="text-muted-foreground" />
-                      <span className="text-sm text-foreground">{report?.location}</span>
+                      <span className="text-sm text-foreground">{report?.location || report?.attachments?.location}</span>
                     </div>
                   </td>
                   <td className="p-4">
@@ -225,10 +237,19 @@ const ReportTable = ({
                     <div className="flex items-center space-x-2">
                       <div className="w-6 h-6 bg-muted rounded-full flex items-center justify-center">
                         <span className="text-xs font-medium text-foreground">
-                          {report?.reporter?.name?.charAt(0)}
+                          {(report?.reporter?.name || report?.attachments?.contact_name || '?')?.charAt(0)}
                         </span>
                       </div>
-                      <span className="text-sm text-foreground">{report?.reporter?.name}</span>
+                      <div>
+                        <span className="text-sm text-foreground">
+                          {report?.reporter?.name || report?.attachments?.contact_name}
+                        </span>
+                        {report?._cluster?.length > 1 && (
+                          <p className="text-xs text-muted-foreground">
+                            +{report._cluster.length - 1} more reporter{report._cluster.length > 2 ? 's' : ''}
+                          </p>
+                        )}
+                      </div>
                     </div>
                   </td>
                   <td className="p-4">
@@ -247,7 +268,7 @@ const ReportTable = ({
                   </td>
                   <td className="p-4">
                     <span className="text-sm text-muted-foreground">
-                      {formatTimestamp(report?.timestamp)}
+                      {formatTimestamp(report?.timestamp || report?.created_at)}
                     </span>
                   </td>
                   <td className="p-4">

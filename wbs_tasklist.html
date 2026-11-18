@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  @page { size: A4 landscape; margin: 2cm 2cm; }
+  body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; line-height: 1.5; color: #000; margin: 0; }
+  h3 { font-weight: bold; margin: 0 0 10px; }
+  p { text-indent: 1.25cm; text-align: justify; margin: 0 0 10px; }
+  .caption { text-align: center; font-weight: bold; text-decoration: underline; margin: 16px 0 12px; }
+  table { border-collapse: collapse; width: 100%; table-layout: fixed; font-size: 9pt; }
+  th, td { border: 1px solid #333; padding: 4px 6px; vertical-align: top; overflow-wrap: break-word; }
+  .band td { background: #000; color: #fff; text-align: center; font-weight: bold; font-size: 10.5pt; letter-spacing: .5px; }
+  thead th { background: #8a8a8a; color: #fff; font-weight: bold; text-align: left; }
+  .phase td { background: #e8e8e8; font-weight: bold; }
+  .parent td { font-weight: bold; }
+  .no { width: 5%; }
+  .desc { width: 21%; }
+  .owner { width: 12%; }
+  .dep { width: 8%; }
+  .res { width: 13%; }
+  .stat { width: 8%; }
+  .cost { width: 6%; }
+  .start { width: 9%; }
+  .est { width: 10%; }
+  .fin { width: 8%; }
+</style>
+</head>
+<body>
+
+<h3>WBS Tasklist</h3>
+<p>The Work Breakdown Structure (WBS) for the Kalubihan Emergency Response System outlines the key phases and tasks needed to plan, develop, and implement the project successfully.</p>
+<p>It begins with the Initiation phase, where the project&rsquo;s purpose is defined through project identification, requirement elicitation, and stakeholder meetings.</p>
+<p>In the Planning phase, the team conducts a literature review, designs the system architecture, plans the network topology, and assesses potential risks to ensure a solid foundation.</p>
+<p>The Execution phase includes the technical development of the system&mdash;database setup, frontend/backend coding, and module testing to ensure functionality.</p>
+<p>During the Control phase, functional testing, user validation, and bug fixing ensure the system meets quality standards and user needs.</p>
+<p>Finally, the Closure phase involves deploying the system, preparing documentation for future reference, and presenting the final output to stakeholders. This structured WBS ensures the project follows a clear, organized, and goal-oriented workflow.</p>
+
+<div class="caption">Table 2: WBS Tasklist</div>
+<table>
+  <tr class="band"><td colspan="10">WORK BREAKDOWN STRUCTURE TEMPLATE - TASKS</td></tr>
+  <thead>
+    <tr>
+      <th class="no">Task No.</th>
+      <th class="desc">Task Description</th>
+      <th class="owner">Task Owner</th>
+      <th class="dep">Dependency</th>
+      <th class="res">Resources Needed</th>
+      <th class="stat">Task Status</th>
+      <th class="cost">Cost</th>
+      <th class="start">Start Date</th>
+      <th class="est">Estimated Completion</th>
+      <th class="fin">Finish Date</th>
+    </tr>
+  </thead>
+  <tbody>
+
+    <tr class="phase"><td>1</td><td colspan="9">Initiation Phase</td></tr>
+    <tr class="parent"><td>1.1</td><td>Project Identification</td><td>Frejoles, Las Pi&ntilde;as, Dagatan</td><td></td><td>Team, documents</td><td>Complete</td><td>80</td><td>03/02/2025</td><td>6 days</td><td>08/02/2025</td></tr>
+    <tr><td>1.1.1</td><td>Identify business gaps and objectives</td><td>Frejoles, Las Pi&ntilde;as, Dagatan</td><td></td><td>Meet with team and client</td><td>Complete</td><td></td><td>03/02/2025</td><td>2 days</td><td>04/02/2025</td></tr>
+    <tr><td>1.1.2</td><td>Identify stakeholders</td><td>Frejoles, Las Pi&ntilde;as, Dagatan</td><td></td><td>Team organization</td><td>Complete</td><td>40</td><td>07/02/2025</td><td>2 days</td><td>08/02/2025</td></tr>
+    <tr class="parent"><td>1.2</td><td>Requirement Elicitation</td><td>Frejoles, Las Pi&ntilde;as, Dagatan</td><td>1.1</td><td>Interview guide, survey forms</td><td>Complete</td><td></td><td>10/02/2025</td><td>3 days</td><td>12/02/2025</td></tr>
+    <tr><td>1.2.1</td><td>Conduct stakeholder interviews</td><td>Frejoles, Las Pi&ntilde;as, Dagatan</td><td>1.1.2</td><td>Interview questions, recorder</td><td>Complete</td><td></td><td>10/02/2025</td><td>3 days</td><td>12/02/2025</td></tr>
+    <tr class="parent"><td>1.3</td><td>Pitch Deck Formation</td><td>Frejoles, Las Pi&ntilde;as, Dagatan</td><td>1.2</td><td>Canva, PowerPoint</td><td>Complete</td><td></td><td>13/02/2025</td><td>19 days</td><td>10/03/2025</td></tr>
+    <tr><td>1.3.1</td><td>Define problem and opportunity</td><td>Las Pi&ntilde;as</td><td>1.2.1</td><td>Research, documents</td><td>Complete</td><td></td><td>13/02/2025</td><td>2 days</td><td>14/02/2025</td></tr>
+    <tr><td>1.3.2</td><td>Define value proposition</td><td>Dagatan</td><td>1.3.1</td><td>Research, documents</td><td>Complete</td><td></td><td>15/02/2025</td><td>3 days</td><td>17/02/2025</td></tr>
+    <tr><td>1.3.3</td><td>Define functional requirements</td><td>Frejoles, Las Pi&ntilde;as</td><td>1.3.1</td><td>Documents</td><td>Complete</td><td></td><td>18/02/2025</td><td>4 days</td><td>21/02/2025</td></tr>
+    <tr><td>1.3.4</td><td>Define Business Model</td><td>Dagatan</td><td>1.3.2</td><td>BMC Template</td><td>Complete</td><td></td><td>22/02/2025</td><td>3 days</td><td>24/02/2025</td></tr>
+    <tr><td>1.3.5</td><td>Define Go-To-Market Plan</td><td>Dagatan</td><td>1.3.4</td><td>Research, documents</td><td>Complete</td><td></td><td>25/02/2025</td><td>4 days</td><td>28/02/2025</td></tr>
+    <tr><td>1.3.6</td><td>Define Competition Analysis</td><td>Las Pi&ntilde;as</td><td>1.3.4</td><td>Research, documents</td><td>Complete</td><td></td><td>03/03/2025</td><td>4 days</td><td>06/03/2025</td></tr>
+    <tr><td>1.3.7</td><td>Define Management Team</td><td>Frejoles, Las Pi&ntilde;as, Dagatan</td><td>1.3.1</td><td>Documents</td><td>Complete</td><td></td><td>09/03/2025</td><td>2 days</td><td>10/03/2025</td></tr>
+    <tr class="parent"><td>1.4</td><td>Approval Process</td><td>Frejoles, Las Pi&ntilde;as, Dagatan</td><td>1.3</td><td>Presentation materials</td><td>Complete</td><td>130</td><td>13/03/2025</td><td>6 days</td><td>18/03/2025</td></tr>
+    <tr><td>1.4.1</td><td>Title hearing proposal</td><td>Frejoles, Las Pi&ntilde;as, Dagatan</td><td>1.3.7</td><td>Printed documents, PowerPoint</td><td>Complete</td><td>100</td><td>13/03/2025</td><td>1 day</td><td>13/03/2025</td></tr>
+    <tr><td>1.4.2</td><td>Revise title proposal</td><td>Frejoles, Las Pi&ntilde;as, Dagatan</td><td>1.4.1</td><td>Revision paper, Google Docs</td><td>Complete</td><td></td><td>14/03/2025</td><td>5 days</td><td>18/03/2025</td></tr>
+    <tr><td>1.4.3</td><td>Obtain formal approval</td><td>Frejoles, Las Pi&ntilde;as, Dagatan</td><td>1.4.2</td><td>Final documents, approval form</td><td>Complete</td><td>30</td><td>17/03/2025</td><td>1 day</td><td>17/03/2025</td></tr>
+    <tr class="parent"><td>1.5</td><td>Scheduling and Task Management</td><td>Las Pi&ntilde;as</td><td>1.4</td><td>Gantt chart software</td><td>Complete</td><td></td><td>19/03/2025</td><td>8 days</td><td>28/03/2025</td></tr>
+    <tr><td>1.5.1</td><td>Tasks and Date Assignment</td><td>Frejoles</td><td></td><td>Gantt chart software</td><td>Complete</td><td></td><td>19/03/2025</td><td>6 days</td><td>26/03/2025</td></tr>
+    <tr><td>1.5.2</td><td>Gantt Chart</td><td>Dagatan</td><td>1.5.1</td><td>Gantt chart software</td><td>Complete</td><td></td><td>26/03/2025</td><td>3 days</td><td>28/03/2025</td></tr>
+
+    <tr class="phase"><td>2</td><td colspan="9">Planning Phase</td></tr>
+    <tr class="parent"><td>2.1</td><td>Project Risk Plan</td><td>Dagatan</td><td></td><td>Research, documents</td><td>Complete</td><td></td><td>02/03/2025</td><td>3 days</td><td>04/03/2025</td></tr>
+    <tr><td>2.1.1</td><td>Define risk identification</td><td>Dagatan</td><td></td><td>Research, documents</td><td>Complete</td><td></td><td>02/03/2025</td><td>1 day</td><td>02/03/2025</td></tr>
+    <tr><td>2.1.2</td><td>Define risk register</td><td>Dagatan</td><td>2.1.1</td><td>Risk register template</td><td>Complete</td><td></td><td>03/03/2025</td><td>2 days</td><td>04/03/2025</td></tr>
+    <tr class="parent"><td>2.2</td><td>Project Overview</td><td>Frejoles, Las Pi&ntilde;as, Dagatan</td><td></td><td>Research, documents</td><td>Complete</td><td>50</td><td>06/03/2025</td><td>7 days</td><td>12/03/2025</td></tr>
+    <tr><td>2.2.1</td><td>Define Objectives of the Study</td><td>Las Pi&ntilde;as</td><td></td><td>Research, documents</td><td>Complete</td><td>10</td><td>06/03/2025</td><td>1 day</td><td>06/03/2025</td></tr>
+    <tr><td>2.2.2</td><td>Define Scope and Limitations of the Study</td><td>Dagatan</td><td>2.2.1</td><td>Research, documents</td><td>Complete</td><td>10</td><td>07/03/2025</td><td>1 day</td><td>07/03/2025</td></tr>
+    <tr><td>2.2.3</td><td>Define Significance of the Study</td><td>Dagatan</td><td></td><td>Research, documents</td><td>Complete</td><td>10</td><td>08/03/2025</td><td>1 day</td><td>08/03/2025</td></tr>
+    <tr><td>2.2.4</td><td>Define Flow of the Study</td><td>Frejoles</td><td>2.2.1</td><td>Draw.io</td><td>Complete</td><td>10</td><td>11/03/2025</td><td>1 day</td><td>11/03/2025</td></tr>
+    <tr><td>2.2.5</td><td>Define Technical and Key Terms</td><td>Frejoles</td><td>2.2.1</td><td>Research, documents</td><td>Complete</td><td>10</td><td>12/03/2025</td><td>1 day</td><td>12/03/2025</td></tr>
+    <tr><td>2.2.6</td><td>Define Rationale of the Study</td><td>Las Pi&ntilde;as</td><td>2.2.1</td><td>Research, documents</td><td>Complete</td><td></td><td>12/03/2025</td><td>1 day</td><td>12/03/2025</td></tr>
+    <tr class="parent"><td>2.3</td><td>Review of Related Literature and Studies</td><td>Frejoles, Las Pi&ntilde;as, Dagatan</td><td></td><td>Research, documents</td><td>Complete</td><td></td><td>13/03/2025</td><td>5 days</td><td>17/03/2025</td></tr>
+    <tr><td>2.3.1</td><td>Research on Related Literature</td><td>Dagatan</td><td></td><td>Research, documents</td><td>Complete</td><td></td><td>13/03/2025</td><td>2 days</td><td>14/03/2025</td></tr>
+    <tr><td>2.3.2</td><td>Research on Related Studies</td><td>Frejoles, Las Pi&ntilde;as</td><td></td><td>Research, documents</td><td>Complete</td><td></td><td>15/03/2025</td><td>3 days</td><td>17/03/2025</td></tr>
+    <tr class="parent"><td>2.4</td><td>Methodology and Planning Tools</td><td>Dagatan</td><td></td><td>Research, documents</td><td>Complete</td><td></td><td>18/03/2025</td><td>15 days</td><td>01/04/2025</td></tr>
+    <tr><td>2.4.1</td><td>Define Software Engineering Methodology</td><td>Frejoles, Las Pi&ntilde;as, Dagatan</td><td>2.2.1</td><td>Research, documents</td><td>Complete</td><td></td><td>18/03/2025</td><td>2 days</td><td>19/03/2025</td></tr>
+    <tr><td>2.4.2</td><td>Define Business Model Canvas</td><td>Frejoles, Las Pi&ntilde;as, Dagatan</td><td>2.2.1</td><td>BMC Template</td><td>Complete</td><td></td><td>20/03/2025</td><td>4 days</td><td>23/03/2025</td></tr>
+    <tr><td>2.4.3</td><td>Develop Program Workflow</td><td>Frejoles, Las Pi&ntilde;as</td><td>2.2.1, 2.3.1</td><td>Draw.io</td><td>Complete</td><td></td><td>24/03/2025</td><td>2 days</td><td>25/03/2025</td></tr>
+    <tr><td>2.4.4</td><td>Develop Functional Decomposition Diagram</td><td>Las Pi&ntilde;as</td><td>2.2.1, 2.3.1</td><td>Draw.io</td><td>Complete</td><td></td><td>29/03/2025</td><td>4 days</td><td>01/04/2025</td></tr>
+    <tr class="parent"><td>2.5</td><td>System Design</td><td>Las Pi&ntilde;as, Dagatan</td><td></td><td>Visual Paradigm, Canva</td><td>Complete</td><td></td><td>02/04/2025</td><td>10 days</td><td>13/04/2025</td></tr>
+    <tr><td>2.5.1</td><td>Develop Use-Case Diagram</td><td>Frejoles, Las Pi&ntilde;as, Dagatan</td><td>2.2.1, 2.3.1</td><td>Visual Paradigm</td><td>Complete</td><td></td><td>02/04/2025</td><td>3 days</td><td>04/04/2025</td></tr>
+    <tr><td>2.5.2</td><td>Develop Storyboard</td><td>Frejoles</td><td>2.4.1</td><td>Canva</td><td>Complete</td><td></td><td>05/04/2025</td><td>2 days</td><td>06/04/2025</td></tr>
+    <tr><td>2.5.3</td><td>Establish ERD</td><td>Frejoles, Las Pi&ntilde;as, Dagatan</td><td>2.4.3</td><td>Visual Paradigm</td><td>Complete</td><td></td><td>07/04/2025</td><td>4 days</td><td>10/04/2025</td></tr>
+    <tr><td>2.5.4</td><td>Develop Data Dictionary</td><td>Frejoles</td><td>2.4.3</td><td>Excel</td><td>Complete</td><td></td><td>11/04/2025</td><td>3 days</td><td>13/04/2025</td></tr>
+    <tr class="parent"><td>2.6</td><td>Network Design</td><td>Frejoles, Dagatan</td><td></td><td>Canva</td><td>Complete</td><td></td><td>14/04/2025</td><td>3 days</td><td>16/04/2025</td></tr>
+    <tr><td>2.6.1</td><td>Develop Network Model</td><td>Frejoles</td><td>2.2.1</td><td>Canva</td><td>Complete</td><td></td><td>14/04/2025</td><td>1 day</td><td>14/04/2025</td></tr>
+    <tr><td>2.6.2</td><td>Develop Network Topology</td><td>Frejoles</td><td>2.6.1</td><td>Canva</td><td>Complete</td><td></td><td>15/04/2025</td><td>2 days</td><td>16/04/2025</td></tr>
+    <tr class="parent"><td>2.7</td><td>Technical Specifications</td><td>Las Pi&ntilde;as</td><td></td><td>Docs</td><td>Complete</td><td></td><td>17/04/2025</td><td>9 days</td><td>25/04/2025</td></tr>
+    <tr><td>2.7.1</td><td>Develop Technology Stack Diagram</td><td>Frejoles, Las Pi&ntilde;as, Dagatan</td><td>2.2.1, 2.3.1</td><td>Canva</td><td>Complete</td><td></td><td>17/04/2025</td><td>1 day</td><td>17/04/2025</td></tr>
+    <tr><td>2.7.2</td><td>List Software Specification</td><td>Las Pi&ntilde;as</td><td>2.2.1, 2.3.1</td><td>Docs</td><td>Complete</td><td></td><td>18/04/2025</td><td>3 days</td><td>20/04/2025</td></tr>
+    <tr><td>2.7.3</td><td>List Hardware Specification</td><td>Las Pi&ntilde;as</td><td></td><td>Docs</td><td>Complete</td><td></td><td>21/04/2025</td><td>2 days</td><td>22/04/2025</td></tr>
+    <tr><td>2.7.4</td><td>Develop List of Modules</td><td>Frejoles</td><td>2.7.2</td><td>Docs</td><td>Complete</td><td></td><td>23/04/2025</td><td>1 day</td><td>23/04/2025</td></tr>
+    <tr><td>2.7.5</td><td>Develop Test Plan</td><td>Frejoles</td><td>2.7.2</td><td>Test plan template</td><td>Complete</td><td></td><td>24/04/2025</td><td>2 days</td><td>25/04/2025</td></tr>
+    <tr class="parent"><td>2.8</td><td>Approval Process</td><td>Frejoles, Las Pi&ntilde;as, Dagatan</td><td></td><td>Presentation materials</td><td>Complete</td><td>588</td><td>14/05/2025</td><td>15 days</td><td>28/05/2025</td></tr>
+    <tr><td>2.8.1</td><td>Present Proposal Hearing</td><td>Frejoles, Las Pi&ntilde;as, Dagatan</td><td>All topics</td><td>Presentation materials</td><td>Complete</td><td>588</td><td>14/05/2025</td><td>1 day</td><td>14/05/2025</td></tr>
+    <tr><td>2.8.2</td><td>Make Revisions</td><td>Frejoles, Las Pi&ntilde;as, Dagatan</td><td>2.8.1</td><td>Panel feedback</td><td>Complete</td><td></td><td>15/05/2025</td><td>6 days</td><td>20/05/2025</td></tr>
+    <tr><td>2.8.3</td><td>Obtain Formal Approval</td><td>Frejoles, Las Pi&ntilde;as, Dagatan</td><td>2.8.2</td><td>Department requirements</td><td>Complete</td><td></td><td>21/05/2025</td><td>3 days</td><td>23/05/2025</td></tr>
+    <tr><td>2.8.4</td><td>Submit Hardbound Copy</td><td>Frejoles, Las Pi&ntilde;as, Dagatan</td><td>2.8.3</td><td>Final documents</td><td>Complete</td><td></td><td>28/05/2025</td><td>1 day</td><td>28/05/2025</td></tr>
+
+    <tr class="phase"><td>3</td><td colspan="9">Execution Phase</td></tr>
+    <tr class="parent"><td>3.1</td><td>Database Implementation</td><td>Frejoles, Las Pi&ntilde;as, Dagatan</td><td>2.8.4</td><td>Supabase, PostgreSQL</td><td>Complete</td><td></td><td>01/09/2026</td><td>12 days</td><td>12/09/2026</td></tr>
+    <tr><td>3.1.1</td><td>Create database tables</td><td>Frejoles, Las Pi&ntilde;as</td><td></td><td>Supabase, PostgreSQL</td><td>Complete</td><td></td><td>01/09/2026</td><td>8 days</td><td>08/09/2026</td></tr>
+    <tr><td>3.1.2</td><td>Establish relationships and indexing</td><td>Dagatan</td><td>3.1.1</td><td>Supabase, PostgreSQL</td><td>Complete</td><td></td><td>09/09/2026</td><td>4 days</td><td>12/09/2026</td></tr>
+    <tr class="parent"><td>3.2</td><td>Frontend and Backend Integration</td><td>Dagatan, Las Pi&ntilde;as, Frejoles</td><td>3.1</td><td>React, Supabase</td><td>Complete</td><td></td><td>14/09/2026</td><td>20 days</td><td>03/10/2026</td></tr>
+    <tr><td>3.2.1</td><td>API development and testing</td><td>Dagatan</td><td>3.1.2</td><td>Supabase client, Postman</td><td>Complete</td><td></td><td>14/09/2026</td><td>8 days</td><td>21/09/2026</td></tr>
+    <tr><td>3.2.2</td><td>UI integration</td><td>Frejoles, Las Pi&ntilde;as, Dagatan</td><td>3.2.1</td><td>React, Tailwind CSS</td><td>Complete</td><td></td><td>22/09/2026</td><td>6 days</td><td>27/09/2026</td></tr>
+    <tr><td>3.2.3</td><td>Connect frontend with backend logic</td><td>Dagatan, Las Pi&ntilde;as, Frejoles</td><td>3.2.2</td><td>React, Supabase client</td><td>Complete</td><td></td><td>28/09/2026</td><td>6 days</td><td>03/10/2026</td></tr>
+    <tr class="parent"><td>3.3</td><td>Module Development</td><td>Dagatan, Las Pi&ntilde;as, Frejoles</td><td>3.2</td><td>React, Supabase</td><td>Complete</td><td></td><td>05/10/2026</td><td>38 days</td><td>11/11/2026</td></tr>
+    <tr><td>3.3.1</td><td>Registration</td><td>Dagatan, Las Pi&ntilde;as, Frejoles</td><td>3.2.3</td><td>React, Supabase Auth</td><td>Complete</td><td></td><td>05/10/2026</td><td>3 days</td><td>07/10/2026</td></tr>
+    <tr><td>3.3.2</td><td>User Authentication</td><td>Dagatan, Las Pi&ntilde;as, Frejoles</td><td>3.3.1</td><td>Supabase Auth</td><td>Complete</td><td></td><td>08/10/2026</td><td>2 days</td><td>09/10/2026</td></tr>
+    <tr><td>3.3.3</td><td>User Accounts Management</td><td>Dagatan, Frejoles</td><td>3.3.2</td><td>React, Supabase</td><td>Complete</td><td></td><td>10/10/2026</td><td>2 days</td><td>11/10/2026</td></tr>
+    <tr><td>3.3.4</td><td>Approvals Management</td><td>Dagatan, Las Pi&ntilde;as, Frejoles</td><td>3.3.3</td><td>React, Supabase</td><td>Complete</td><td></td><td>12/10/2026</td><td>2 days</td><td>13/10/2026</td></tr>
+    <tr><td>3.3.5</td><td>Residents &amp; Responders Management</td><td>Dagatan, Las Pi&ntilde;as, Frejoles</td><td>3.3.4</td><td>React, Supabase</td><td>Complete</td><td></td><td>14/10/2026</td><td>3 days</td><td>16/10/2026</td></tr>
+    <tr><td>3.3.6</td><td>Emergency Incident Reporting</td><td>Dagatan, Las Pi&ntilde;as, Frejoles</td><td>3.3.5</td><td>React, Leaflet, Supabase</td><td>Complete</td><td></td><td>17/10/2026</td><td>4 days</td><td>20/10/2026</td></tr>
+    <tr><td>3.3.7</td><td>Emergency Dispatch &amp; Tracking</td><td>Dagatan, Las Pi&ntilde;as, Frejoles</td><td>3.3.6</td><td>React, Leaflet, Supabase</td><td>Complete</td><td></td><td>21/10/2026</td><td>5 days</td><td>25/10/2026</td></tr>
+    <tr><td>3.3.8</td><td>Incident History &amp; Audit Logs</td><td>Dagatan</td><td>3.3.7</td><td>Supabase</td><td>Complete</td><td></td><td>26/10/2026</td><td>2 days</td><td>27/10/2026</td></tr>
+    <tr><td>3.3.9</td><td>User Profile &amp; Settings</td><td>Frejoles</td><td>3.3.8</td><td>React, Supabase</td><td>Complete</td><td></td><td>28/10/2026</td><td>2 days</td><td>29/10/2026</td></tr>
+    <tr><td>3.3.10</td><td>Emergency Contacts &amp; Resources</td><td>Dagatan</td><td>3.3.9</td><td>React, Supabase</td><td>Complete</td><td></td><td>30/10/2026</td><td>2 days</td><td>31/10/2026</td></tr>
+    <tr><td>3.3.11</td><td>Analytics &amp; Public Safety Reports</td><td>Las Pi&ntilde;as, Frejoles</td><td>3.3.10</td><td>React, Recharts</td><td>Complete</td><td></td><td>01/11/2026</td><td>5 days</td><td>05/11/2026</td></tr>
+    <tr><td>3.3.12</td><td>System Activity Monitoring</td><td>Dagatan</td><td>3.3.11</td><td>Supabase</td><td>Complete</td><td></td><td>06/11/2026</td><td>6 days</td><td>11/11/2026</td></tr>
+
+    <tr class="phase"><td>4</td><td colspan="9">Control Phase</td></tr>
+    <tr class="parent"><td>4.1</td><td>Testing Phase</td><td>Frejoles, Las Pi&ntilde;as, Dagatan</td><td>3.3</td><td>Testing devices, tools</td><td>Complete</td><td></td><td>11/12/2026</td><td>1 day</td><td>11/12/2026</td></tr>
+    <tr><td>4.1.1</td><td>Conduct functional and usability testing</td><td>Frejoles</td><td></td><td>Mobile &amp; web devices for testing</td><td>Complete</td><td></td><td>11/12/2026</td><td>1 day</td><td>11/12/2026</td></tr>
+    <tr><td>4.1.2</td><td>Perform security and performance testing</td><td>Dagatan</td><td>4.1.1</td><td>Load testing tools</td><td>Complete</td><td></td><td>11/12/2026</td><td>1 day</td><td>11/12/2026</td></tr>
+    <tr><td>4.1.3</td><td>Conduct User Acceptance Testing (UAT)</td><td>Las Pi&ntilde;as</td><td>4.1.2</td><td>Stakeholder testers</td><td>Complete</td><td></td><td>11/12/2026</td><td>1 day</td><td>11/12/2026</td></tr>
+    <tr><td>4.1.4</td><td>Unit Testing</td><td>Dagatan</td><td>4.1</td><td>IDE with testing support</td><td>Complete</td><td></td><td>11/12/2026</td><td>1 day</td><td>11/12/2026</td></tr>
+    <tr><td>4.1.5</td><td>Integration Testing</td><td>Dagatan</td><td>4.1.4</td><td>API documentation</td><td>Complete</td><td></td><td>11/12/2026</td><td>1 day</td><td>11/12/2026</td></tr>
+    <tr><td>4.1.6</td><td>Alpha Testing</td><td>Frejoles</td><td>4.1.5</td><td>Internal testers</td><td>Complete</td><td></td><td>11/12/2026</td><td>1 day</td><td>11/12/2026</td></tr>
+    <tr><td>4.1.7</td><td>Acceptance Testing</td><td>Frejoles</td><td>4.1.6</td><td>Project stakeholders</td><td>Complete</td><td></td><td>11/12/2026</td><td>1 day</td><td>11/12/2026</td></tr>
+    <tr class="parent"><td>4.2</td><td>Monitor development milestones</td><td>Dagatan, Las Pi&ntilde;as</td><td>4.1</td><td>Code editor or IDE</td><td>Complete</td><td></td><td>11/12/2026</td><td>1 day</td><td>11/12/2026</td></tr>
+    <tr class="parent"><td>4.3</td><td>Debugging and refinement</td><td>Dagatan</td><td>4.2</td><td>Code editor or IDE</td><td>Complete</td><td></td><td>11/12/2026</td><td>1 day</td><td>11/12/2026</td></tr>
+
+    <tr class="phase"><td>5</td><td colspan="9">Closure Phase</td></tr>
+    <tr class="parent"><td>5.1</td><td>System Deployment</td><td>Dagatan, Las Pi&ntilde;as, Frejoles</td><td>4.3</td><td>Hosting platform, devices</td><td>Complete</td><td></td><td>11/12/2026</td><td>1 day</td><td>11/12/2026</td></tr>
+    <tr><td>5.1.1</td><td>Deploy to university</td><td>Dagatan, Las Pi&ntilde;as, Frejoles</td><td></td><td>Hosting platform</td><td>Complete</td><td></td><td>11/12/2026</td><td>1 day</td><td>11/12/2026</td></tr>
+    <tr><td>5.1.2</td><td>Verify system stability</td><td>Dagatan, Las Pi&ntilde;as</td><td>5.1.1</td><td>Monitoring tools</td><td>Complete</td><td></td><td>11/12/2026</td><td>1 day</td><td>11/12/2026</td></tr>
+    <tr class="parent"><td>5.2</td><td>Documentation</td><td>Las Pi&ntilde;as, Frejoles</td><td>5.1</td><td>Word processor, repository</td><td>Complete</td><td></td><td>11/12/2026</td><td>1 day</td><td>11/12/2026</td></tr>
+    <tr><td>5.2.1</td><td>Compile technical documentation</td><td>Dagatan, Las Pi&ntilde;as, Frejoles</td><td></td><td>Word processor</td><td>Complete</td><td></td><td>11/12/2026</td><td>1 day</td><td>11/12/2026</td></tr>
+    <tr><td>5.2.2</td><td>User manual and deployment guide</td><td>Las Pi&ntilde;as, Frejoles</td><td>5.2.1</td><td>Word processor, screenshots</td><td>Complete</td><td></td><td>11/12/2026</td><td>1 day</td><td>11/12/2026</td></tr>
+    <tr class="parent"><td>5.3</td><td>Panel Presentation</td><td>Dagatan, Las Pi&ntilde;as, Frejoles</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr><td>5.3.1</td><td>Prepare capstone defense materials</td><td>Dagatan, Las Pi&ntilde;as, Frejoles</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr><td>5.3.2</td><td>Conduct capstone defense</td><td>Dagatan, Las Pi&ntilde;as, Frejoles</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr class="parent"><td>5.4</td><td>Submission of Deliverables</td><td>Dagatan, Las Pi&ntilde;as, Frejoles</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr><td>5.4.1</td><td>Submit source code</td><td>Dagatan, Las Pi&ntilde;as, Frejoles</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr><td>5.4.2</td><td>Submit final documents</td><td>Dagatan, Las Pi&ntilde;as, Frejoles</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr class="parent"><td>5.5</td><td>Project Archiving and Handover</td><td>Dagatan, Las Pi&ntilde;as, Frejoles</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr><td>5.5.1</td><td>Backup final system</td><td>Dagatan, Las Pi&ntilde;as, Frejoles</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr><td>5.5.2</td><td>Handover to university/department</td><td>Dagatan, Las Pi&ntilde;as, Frejoles</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+
+  </tbody>
+</table>
+
+</body>
+</html>

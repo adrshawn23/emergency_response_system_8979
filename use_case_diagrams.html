@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  @page { size: A4 portrait; margin: 1.9cm 2cm; }
+  body { font-family: 'Times New Roman', Times, serif; font-size: 11.5pt; color: #000; margin: 0; }
+  h3 { font-weight: bold; margin: 0 0 6px; }
+  .figwrap { page-break-inside: avoid; }
+  .brk { page-break-before: always; }
+  .cap { text-align: center; font-weight: bold; margin: 6px 0 12px; }
+  svg { display: block; margin: 0 auto; }
+  .expl { text-align: justify; text-indent: 1.25cm; line-height: 1.5; margin: 10px 0 0; }
+  .uc { font-family: Arial, sans-serif; font-size: 10px; }
+</style>
+</head>
+<body>
+
+<h3>Analysis Phase</h3>
+<h3>Use Case Diagram</h3>
+
+<div id="figs"></div>
+
+<script>
+var SYS = 'Kalubihan Emergency Response System';
+
+function oval(t, x, y){ return {t:t, x:x, y:y}; }
+
+// Figures: actor label, canvas height, nodes, links
+// link kinds: '' solid association, 'inc' <<include>>, 'ext' <<extend>>, 'gen' generalization
+var F = [
+{ actor:'Admin', h:640, nodes:[
+  oval('Sign In',235,45),
+  oval('Account\nManagement',235,105),
+  oval('View Emergency\nContacts',235,165),
+  oval('User\nManagement',235,230),
+  oval('Access\nControl',235,300),
+  oval('Department\nManagement',235,365),
+  oval('Report\nViewing',235,435),
+  oval('Dashboard',235,500),
+  oval('Notifications',235,560),
+  oval('Forgot\nPassword',425,45),
+  oval('Reset Link\nvia Email',560,45),
+  oval('Log Out',425,90),
+  oval('Change\nPassword',425,125),
+  oval('Add Staff\nAccount',425,205),
+  oval('Validate\nSign Up',425,245),
+  oval('Approve',555,230),
+  oval('Disapprove\nw/ Notice',555,265),
+  oval('Change Page\nAccess',425,300),
+  oval('Add\nDepartment',425,350),
+  oval('Edit\nDepartment',425,385),
+  oval('View Emergency\nRecords',425,420),
+  oval('Assign\nResponder',425,460),
+  oval('View Graphical\nContent',425,495),
+  oval('View Boundary\nMap',560,500),
+  oval('View Alerts and\nUpdates',425,560)
+], links:[
+  ['a','Sign In'],['a','Account\nManagement'],['a','View Emergency\nContacts'],
+  ['a','User\nManagement'],['a','Access\nControl'],['a','Department\nManagement'],
+  ['a','Report\nViewing'],['a','Dashboard'],['a','Notifications'],
+  ['Sign In','Forgot\nPassword','ext'],
+  ['Forgot\nPassword','Reset Link\nvia Email','inc'],
+  ['Account\nManagement','Log Out','ext'],
+  ['Account\nManagement','Change\nPassword','ext'],
+  ['User\nManagement','Add Staff\nAccount','ext'],
+  ['User\nManagement','Validate\nSign Up','ext'],
+  ['Validate\nSign Up','Approve','ext'],
+  ['Validate\nSign Up','Disapprove\nw/ Notice','ext'],
+  ['Access\nControl','Change Page\nAccess','inc'],
+  ['Department\nManagement','Add\nDepartment','ext'],
+  ['Department\nManagement','Edit\nDepartment','ext'],
+  ['Report\nViewing','View Emergency\nRecords','inc'],
+  ['Report\nViewing','Assign\nResponder','ext'],
+  ['Dashboard','View Graphical\nContent','inc'],
+  ['Dashboard','View Boundary\nMap','inc'],
+  ['Notifications','View Alerts and\nUpdates','inc']
+]},
+
+{ actor:'Resident/\nBoarder', h:560, nodes:[
+  oval('Sign In',235,45),
+  oval('Sign Up',235,110),
+  oval('Account\nManagement',235,175),
+  oval('File Emergency\nReport',235,240),
+  oval('Track Report\nStatus',235,305),
+  oval('View Emergency\nContacts',235,370),
+  oval('View\nAnnouncements',235,435),
+  oval('Notifications',235,500),
+  oval('Forgot\nPassword',425,30),
+  oval('Reset Link\nvia Email',560,45),
+  oval('Input\nInformation',425,95),
+  oval('Upload\nValid ID',425,135),
+  oval('Log Out',425,170),
+  oval('Change\nPassword',425,205),
+  oval('Input Incident\nDetails',425,235),
+  oval('Upload Photo\nEvidence',560,265),
+  oval('View Alerts and\nUpdates',425,500)
+], links:[
+  ['a','Sign In'],['a','Sign Up'],['a','Account\nManagement'],
+  ['a','File Emergency\nReport'],['a','Track Report\nStatus'],
+  ['a','View Emergency\nContacts'],['a','View\nAnnouncements'],['a','Notifications'],
+  ['Sign In','Forgot\nPassword','ext'],
+  ['Forgot\nPassword','Reset Link\nvia Email','inc'],
+  ['Sign Up','Input\nInformation','inc'],
+  ['Sign Up','Upload\nValid ID','inc'],
+  ['Account\nManagement','Log Out','ext'],
+  ['Account\nManagement','Change\nPassword','ext'],
+  ['File Emergency\nReport','Input Incident\nDetails','inc'],
+  ['File Emergency\nReport','Upload Photo\nEvidence','inc'],
+  ['Notifications','View Alerts and\nUpdates','inc']
+]},
+
+{ actor:'Dispatcher', h:520, nodes:[
+  oval('Sign In',235,45),
+  oval('Account\nManagement',235,105),
+  oval('View Emergency\nContacts',235,165),
+  oval('Report\nHandling',235,230),
+  oval('Incident\nQueue',235,300),
+  oval('Broadcast\nAnnouncement',235,365),
+  oval('Notifications',235,430),
+  oval('Forgot\nPassword',425,45),
+  oval('Reset Link\nvia Email',560,45),
+  oval('Log Out',425,90),
+  oval('Change\nPassword',425,125),
+  oval('View\nReport',425,215),
+  oval('Accept',425,255),
+  oval('Decline',425,295),
+  oval('Provide\nReason',560,295),
+  oval('Turn\nOver',560,235),
+  oval('Assign\nDepartment',560,265),
+  oval('Assign\nResponder',425,330),
+  oval('Post\nAlert',425,365),
+  oval('View Alerts and\nUpdates',425,430)
+], links:[
+  ['a','Sign In'],['a','Account\nManagement'],['a','View Emergency\nContacts'],
+  ['a','Report\nHandling'],['a','Incident\nQueue'],['a','Broadcast\nAnnouncement'],
+  ['a','Notifications'],
+  ['Sign In','Forgot\nPassword','ext'],
+  ['Forgot\nPassword','Reset Link\nvia Email','inc'],
+  ['Account\nManagement','Log Out','ext'],
+  ['Account\nManagement','Change\nPassword','ext'],
+  ['Report\nHandling','View\nReport','inc'],
+  ['Report\nHandling','Accept','ext'],
+  ['Report\nHandling','Decline','ext'],
+  ['Decline','Provide\nReason','inc'],
+  ['Accept','Turn\nOver','ext'],
+  ['Turn\nOver','Assign\nDepartment','inc'],
+  ['Incident\nQueue','Assign\nResponder','ext'],
+  ['Broadcast\nAnnouncement','Post\nAlert','inc'],
+  ['Notifications','View Alerts and\nUpdates','inc']
+]},
+
+{ actor:'Responder', h:520, nodes:[
+  oval('Sign In',235,45),
+  oval('Account\nManagement',235,105),
+  oval('View Emergency\nContacts',235,165),
+  oval('Report\nViewing',235,225),
+  oval('Assignment\nHandling',235,290),
+  oval('Resolve\nIncident',235,360),
+  oval('Notifications',235,430),
+  oval('Forgot\nPassword',425,40),
+  oval('Upload\nValid ID',560,55),
+  oval('Log Out',425,90),
+  oval('Change\nPassword',425,125),
+  oval('View Assigned\nIncidents',425,225),
+  oval('Accept',425,275),
+  oval('Decline',425,310),
+  oval('Input Resolution\nNotes',425,355),
+  oval('Upload Resolution\nPhoto',560,365),
+  oval('View Alerts and\nUpdates',425,430)
+], links:[
+  ['a','Sign In'],['a','Account\nManagement'],['a','View Emergency\nContacts'],
+  ['a','Report\nViewing'],['a','Assignment\nHandling'],['a','Resolve\nIncident'],
+  ['a','Notifications'],
+  ['Sign In','Forgot\nPassword','ext'],
+  ['Sign In','Upload\nValid ID','inc'],
+  ['Account\nManagement','Log Out','ext'],
+  ['Account\nManagement','Change\nPassword','ext'],
+  ['Report\nViewing','View Assigned\nIncidents','inc'],
+  ['Assignment\nHandling','Accept','ext'],
+  ['Assignment\nHandling','Decline','ext'],
+  ['Resolve\nIncident','Input Resolution\nNotes','inc'],
+  ['Resolve\nIncident','Upload Resolution\nPhoto','inc'],
+  ['Notifications','View Alerts and\nUpdates','inc']
+]},
+
+{ actor:'Department\nAdmin', h:500, nodes:[
+  oval('Sign In',235,45),
+  oval('Account\nManagement',235,105),
+  oval('View Emergency\nContacts',235,165),
+  oval('Department\nManagement',235,230),
+  oval('Report\nViewing',235,300),
+  oval('Coordinate\nResponse',235,365),
+  oval('Notifications',235,430),
+  oval('Forgot\nPassword',425,45),
+  oval('Reset Link\nvia Email',560,45),
+  oval('Log Out',425,90),
+  oval('Change\nPassword',425,125),
+  oval('View\nMembers',425,215),
+  oval('Update Dept.\nInfo',425,255),
+  oval('View Department\nIncidents',425,300),
+  oval('Dispatch\nResponders',425,360),
+  oval('View Alerts and\nUpdates',425,430)
+], links:[
+  ['a','Sign In'],['a','Account\nManagement'],['a','View Emergency\nContacts'],
+  ['a','Department\nManagement'],['a','Report\nViewing'],['a','Coordinate\nResponse'],
+  ['a','Notifications'],
+  ['Sign In','Forgot\nPassword','ext'],
+  ['Forgot\nPassword','Reset Link\nvia Email','inc'],
+  ['Account\nManagement','Log Out','ext'],
+  ['Account\nManagement','Change\nPassword','ext'],
+  ['Department\nManagement','View\nMembers','inc'],
+  ['Department\nManagement','Update Dept.\nInfo','ext'],
+  ['Report\nViewing','View Department\nIncidents','inc'],
+  ['Coordinate\nResponse','Dispatch\nResponders','inc'],
+  ['Notifications','View Alerts and\nUpdates','inc']
+]}
+];
+
+var CAPTIONS = ['Admin','Resident','Dispatcher','Responder','Department Administrator'];
+var PARAS = [
+'The Kalubihan Emergency Response System allows the admin to oversee and manage all critical functions, including user and department management, access control, emergency records, and system notifications. After signing in, the admin can add or modify staff accounts (such as responders, dispatchers, and department administrators), validate sign-ups by checking submitted IDs, and either approve or disapprove access with appropriate notices. They can also configure which pages each role may open, add or edit department names, assign responders to incidents, and monitor reports and visual data on the dashboard. This centralized control ensures timely and organized emergency responses while maintaining secure and updated user access.',
+'Residents or boarders have access to the public-facing side of the Kalubihan Emergency Response System. They can sign up and sign in, with both processes requiring the upload of a valid ID for verification and extending to forgot password recovery through a reset link sent via email. Upon successful access, they can manage their accounts (with options to log out and change password) and view emergency contacts and announcements. Their critical role is filing emergency reports, which include incident details and can be accompanied by photo evidence providing detailed context. They can also track the status of their submitted reports, receive notifications, and view alerts and updates to stay informed about emergency events in their area.',
+'The Dispatcher role includes extended responsibilities over report handling in the Kalubihan Emergency Response System. They begin by signing in, with an option to retrieve a forgotten password through a reset link sent via email. They manage their account, with access to log out and change password features, and can view emergency contacts. Dispatchers are primarily responsible for report handling, which includes the ability to view, accept, or decline reports. If a report is accepted, they may choose to turn over the case, which includes assigning the department responsible for handling it. If a report is declined, a reason must be provided. They may also assign responders through the incident queue and post broadcast announcements. Like other users, they receive notifications and can view alerts and updates issued by the system or admins.',
+'The Responder in the Kalubihan Emergency Response System is granted access to several functionalities. They can sign in to the system, with an option to recover their credentials using the forgot password feature, and the system includes the functionality to upload a valid ID, which may be required during account creation or sensitive operations. Once signed in, they can access account management options, which include the ability to log out or change their password. They are also allowed to view emergency contacts to ensure they can respond appropriately during crises. In the context of reporting, responders can view assigned incidents and accept or decline assignments. When resolving an incident, they must input resolution notes and may upload a resolution photo as evidence. Additionally, they receive notifications and have the ability to view alerts and updates related to emergencies or system announcements.',
+'The Department Administrator oversees a specific department within the Kalubihan Emergency Response System. They sign in, with an option to recover a forgotten password through a reset link sent via email, and manage their account with the ability to log out or change their password. They can view emergency contacts and are responsible for department management, which includes viewing department members and updating department information. In the context of reporting, they can view incidents assigned to their department and coordinate the response, which includes dispatching responders to active incidents. Like other users, they receive notifications and can view alerts and updates issued by the system or admins.'
+];
+
+// ---- renderer ----
+function rx(t){ var w=Math.max.apply(null,t.split('\n').map(function(s){return s.length;})); return Math.max(42, w*3.6+12); }
+function ry(t){ return 13 + (t.split('\n').length-1)*7; }
+
+function edge(a, b, xr, yr){
+  // point on ellipse b boundary along a->b
+  var dx=b.x-a.x, dy=b.y-a.y;
+  var t=1/Math.sqrt((dx*dx)/(xr*xr)+(dy*dy)/(yr*yr));
+  return {x:b.x-dx*t*0.98, y:b.y-dy*t*0.98};
+}
+
+function render(f, idx){
+  var W=680, H=f.h, bx=115, bw=W-bx-15;
+  var s='<svg width="'+W+'" height="'+H+'" xmlns="http://www.w3.org/2000/svg">';
+  s+='<defs><marker id="arw'+idx+'" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6" fill="none" stroke="#000" stroke-width="1"/></marker></defs>';
+  s+='<rect x="'+bx+'" y="5" width="'+bw+'" height="'+(H-10)+'" fill="none" stroke="#000"/>';
+  s+='<text x="'+(bx+bw-4)+'" y="18" text-anchor="end" class="uc" style="font-size:9px" fill="#666">'+SYS+'</text>';
+
+  // actor
+  var ax=55, ay=H/2;
+  s+='<g stroke="#000" fill="none"><circle cx="'+ax+'" cy="'+(ay-38)+'" r="9"/><line x1="'+ax+'" y1="'+(ay-29)+'" x2="'+ax+'" y2="'+(ay+8)+'"/><line x1="'+(ax-15)+'" y1="'+(ay-15)+'" x2="'+(ax+15)+'" y2="'+(ay-15)+'"/><line x1="'+ax+'" y1="'+(ay+8)+'" x2="'+(ax-14)+'" y2="'+(ay+38)+'"/><line x1="'+ax+'" y1="'+(ay+8)+'" x2="'+(ax+14)+'" y2="'+(ay+38)+'"/></g>';
+  f.actor.split('\n').forEach(function(ln,i){ s+='<text x="'+ax+'" y="'+(ay+54+i*12)+'" text-anchor="middle" class="uc">'+ln+'</text>'; });
+
+  var byT={}; f.nodes.forEach(function(n){ byT[n.t]=n; });
+
+  // links
+  f.links.forEach(function(l){
+    var a = l[0]==='a' ? {x:ax+15,y:ay-15,t:''} : byT[l[0]];
+    var b = byT[l[1]]; var k=l[2]||'';
+    var p = edge(a,b,rx(b.t),ry(b.t));
+    var dash = k==='' ? '' : ' stroke-dasharray="4,3"';
+    var arrow = k==='' ? '' : ' marker-end="url(#arw'+idx+')"';
+    var sx = l[0]==='a' ? ax+12 : edge(b,a,rx(a.t),ry(a.t)).x;
+    var sy = l[0]==='a' ? ay : edge(b,a,rx(a.t),ry(a.t)).y;
+    s+='<line x1="'+sx+'" y1="'+sy+'" x2="'+p.x+'" y2="'+p.y+'" stroke="#000" stroke-width="1"'+dash+arrow+'/>';
+    if(k){ var mx=(sx+p.x)/2, my=(sy+p.y)/2-3; s+='<text x="'+mx+'" y="'+my+'" text-anchor="middle" class="uc" style="font-size:8.5px">&lt;&lt;'+(k==='inc'?'include':'extend')+'&gt;&gt;</text>'; }
+  });
+
+  // ovals
+  f.nodes.forEach(function(n){
+    var RX=rx(n.t), RY=ry(n.t);
+    s+='<ellipse cx="'+n.x+'" cy="'+n.y+'" rx="'+RX+'" ry="'+RY+'" fill="#fff" stroke="#000"/>';
+    n.t.split('\n').forEach(function(ln,i){
+      s+='<text x="'+n.x+'" y="'+(n.y+(i-(n.t.split('\n').length-1)/2)*11+4)+'" text-anchor="middle" class="uc">'+ln+'</text>';
+    });
+  });
+  s+='</svg>';
+  return s;
+}
+
+var out='';
+F.forEach(function(f,i){
+  out+='<div class="figwrap'+(i>0?' brk':'')+'">'+render(f,i)+
+    '<div class="cap">Figure '+(13+i)+': '+CAPTIONS[i]+' Use Case Diagram</div>'+
+    '<p class="expl">'+PARAS[i]+'</p></div>';
+});
+document.getElementById('figs').innerHTML=out;
+</script>
+
+</body>
+</html>

@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  @page { size: A4; margin: 2.5cm 2.8cm; }
+  body { font-family: 'Times New Roman', Times, serif; font-size: 11.5pt; line-height: 1.5; color: #000; margin: 0; }
+  .appx { text-align: center; margin-bottom: 16px; }
+  .appx div { margin: 2px 0; font-weight: bold; }
+  pre { font-family: Consolas, 'Courier New', monospace; font-size: 8.5pt; line-height: 1.35; margin: 0 0 14px; white-space: pre-wrap; }
+  .file { font-weight: bold; margin: 16px 0 2px; page-break-after: avoid; }
+  .desc { margin: 0 0 6px; font-style: italic; }
+  .intro { margin-bottom: 14px; }
+</style>
+</head>
+<body>
+
+<div class="appx">
+  <div>Appendix AB</div>
+  <div>Sample Source Code</div>
+</div>
+
+<p class="intro">The following excerpts present the entry point and main <em>index</em> modules of the Kalubihan Emergency Response System. A short description of each module's function is provided above its code listing.</p>
+
+<div class="file">src/index.jsx</div>
+<p class="desc">Application entry point. Mounts the React root component and reloads the page automatically when a stale bundle hits a missing-chunk error after a new deploy.</p>
+<pre>import React from "react";
+import { createRoot } from "react-dom/client";
+import App from "./App";
+import "./styles/tailwind.css";
+import "./styles/index.css";
+
+// After a new deploy, a still-open old bundle's dynamic import of a removed
+// hashed chunk 404s (served index.html - MIME error). Reload to fetch the
+// fresh index.html + matching assets.
+window.addEventListener("vite:preloadError", () =&gt; window.location.reload());
+
+const container = document.getElementById("root");
+const root = createRoot(container);
+
+root.render(&lt;App /&gt;);</pre>
+
+<div class="file">src/pages/login/index.jsx</div>
+<p class="desc">Login page controller. Submits credentials through AuthContext, surfaces authentication errors, and redirects already-signed-in users to the dashboard.</p>
+<pre>import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import LoginForm from './components/LoginForm';
+import LoginHeader from './components/LoginHeader';
+import LoginFooter from './components/LoginFooter';
+import TrustSignals from './components/TrustSignals';
+import { useAuth } from '../../contexts/AuthContext';
+
+const Login = () =&gt; {
+  const navigate = useNavigate();
+  const { signIn, user, profile } = useAuth();
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() =&gt; {
+    if (user &amp;&amp; profile) {
+      navigate('/', { replace: true });
+    }
+  }, [user, profile, navigate]);
+
+  const handleLogin = async (formData) =&gt; {
+    setIsLoading(true);
+    setError('');
+
+    try {
+      const { data, error: authError } = await signIn(formData.email.trim(), formData.password);
+      if (authError) throw authError;
+
+      // Suspended accounts DO sign in - Routes.jsx gates them to the
+      // SuspendedScreen (which shows the reason). Signing them out here
+      // would bounce them back to this form after a flash of that page.
+
+      navigate('/', { replace: true });
+    } catch (err) {
+      setError(err?.message || 'Login failed. Please try again later.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  ...</pre>
+
+<div class="file">src/pages/register/index.jsx</div>
+<p class="desc">Resident registration page. Collects personal information, account credentials, role selection, and emergency contact details, and validates that the email address is real and deliverable.</p>
+<pre>import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import Button from '../../components/ui/Button';
+import Input from '../../components/ui/Input';
+import { Checkbox } from '../../components/ui/Checkbox';
+import Icon from '../../components/AppIcon';
+import PersonalInfoSection from './components/PersonalInfoSection';
+import AccountCredentialsSection from './components/AccountCredentialsSection';
+import RoleSelectionSection from './components/RoleSelectionSection';
+import EmergencyContactSection from './components/EmergencyContactSection';
+import TrustIndicators from './components/TrustIndicators';
+import { useAuth } from '../../contexts/AuthContext';
+import { supabase } from '../../lib/supabase';
+
+// Emails must be real deliverable addresses - verification decisions are
+// emailed to this address, so a fake address means the applicant never
+// learns the outcome.
+const EMAIL_RE = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+
+const DISPOSABLE_EMAIL_DOMAINS = new Set([
+  'mailinator.com', 'tempmail.com', '10minutemail.com', 'guerrillamail.com',
+  'guerrillamail.net', 'yopmail.com', 'trashmail.com', 'dispostable.com',
+  'example.com', 'test.com', 'maildrop.cc', 'throwawaymail.com',
+]);
+
+// Frequent typos of popular providers - suggest the likely intended domain.
+const EMAIL_TYPO_DOMAINS = {
+  'gmial.com': 'gmail.com', 'gamil.com': 'gmail.com', 'gmal.com': 'gmail.com',
+  'gmaill.com': 'gmail.com', 'gmail.co': 'gmail.com', 'gmal.com.ph': 'gmail.com',
+  'yaho.com': 'yahoo.com', 'yahooo.com': 'yahoo.com', 'yhoo.com': 'yahoo.com',
+  'hotmal.com': 'hotmail.com', 'hotmial.com': 'hotmail.com', 'hotmali.com': 'hotmail.com',
+  'outlok.com': 'outlook.com', 'outloook.com': 'outlook.com', 'outlool.com': 'outlook.com',
+  'iclod.com': 'icloud.com', 'icoud.com': 'icloud.com',
+};
+
+const validateEmail = (raw) =&gt; {
+  const email = (raw || '').trim().toLowerCase();
+  if (!email) return 'Email is required';
+  if (email.includes(' ')) return 'Email must not contain spaces';
+  if (!EMAIL_RE.test(email)) {
+    return 'Enter a real email address (e.g., name@gmail.com) - decisions are emailed here';
+  }
+  ...</pre>
+
+<div class="file">src/pages/forgot-password/index.jsx</div>
+<p class="desc">Forgot-password page. Sends a Supabase password-recovery email and races the request against a 20-second timeout so the submit button never hangs on a dead network.</p>
+<pre>import React, { useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import Icon from '../../components/AppIcon';
+import { useMockData } from '../../contexts/MockDataContext';
+import { supabase } from '../../lib/supabase';
+
+const ForgotPassword = () =&gt; {
+  const navigate = useNavigate();
+  const { useMock } = useMockData();
+  const [email, setEmail] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [sent, setSent] = useState(false);
+
+  const handleSubmit = async (e) =&gt; {
+    e.preventDefault();
+    if (!email.trim()) {
+      setError('Please enter your email address.');
+      return;
+    }
+    setIsLoading(true);
+    setError('');
+    try {
+      if (useMock) {
+        // Mock mode: no real email provider - simulate success.
+        setSent(true);
+        return;
+      }
+      // supabase-js fetch has no default timeout - a dead network would leave
+      // the button spinning forever, so race it against a hard timeout.
+      const { error: resetError } = await Promise.race([
+        supabase.auth.resetPasswordForEmail(email.trim(), {
+          redirectTo: `${window.location.origin}/reset-password`,
+        }),
+        new Promise((_, reject) =&gt;
+          setTimeout(() =&gt; reject(new Error('Request timed out')), 20000)
+        ),
+      ]);
+      if (resetError) {
+        setError(resetError.message || 'Could not send reset email. Try again.');
+        return;
+      }
+      setSent(true);
+    } catch (err) {
+      setError('Could not send reset email. Try again.');
+      ...</pre>
+
+<div class="file">src/pages/reset-password/index.jsx</div>
+<p class="desc">Reset-password landing page. Waits for Supabase's PASSWORD_RECOVERY auth event from the emailed recovery link before allowing the user to set a new password.</p>
+<pre>import React, { useEffect, useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import Icon from '../../components/AppIcon';
+import { useMockData } from '../../contexts/MockDataContext';
+import { supabase } from '../../lib/supabase';
+
+// Landing page for the Supabase recovery link sent by /forgot-password.
+// supabase-js auto-exchanges the token in the URL hash and emits a
+// PASSWORD_RECOVERY auth event; only then is updateUser allowed.
+const ResetPassword = () =&gt; {
+  const navigate = useNavigate();
+  const { useMock } = useMockData();
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [done, setDone] = useState(false);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() =&gt; {
+    if (useMock) {
+      setReady(true);
+      return;
+    }
+    // Recovery link clicked - session established + PASSWORD_RECOVERY event.
+    const { data: subscription } = supabase.auth.onAuthStateChange((event) =&gt; {
+      if (event === 'PASSWORD_RECOVERY') setReady(true);
+    });
+    // If the user already has a valid recovery session (e.g. page refresh),
+    // getSession returns one without a second event.
+    supabase.auth.getSession().then(({ data }) =&gt; {
+      if (data?.session) setReady(true);
+    });
+    return () =&gt; subscription?.subscription?.unsubscribe?.();
+  }, [useMock]);
+  ...</pre>
+
+<div class="file">src/pages/emergency-report/index.jsx</div>
+<p class="desc">Resident emergency report form. Captures incident type, location with GPS metadata, priority, description, and photo evidence, and autosaves the draft to localStorage.</p>
+<pre>import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import Icon from '../../components/AppIcon';
+import Input from '../../components/ui/Input';
+import Button from '../../components/ui/Button';
+import Header from '../../components/ui/Header';
+import Sidebar from '../../components/ui/Sidebar';
+import BreadcrumbNavigation from '../../components/ui/BreadcrumbNavigation';
+import EmergencyTypeSelector from './components/EmergencyTypeSelector';
+import LocationInput from './components/LocationInput';
+import PrioritySelector from './components/PrioritySelector';
+import ImageUpload from './components/ImageUpload';
+import EmergencyContacts from './components/EmergencyContacts';
+import SubmissionProgress from './components/SubmissionProgress';
+import { useAuth } from '../../contexts/AuthContext';
+import { useMockData } from '../../contexts/MockDataContext';
+import { supabase } from '../../lib/supabase';
+
+const EmergencyReport = () =&gt; {
+  const navigate = useNavigate();
+  const { user, profile } = useAuth();
+  const { useMock } = useMockData();
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
+  // Form state
+  const [formData, setFormData] = useState({
+    emergencyType: '',
+    location: '',
+    priority: '',
+    description: '',
+    images: [],
+    locationMetadata: { source: 'manual', serviceArea: 'unverified' }
+  });
+
+  const [errors, setErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [reportNumber, setReportNumber] = useState(null);
+  const [submissionError, setSubmissionError] = useState(null);
+
+  // Auto-save to localStorage
+  useEffect(() =&gt; {
+    const savedData = localStorage.getItem('emergency-report-draft');
+    if (savedData) {
+      ...</pre>
+
+<div class="file">src/pages/report-management/index.jsx</div>
+<p class="desc">Incident queue and report management page. Filters and searches reports, shows status statistics, and opens the details, assign-responder, decline, and turnover modals.</p>
+<pre>import React, { useState, useEffect } from 'react';
+import Icon from '../../components/AppIcon';
+import Button from '../../components/ui/Button';
+import Input from '../../components/ui/Input';
+import BreadcrumbNavigation from '../../components/ui/BreadcrumbNavigation';
+import ReportFilters from './components/ReportFilters';
+import ReportTable from './components/ReportTable';
+import ReportDetailsModal from './components/ReportDetailsModal';
+import AssignResponderModal from './components/AssignResponderModal';
+import DeclineReasonModal from './components/DeclineReasonModal';
+import TurnoverReportModal from './components/TurnoverReportModal';
+import BulkActionsPanel from './components/BulkActionsPanel';
+import ReportStats from './components/ReportStats';
+import { useAuth } from '../../contexts/AuthContext';
+import { useMockData } from '../../contexts/MockDataContext';
+import { supabase } from '../../lib/supabase';
+
+const ReportManagement = () =&gt; {
+  const { user, profile } = useAuth();
+  const { useMock } = useMockData();
+  const [reports, setReports] = useState([]);
+  const [filteredReports, setFilteredReports] = useState([]);
+  const [selectedReports, setSelectedReports] = useState([]);
+  const [filters, setFilters] = useState({});
+  const [searchQuery, setSearchQuery] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [currentView, setCurrentView] = useState('table');
+
+  const [selectedReport, setSelectedReport] = useState(null);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [showDeclineModal, setShowDeclineModal] = useState(false);
+  const [showTurnoverModal, setShowTurnoverModal] = useState(false);
+
+  const breadcrumbItems = [
+    { label: 'Dashboard', path: '/' },
+    { label: 'Report Management', path: '/report-management' }
+  ];
+
+  const stats = {
+    total: reports?.length,
+    pending: reports?.filter(r =&gt; r?.status === 'pending')?.length,
+    assigned: reports?.filter(r =&gt; r?.status === 'assigned')?.length,
+    inProgress: reports?.filter(r =&gt; r?.status === 'in-progress')?.length,
+    resolved: reports?.filter(r =&gt; r?.status === 'resolved')?.length,
+    ...</pre>
+
+<div class="file">src/pages/department-management/index.jsx</div>
+<p class="desc">Department administration page. Manages response departments, member assignments, hierarchy view, statistics, and bulk operations.</p>
+<pre>import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import Icon from '../../components/AppIcon';
+import Button from '../../components/ui/Button';
+import Input from '../../components/ui/Input';
+import Select from '../../components/ui/Select';
+import Header from '../../components/ui/Header';
+import Sidebar from '../../components/ui/Sidebar';
+import BreadcrumbNavigation from '../../components/ui/BreadcrumbNavigation';
+import { useAuth } from '../../contexts/AuthContext';
+import { useMockData } from '../../contexts/MockDataContext';
+import { supabase } from '../../lib/supabase';
+
+// Import components
+import DepartmentCard from './components/DepartmentCard';
+import CreateDepartmentModal from './components/CreateDepartmentModal';
+import UserAssignmentPanel from './components/UserAssignmentPanel';
+import DepartmentHierarchy from './components/DepartmentHierarchy';
+import DepartmentStats from './components/DepartmentStats';
+import BulkOperationsPanel from './components/BulkOperationsPanel';
+
+const DepartmentManagement = () =&gt; {
+  const navigate = useNavigate();
+  const { user, profile } = useAuth();
+  const { useMock } = useMockData();
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [viewMode, setViewMode] = useState('grid');
+  const [selectedDepartments, setSelectedDepartments] = useState([]);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isAssignmentPanelOpen, setIsAssignmentPanelOpen] = useState(false);
+  const [selectedDepartmentForAssignment, setSelectedDepartmentForAssignment] = useState(null);
+  const [draggedDepartment, setDraggedDepartment] = useState(null);
+  const [departments, setDepartments] = useState([]);
+  const [availableUsers, setAvailableUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  ...</pre>
+
+<div class="file">src/pages/user-management/index.jsx</div>
+<p class="desc">User management page. Lists active users and pending registrations with role, department, and status filters, and loads user data from Supabase or mock data.</p>
+<pre>import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import Header from '../../components/ui/Header';
+import Sidebar from '../../components/ui/Sidebar';
+import BreadcrumbNavigation from '../../components/ui/BreadcrumbNavigation';
+import UserTable from './components/UserTable';
+import PendingRegistrations from './components/PendingRegistrations';
+import UserStatsCards from './components/UserStatsCards';
+import UserModal from './components/UserModal';
+import DepartmentDistribution from './components/DepartmentDistribution';
+import Button from '../../components/ui/Button';
+import Icon from '../../components/AppIcon';
+import { useAuth } from '../../contexts/AuthContext';
+import { useMockData } from '../../contexts/MockDataContext';
+import { supabase } from '../../lib/supabase';
+
+const UserManagement = () =&gt; {
+  const navigate = useNavigate();
+  const { user, profile } = useAuth();
+  const { useMock } = useMockData();
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [activeTab, setActiveTab] = useState('users');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedRole, setSelectedRole] = useState('');
+  const [selectedDepartment, setSelectedDepartment] = useState('');
+  const [selectedStatus, setSelectedStatus] = useState('');
+  const [userModal, setUserModal] = useState({ isOpen: false, user: null, mode: 'view' });
+  const [users, setUsers] = useState([]);
+  const [pendingUsers, setPendingUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() =&gt; {
+    const fetchUsers = async () =&gt; {
+      setLoading(true);
+      try {
+        if (useMock) {
+          // Use mock data
+          const activeUsers = mockUsers.filter(u =&gt; u.is_active);
+          const pendingUsersData = mockUsers.filter(u =&gt; !u.is_active);
+          setUsers(activeUsers);
+          setPendingUsers(pendingUsersData);
+        } else {
+          // Use Supabase
+          const { data: activeUsers, error: activeError } = await supabase
+            .from('user_profiles')
+            ...</pre>
+
+<div class="file">src/pages/resident-home/index.jsx</div>
+<p class="desc">Resident home screen. Shows the resident's verification status card, the incident list, and a sidebar whose links are filtered by the page-access permissions granted to the resident role.</p>
+<pre>import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import Icon from '../../components/AppIcon';
+import { useAuth } from '../../contexts/AuthContext';
+import { useMockData } from '../../contexts/MockDataContext';
+import NotificationBell from '../../components/NotificationBell';
+import IncidentDetailModal from '../../components/IncidentDetailModal';
+import SidebarProfile from '../../components/SidebarProfile';
+import AppSidebar from '../../components/AppSidebar';
+import useAnnouncementBadge from '../../hooks/useAnnouncementBadge';
+import { responderDeptIcon } from '../../utils/leafletIcon';
+import useResponderLocation from '../../hooks/useResponderLocation';
+import useResponderLocations from '../../hooks/useResponderLocations';
+import useDrivingRoutes from '../../hooks/useDrivingRoutes';
+import { reportCoords } from '../../utils/reportCoords';
+import { supabase } from '../../lib/supabase';
+import { submitIdForVerification } from '../../utils/verifyId';
+import useEscapeKey from '../../hooks/useEscapeKey';
+
+const VERIFICATION_COPY = {
+  pending: { tone: 'amber', label: 'Under review', text: 'Your ID submission is waiting for an administrator review. This usually takes 1-2 business days.' },
+  under_review: { tone: 'amber', label: 'Under review', text: 'Your ID submission is being reviewed by an administrator.' },
+  correction_required: { tone: 'red', label: 'Correction needed', text: 'The information on your ID did not match your registration. See the reason below, then resubmit a matching document.' },
+  needs_clarity: { tone: 'amber', label: 'Clearer photo needed', text: 'The reviewer could not read your ID clearly. Re-upload exactly what the note below asks for - usually a sharper, well-lit photo.' },
+  rejected: { tone: 'red', label: 'Not approved', text: 'Your registration could not be approved. You may resubmit a different document or contact the barangay office to appeal.' },
+};
+
+// Extra pages appear only when granted in Access control - canAccessPage
+// filters this list so the sidebar mirrors page_permissions.
+const RESIDENT_LINKS = [
+  { key: 'command', label: 'Home', icon: 'Home', path: '/' },
+  { key: 'new', label: 'Report emergency', icon: 'Siren', path: '/emergency-report' },
+  { key: 'queue', label: 'My reports', icon: 'FileText', path: '/report-management' },
+  { key: 'residents', label: 'Residents &amp; review', icon: 'Users', path: '/user-management' },
+  { key: 'departments', label: 'Departments', icon: 'Building2', path: '/department-management' },
+  { key: 'announcements', label: 'Announcements', icon: 'Megaphone', path: '/announcements' },
+  { key: 'contacts', label: 'Contacts', icon: 'Phone', path: '/contacts' },
+  { key: 'profile', label: 'Profile', icon: 'User', path: '/profile' }
+];
+
+export default function ResidentHome() {
+  const navigate = useNavigate();
+  const { profile, signOut, canAccessPage } = useAuth();
+  const { reports } = useMockData();
+  const annBadge = useAnnouncementBadge(profile);
+  ...</pre>
+
+<div class="file">src/pages/responder-view/index.jsx</div>
+<p class="desc">Responder response board. Displays incidents assigned to the responder with driving routes, incident chat, timeline, and the access-filtered sidebar.</p>
+<pre>import React, { useState, useEffect } from 'react';
+import Icon from '../../components/AppIcon';
+import { useAuth } from '../../contexts/AuthContext';
+import { useMockData } from '../../contexts/MockDataContext';
+import { supabase } from '../../lib/supabase';
+import NotificationBell from '../../components/NotificationBell';
+import SidebarProfile from '../../components/SidebarProfile';
+import BoundaryMap from '../../components/BoundaryMap';
+import IncidentChat from '../../components/IncidentChat';
+import { RESPONDER_ICON, responderDeptIcon } from '../../utils/leafletIcon';
+import useDrivingRoutes from '../../hooks/useDrivingRoutes';
+import { reportCoords } from '../../utils/reportCoords';
+import AppSidebar from '../../components/AppSidebar';
+import ServiceAreaBadge from '../../components/ServiceAreaBadge';
+import IncidentTimeline from '../../components/IncidentTimeline';
+import useAnnouncementBadge from '../../hooks/useAnnouncementBadge';
+import useIncidentHistory from '../../hooks/useIncidentHistory';
+import useAppSetting from '../../hooks/useAppSetting';
+import { haversineMeters } from '../../utils/distance';
+import useEscapeKey from '../../hooks/useEscapeKey';
+
+// Extra pages appear only when granted in Access control - canAccessPage
+// filters this list so the sidebar mirrors page_permissions.
+const RESPONDER_LINKS = [
+  { key: 'command', label: 'Response board', icon: 'Ambulance', path: '/' },
+  { key: 'queue', label: 'Incident queue', icon: 'ListChecks', path: '/report-management' },
+  { key: 'new', label: 'New incident', icon: 'PlusCircle', path: '/emergency-report' },
+  { key: 'departments', label: 'Departments', icon: 'Building2', path: '/department-management' },
+  { key: 'announcements', label: 'Announcements', icon: 'Megaphone', path: '/announcements' },
+  { key: 'contacts', label: 'Contacts', icon: 'Phone', path: '/contacts' },
+  { key: 'profile', label: 'Profile', icon: 'User', path: '/profile' }
+];
+
+export default function ResponderView() {
+  const { profile, signOut, canAccessPage } = useAuth();
+  const { reports: allReports, setReports } = useMockData();
+  const annBadge = useAnnouncementBadge(profile);
+  const links = RESPONDER_LINKS
+    .filter(l =&gt; canAccessPage(l.key, profile?.role))
+    .map(l =&gt; ({ ...l, badge: l.key === 'announcements' ? annBadge : undefined }));
+  const [assignedReports, setAssignedReports] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedReport, setSelectedReport] = useState(null);
+  const [resolutionPhoto, setResolutionPhoto] = useState(null);
+  const [resolving, setResolving] = useState(false);
+  ...</pre>
+
+<div class="file">src/pages/notifications/index.jsx</div>
+<p class="desc">Full notifications page shared by all roles. Uses the same data source and read-state mutations as the header notification bell.</p>
+<pre>import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import Icon from '../../components/AppIcon';
+import { useAuth } from '../../contexts/AuthContext';
+import useNotifications from '../../hooks/useNotifications';
+
+const TYPE_ICON = {
+  new_incident: 'Siren',
+  incident_status: 'RefreshCw',
+  assignment: 'UserCheck',
+  verification_decision: 'ShieldCheck',
+  pending_registration: 'UserPlus',
+  info: 'Bell',
+};
+
+// Full notifications list - shared across every role. Same data source and
+// read-state mutations as the header bell.
+export default function NotificationsPage() {
+  const navigate = useNavigate();
+  const { profile } = useAuth();
+  const { notifications, unreadCount, loading, error, markRead, markAllRead, refresh } =
+    useNotifications(profile?.id);
+
+  return (
+    &lt;div className="min-h-screen bg-slate-50"&gt;
+      &lt;header className="border-b border-slate-200 bg-white"&gt;
+        &lt;div className="mx-auto flex max-w-3xl items-center gap-3 px-5 py-4"&gt;
+          &lt;button onClick={() =&gt; navigate(-1)} aria-label="Back" className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"&gt;
+            &lt;Icon name="ArrowLeft" size={18}/&gt;
+          &lt;/button&gt;
+          &lt;h1 className="font-bold"&gt;Notifications&lt;/h1&gt;
+          {unreadCount &gt; 0 &amp;&amp; (
+            &lt;button onClick={markAllRead} className="ml-auto text-xs font-semibold text-taste-500 hover:underline"&gt;
+              Mark all as read ({unreadCount})
+            &lt;/button&gt;
+          )}
+        &lt;/div&gt;
+      &lt;/header&gt;
+      &lt;main className="mx-auto max-w-3xl px-5 py-6"&gt;
+        {loading &amp;&amp; &lt;p className="py-12 text-center text-sm text-slate-400"&gt;Loading...&lt;/p&gt;}
+        {!loading &amp;&amp; error &amp;&amp; (
+          &lt;div className="py-12 text-center"&gt;
+            &lt;p className="text-sm text-slate-500"&gt;Notifications are unavailable right now.&lt;/p&gt;
+            &lt;button onClick={refresh} className="mt-2 text-sm font-semibold text-taste-500 hover:underline"&gt;Try again&lt;/button&gt;
+          &lt;/div&gt;
+        ...</pre>
+
+<div class="file">src/pages/profile/index.jsx</div>
+<p class="desc">User profile page. Provides tabbed profile management including the change-password form with its own validation state.</p>
+<pre>import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import Header from '../../components/ui/Header';
+import Sidebar from '../../components/ui/Sidebar';
+import BreadcrumbNavigation from '../../components/ui/BreadcrumbNavigation';
+import Button from '../../components/ui/Button';
+import Input from '../../components/ui/Input';
+import Icon from '../../components/AppIcon';
+import { useAuth } from '../../contexts/AuthContext';
+import { useMockData } from '../../contexts/MockDataContext';
+
+const Profile = () =&gt; {
+  const navigate = useNavigate();
+  const { user, profile, signOut } = useAuth();
+  const { useMock } = useMockData();
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [activeTab, setActiveTab] = useState('profile');
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+
+  const [passwordErrors, setPasswordErrors] = useState({});
+  const [passwordSuccess, setPasswordSuccess] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const breadcrumbItems = [
+    { label: 'Dashboard', path: '/' },
+    { label: 'Profile', path: '/profile' }
+  ];
+
+  const handleNavigation = (path) =&gt; {
+    navigate(path);
+  };
+
+  const handlePasswordChange = async (e) =&gt; {
+    e.preventDefault();
+    setPasswordErrors({});
+    setPasswordSuccess('');
+    setIsSubmitting(true);
+    ...</pre>
+
+<div class="file">src/pages/dashboard/index.jsx</div>
+<p class="desc">Main dashboard shell. The role-based command center that renders the admin and dispatcher views, the Leaflet incident map with the service boundary, and lazily loaded report, announcement, contact, and metric sections.</p>
+<pre>import React, { useState, useEffect, useMemo, useRef, useCallback, lazy, Suspense } from 'react';
+import { useNavigate, Navigate } from 'react-router-dom';
+import Icon from '../../components/AppIcon';
+import { useAuth } from '../../contexts/AuthContext';
+import { useMockData } from '../../contexts/MockDataContext';
+import NotificationBell from '../../components/NotificationBell';
+import { supabase } from '../../lib/supabase';
+import DepartmentManagementSection from './components/DepartmentManagementSection';
+import CommandOps from './components/CommandOps';
+import UserAccessManager from './components/UserAccessManager';
+import PageAccessMatrix from './components/PageAccessMatrix';
+// Reports pulls in recharts via CommandAnalytics - lazy like the analytics card.
+const ReportsSection = lazy(() =&gt; import('./components/ReportsSection'));
+const AnnouncementsSection = lazy(() =&gt; import('./components/AnnouncementsSection'));
+const ContactsSection = lazy(() =&gt; import('./components/ContactsSection'));
+const MetricsSection = lazy(() =&gt; import('./components/MetricsSection'));
+import useIncidentAlarm from '../../hooks/useIncidentAlarm';
+import useAnnouncementBadge from '../../hooks/useAnnouncementBadge';
+import useForApprovalCount from '../../hooks/useForApprovalCount';
+import { isPointInBoundary } from '../../utils/geofence';
+import ResidentHome from '../resident-home';
+import ResponderView from '../responder-view';
+import { MapContainer, TileLayer, Polygon, Polyline, Marker, Popup, useMapEvents, useMap } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import '../../utils/leafletIcon';
+import BoundaryMap from '../../components/BoundaryMap';
+import ServiceAreaBadge from '../../components/ServiceAreaBadge';
+import IncidentTimeline from '../../components/IncidentTimeline';
+import useIncidentHistory from '../../hooks/useIncidentHistory';
+import useAppSetting from '../../hooks/useAppSetting';
+import AppSidebar from '../../components/AppSidebar';
+import useServiceBoundary from '../../hooks/useServiceBoundary';
+import useResponderLocation from '../../hooks/useResponderLocation';
+import useResponderLocations from '../../hooks/useResponderLocations';
+import usePendingRegistrations from '../../hooks/usePendingRegistrations';
+import useEscapeKey from '../../hooks/useEscapeKey';
+import { RESPONDER_ICON, responderDeptIcon, incidentIcon } from '../../utils/leafletIcon';
+import useDrivingRoutes from '../../hooks/useDrivingRoutes';
+import { reportCoords } from '../../utils/reportCoords';
+import { compareBirthdates } from '../../utils/verificationRules';
+
+const priorityStyles = {
+  critical: 'bg-rose-100 text-rose-700 ring-1 ring-inset ring-rose-600/25',
+  high: 'bg-orange-100 text-orange-700 ring-1 ring-inset ring-orange-600/25',
+  medium: 'bg-amber-100 text-amber-700 ring-1 ring-inset ring-amber-600/25',
+  low: 'bg-sky-100 text-taste-600 ring-1 ring-inset ring-sky-600/25'
+};
+
+const statusStyles = {
+  pending: 'bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-600/20',
+  assigned: 'bg-taste-50 text-taste-600 ring-1 ring-inset ring-taste-500/20',
+  'in-progress': 'bg-taste-50 text-taste-600 ring-1 ring-inset ring-sky-600/20',
+  resolved: 'bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20'
+};
+
+const formatStatus = (value) =&gt; value?.replace('-', ' ');
+
+const BoundaryEditor = ({ boundaryPoints, setBoundaryPoints }) =&gt; {
+  useMapEvents({
+    click(e) {
+      setBoundaryPoints([...boundaryPoints, { lat: e.latlng.lat, lng: e.latlng.lng }]);
+    }
+  });
+  return null;
+};
+
+// Fits the map once per change of the loaded boundary - a signature
+// keeps re-renders from resetting the user's view.
+const FitToBoundary = ({ positions }) =&gt; {
+  const map = useMap();
+  const signature = JSON.stringify(positions);
+  const last = useRef(null);
+  useEffect(() =&gt; {
+    if (positions.length &amp;&amp; signature !== last.current) {
+      last.current = signature;
+      map.fitBounds(positions, { padding: [24, 24] });
+    }
+  }, [signature]); // eslint-disable-line react-hooks/exhaustive-deps
+  return null;
+};
+
+const CommandCenterMap = ({ boundaryPoints, activeReport, responderMarkers = [], incidentMarkers = [], routes = [] }) =&gt; {
+  return (
+    &lt;MapContainer center={[10.3172, 123.8951]} zoom={13} zoomAnimation={false} style={{ height: '100%', width: '100%' }}&gt;
+      &lt;TileLayer attribution='&amp;copy; &lt;a href="https://www.openstreetmap.org/copyright"&gt;OpenStreetMap&lt;/a&gt; contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"/&gt;
+      {boundaryPoints.length &gt; 2 &amp;&amp; (
+        &lt;Polygon
+          positions={boundaryPoints.map(p =&gt; [p.lat, p.lng])}
+          color="#1b6c80"
+          fillColor="#1b6c80"
+          fillOpacity={0.08}
+        /&gt;
+      )}
+      &lt;FitToBoundary positions={boundaryPoints.length &gt; 2 ? boundaryPoints.map(p =&gt; [p.lat, p.lng]) : []} /&gt;
+      ...</pre>
+
+<div class="file">src/styles/index.css</div>
+<p class="desc">Global stylesheet. Sets the base font stack and the border-box sizing reset applied across the whole application.</p>
+<pre>body {
+  margin: 0;
+  padding: 0;
+  font-family: 'IBM Plex Sans', 'Inter', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}</pre>
+
+</body>
+</html>

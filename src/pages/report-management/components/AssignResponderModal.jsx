@@ -61,10 +61,9 @@ const AssignResponderModal = ({
 
   const departmentOptions = [
     { value: '', label: 'All Departments' },
-    { value: 'police', label: 'Police Department' },
-    { value: 'fire', label: 'Fire Department' },
-    { value: 'medical', label: 'Medical Services' },
-    { value: 'emergency', label: 'Emergency Management' }
+    { value: 'Disaster Response Team (BDRRMC)', label: 'Disaster Response Team (BDRRMC)' },
+    { value: 'Barangay Tanod / Peace and Order', label: 'Barangay Tanod / Peace and Order' },
+    { value: 'Health and First Aid Team', label: 'Health and First Aid Team' }
   ];
 
   const priorityOptions = [

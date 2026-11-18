@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  @page { size: A4; margin: 2.5cm 2cm; }
+  body { font-family: 'Times New Roman', Times, serif; color: #000; margin: 0; font-size: 12pt; line-height: 1.5; }
+  h2.sec { font-size: 12pt; margin: 34px 0 10px; text-transform: uppercase; font-weight: bold; }
+  h3.sub { font-size: 12pt; margin: 0 0 12px; font-weight: bold; }
+  p { margin: 10px 0; text-align: justify; }
+  p.indent { text-indent: 36px; }
+  ul.req { margin: 8px 0 16px; padding-left: 40px; list-style: none; }
+  ul.req li { margin: 6px 0; text-indent: -14px; }
+  ul.req li::before { content: '-\a0\a0'; }
+  .tbl-title { text-align: center; margin: 34px 0 10px; }
+  table.tc { width: 100%; border-collapse: collapse; font-size: 12pt; margin-bottom: 12px; }
+  table.tc td { border: 1.2pt solid #000; padding: 12px 14px; vertical-align: middle; }
+  table.tc td.k { width: 33%; }
+  table.tc td.v { text-align: center; }
+  ol.steps { margin: 0; padding-left: 0; list-style: none; text-align: center; }
+  ol.steps li { margin: 10px 0; }
+  .title-main { font-weight: bold; margin-top: 0; }
+</style>
+</head>
+<body>
+
+<p class="title-main">Test Plan</p>
+<p class="indent">The objective of this test plan is to ensure that all functionalities of the Kalubihan Emergency Response System work as intended and meet the user requirements. The system will undergo functional testing through defined test scenarios and test cases.</p>
+
+<div id="body"></div>
+
+<script>
+const sections = [
+  {
+    role: 'ADMIN',
+    sub: 'Admin User and Role Management',
+    scenario: 'Verify that the admin can view, approve, reject, suspend and reactivate user accounts, manage roles, page access, departments, advisories, and operational settings.',
+    requirements: [
+      'Admin has access to all user and role controls.',
+      'All changes should reflect immediately in the user database.',
+      'The system must send a notification email on account decisions.',
+      'Administrative actions must be recorded for activity tracking.',
+    ],
+    cases: [
+      {
+        name: 'T1 – Approve Pending Registration', scenario: 'User and Role Management',
+        desc: 'Approve a newly registered resident account',
+        prereq: 'Pending registration must exist in the system',
+        input: 'Registrant: juan.delacruz@email.com',
+        steps: ['Login as admin', 'Navigate to Residents & review', 'Locate the pending registrant', 'Review the submitted ID document', 'Click the "Approve" button'],
+        expected: 'The account status updates to "active", the user can sign in, and an approval email is sent',
+      },
+      {
+        name: 'T2 – Reject Registration', scenario: 'User and Role Management',
+        desc: 'Reject a registration with an invalid or unreadable ID',
+        prereq: 'Pending registration must exist in the system',
+        input: 'Registrant + reason: "ID photo unreadable"',
+        steps: ['Login as admin', 'Navigate to Residents & review', 'Locate the pending registrant', 'Click "Reject" and enter a reason', 'Confirm the decision'],
+        expected: 'The registration is marked rejected and a rejection email with the reason is sent to the user',
+      },
+      {
+        name: 'T3 – Suspend User Account', scenario: 'User and Role Management',
+        desc: 'Suspend an active user account with a reason',
+        prereq: 'An active user must exist in the system',
+        input: 'User: maria.santos, Reason: "Abuse of reporting feature"',
+        steps: ['Login as admin', 'Navigate to Access control', 'Locate the user in the list', 'Click "Suspend" and enter a reason', 'Confirm the suspension'],
+        expected: 'The account is marked suspended, the user can no longer sign in, and a suspension email is sent',
+      },
+      {
+        name: 'T4 – Reactivate Suspended Account', scenario: 'User and Role Management',
+        desc: 'Reactivate a previously suspended user account',
+        prereq: 'A suspended user must exist in the system',
+        input: 'User: maria.santos',
+        steps: ['Login as admin', 'Navigate to Access control', 'Locate the suspended user', 'Click the "Reactivate" button'],
+        expected: 'The account status returns to active, the user can sign in again, and a reactivation email is sent',
+      },
+      {
+        name: 'T5 – Assign Role to User', scenario: 'User and Role Management',
+        desc: 'Assign the "Dispatcher" role to a user',
+        prereq: 'User must exist in the system',
+        input: 'User ID: 3050, Role: Dispatcher',
+        steps: ['Login as admin', 'Navigate to Access control', 'Locate the user', 'Choose "Dispatcher" from the role dropdown'],
+        expected: 'The user role is updated and dispatcher pages appear on their next sign-in',
+      },
+      {
+        name: 'T6 – Grant Page Access by Role', scenario: 'Access Control',
+        desc: 'Grant the "Reports" page to the dispatcher role',
+        prereq: 'Admin logged in; page access matrix loaded',
+        input: 'Page: Reports, Role: Dispatcher',
+        steps: ['Login as admin', 'Navigate to Access control', 'Open the "Page access by role" matrix', 'Tick the checkbox for Reports × Dispatcher'],
+        expected: 'The permission is saved and dispatcher accounts immediately see the Reports page in the sidebar',
+      },
+      {
+        name: 'T7 – Post Emergency Advisory', scenario: 'Announcements',
+        desc: 'Publish a public emergency advisory',
+        prereq: 'Admin logged in',
+        input: 'Title: "Flooding on Main St.", Message: "Avoid the area until further notice."',
+        steps: ['Login as admin', 'Navigate to Announcements', 'Click "New advisory" and fill in the form', 'Publish the advisory'],
+        expected: 'The advisory appears on the announcements page for all roles and a broadcast email is sent to active residents',
+      },
+      {
+        name: 'T8 – Manage Departments', scenario: 'Departments',
+        desc: 'Create a response department and assign members',
+        prereq: 'Admin logged in',
+        input: 'Department: "Medical Services", Members: responder accounts',
+        steps: ['Login as admin', 'Navigate to Departments', 'Create a new department', 'Add members to the department'],
+        expected: 'The department is saved and its members appear under the department roster',
+      },
+      {
+        name: 'T9 – Edit Operational Settings', scenario: 'Operational Settings',
+        desc: 'Update the responder arrival radius and incident map radius',
+        prereq: 'Admin logged in',
+        input: 'Arrival radius: 150 m, Map radius: 300 m',
+        steps: ['Login as admin', 'Navigate to Command center', 'Open the operational settings control', 'Update the radius values and save'],
+        expected: 'The new values are persisted and maps/geofencing use the updated radii',
+      },
+      {
+        name: 'T10 – Export Incident Data', scenario: 'Reports',
+        desc: 'Export the incident records from the Reports page',
+        prereq: 'Admin logged in; at least one incident exists',
+        input: 'Filter: all incidents',
+        steps: ['Login as admin', 'Navigate to Reports', 'Apply desired filters', 'Click the export control'],
+        expected: 'The incident data is exported successfully with the applied filters',
+      },
+    ],
+  },
+  {
+    role: 'DISPATCHER',
+    sub: 'Dispatcher Incident Dispatch',
+    scenario: 'Verify that the dispatcher can view the live incident queue, file incidents, and dispatch departments and responders.',
+    requirements: [
+      'Dispatcher must be logged in.',
+      'The incident queue must update in real time.',
+      'Assigning a department must trigger the auto-dispatch workflow.',
+    ],
+    cases: [
+      {
+        name: 'T1 – View Incident Queue', scenario: 'Incident Dispatch',
+        desc: 'Open the incident queue and review incoming reports',
+        prereq: 'Dispatcher logged in; incidents exist',
+        input: 'None',
+        steps: ['Login as dispatcher', 'Navigate to Incident queue'],
+        expected: 'The queue lists open incidents with reporter, category, status, and time',
+      },
+      {
+        name: 'T2 – File Incident on Behalf of Caller', scenario: 'Incident Dispatch',
+        desc: 'Create a new incident from a walk-in or phone report',
+        prereq: 'Dispatcher logged in',
+        input: 'Category: Flood, Description: "Knee-deep water, Main St.", Location: pinned on map',
+        steps: ['Login as dispatcher', 'Navigate to New incident', 'Fill out the incident form', 'Submit the report'],
+        expected: 'The incident is created, appears in the queue, and a broadcast email is sent to active residents',
+      },
+      {
+        name: 'T3 – Assign Department to Incident', scenario: 'Incident Dispatch',
+        desc: 'Dispatch a response department to an open incident',
+        prereq: 'Dispatcher logged in; open incident exists',
+        input: 'Incident ID: RPT-1458, Department: Fire Department',
+        steps: ['Login as dispatcher', 'Open the Incident queue', 'Select the incident', 'Choose the Fire Department and confirm assignment'],
+        expected: 'The department is assigned, the auto-dispatch trigger creates the assignment record, and the incident status updates',
+      },
+      {
+        name: 'T4 – Assign Responder to Incident', scenario: 'Incident Dispatch',
+        desc: 'Assign a specific responder to an incident',
+        prereq: 'Dispatcher logged in; incident and responder exist',
+        input: 'Incident ID: RPT-1458, Responder: R. Cruz',
+        steps: ['Login as dispatcher', 'Open the incident detail', 'Select a responder from the assignment control', 'Confirm the assignment'],
+        expected: 'The responder is assigned and sees the incident on their Response board',
+      },
+    ],
+  },
+  {
+    role: 'RESPONDER',
+    sub: 'Responder Field Operations',
+    scenario: 'Verify that responders can view assigned incidents, share their location, mark arrival, request assistance, and resolve incidents with proof.',
+    requirements: [
+      'Responder must be logged in with an assigned incident.',
+      'Arrival must be logged inside the configured arrival radius.',
+      'Resolution requires a proof photo.',
+    ],
+    cases: [
+      {
+        name: 'T1 – View Assigned Incident', scenario: 'Field Operations',
+        desc: 'Open the Response board and view the assigned incident with its map',
+        prereq: 'Responder logged in; incident assigned to them',
+        input: 'None',
+        steps: ['Login as responder', 'Open the Response board', 'Select the assigned incident'],
+        expected: 'The incident details, location map, and reporter information are displayed',
+      },
+      {
+        name: 'T2 – Mark Arrived On-Scene', scenario: 'Field Operations',
+        desc: 'Log arrival at the incident location',
+        prereq: 'Responder assigned to an active incident and physically on-site',
+        input: 'GPS: device location within the arrival radius',
+        steps: ['Login as responder', 'Open the assigned incident', 'Tap "Arrived"'],
+        expected: 'An arrival timestamp is recorded and appears on the incident timeline',
+      },
+      {
+        name: 'T3 – Resolve Incident with Proof', scenario: 'Field Operations',
+        desc: 'Resolve an incident and attach a proof photo',
+        prereq: 'Responder assigned to an active incident',
+        input: 'Resolution note + proof photo',
+        steps: ['Login as responder', 'Open the assigned incident', 'Tap "Resolve"', 'Attach a proof photo and add a note', 'Confirm resolution'],
+        expected: 'The incident status becomes resolved, the proof photo is stored, and a resolved broadcast email is sent to residents',
+      },
+      {
+        name: 'T4 – Request Cross-Department Assistance', scenario: 'Field Operations',
+        desc: 'Request help from another department on an incident',
+        prereq: 'Responder assigned to an active incident; second department exists',
+        input: 'Department: Medical Services, Note: "Casualty on site"',
+        steps: ['Login as responder', 'Open the assigned incident', 'Request assistance and choose a department', 'Submit the request'],
+        expected: 'The target department sees the assistance request and the incident shows the request in progress',
+      },
+    ],
+  },
+  {
+    role: 'DEPARTMENT ADMIN',
+    sub: 'Department Administration',
+    scenario: 'Verify that department admins can view their department\'s incidents, manage memberships, and act on assistance requests.',
+    requirements: [
+      'Department admin must be logged in and linked to a department.',
+      'Membership changes must reflect immediately.',
+    ],
+    cases: [
+      {
+        name: 'T1 – View Department Incidents', scenario: 'Department Administration',
+        desc: 'View incidents dispatched to the department',
+        prereq: 'Department admin logged in; dispatched incidents exist',
+        input: 'None',
+        steps: ['Login as department admin', 'Navigate to Departments', 'Open the department incident list'],
+        expected: 'Only incidents assigned to the admin\'s department are listed',
+      },
+      {
+        name: 'T2 – Accept Assistance Request', scenario: 'Department Administration',
+        desc: 'Accept a cross-department assistance request',
+        prereq: 'An assistance request addressed to the department exists',
+        input: 'Request on incident RPT-1458',
+        steps: ['Login as department admin', 'Open the assistance request', 'Click "Accept"'],
+        expected: 'The request is marked accepted and the incident updates for all viewers',
+      },
+      {
+        name: 'T3 – Manage Department Memberships', scenario: 'Department Administration',
+        desc: 'Add or remove responders from the department',
+        prereq: 'Department admin logged in',
+        input: 'Responder account: R. Cruz',
+        steps: ['Login as department admin', 'Navigate to Departments', 'Open membership management', 'Add or remove a member'],
+        expected: 'The roster updates immediately and the member gains or loses department access',
+      },
+    ],
+  },
+  {
+    role: 'RESIDENT',
+    sub: 'Resident Registration and Reporting',
+    scenario: 'Verify that residents can register with ID verification, file emergency reports, track their reports, and receive announcements and email alerts.',
+    requirements: [
+      'Resident account must be verified to file reports.',
+      'Report form fields must be properly validated.',
+      'Photo attachments and GPS location must be captured.',
+      'Suspended accounts must be blocked at sign-in.',
+    ],
+    cases: [
+      {
+        name: 'T1 – Register with ID Upload', scenario: 'Registration',
+        desc: 'Register a new account and submit a valid ID for verification',
+        prereq: 'Registration page open; valid ID photo available',
+        input: 'Name, email, password, ID photo',
+        steps: ['Open the registration page', 'Fill out the registration form', 'Upload a clear ID photo', 'Submit the registration'],
+        expected: 'The account is created with pending status and a decision email is sent after admin review',
+      },
+      {
+        name: 'T2 – File Emergency Report', scenario: 'Emergency Reporting',
+        desc: 'Submit an emergency report with photo and GPS location',
+        prereq: 'Resident logged in with a verified account',
+        input: 'Category: Fire, Description: "Smoke at Brgy. Hall", Photo: attached, Location: GPS pinned',
+        steps: ['Login as resident', 'Navigate to Report emergency', 'Fill out the report form and attach a photo', 'Confirm the map location', 'Submit the report'],
+        expected: 'The report is created, appears in the incident queue, and a broadcast email is sent to all active residents',
+      },
+      {
+        name: 'T3 – File Report with Missing Fields', scenario: 'Emergency Reporting',
+        desc: 'Attempt to submit a report with required fields left blank',
+        prereq: 'Resident logged in with a verified account',
+        input: 'Category: none selected, Description: empty',
+        steps: ['Login as resident', 'Navigate to Report emergency', 'Leave required fields empty', 'Attempt to submit'],
+        expected: 'Validation errors are shown and the report is not submitted',
+      },
+      {
+        name: 'T4 – View My Reports', scenario: 'Emergency Reporting',
+        desc: 'Open My reports and check the status of submitted incidents',
+        prereq: 'Resident logged in with at least one submitted report',
+        input: 'None',
+        steps: ['Login as resident', 'Navigate to My reports', 'Open a report to view its timeline'],
+        expected: 'The resident sees only their own reports with current status and progress timeline',
+      },
+      {
+        name: 'T5 – View Announcements and Incident Feed', scenario: 'Announcements',
+        desc: 'Open the announcements page and view advisories and today\'s incidents',
+        prereq: 'Resident logged in',
+        input: 'None',
+        steps: ['Login as resident', 'Navigate to Announcements'],
+        expected: 'Advisories and the live incident feed are displayed',
+      },
+      {
+        name: 'T6 – Suspended Account Login Blocked', scenario: 'Account Security',
+        desc: 'Attempt to sign in with a suspended account',
+        prereq: 'A suspended resident account exists',
+        input: 'Suspended account credentials',
+        steps: ['Open the login page', 'Enter the suspended account credentials', 'Submit the login form'],
+        expected: 'Access is denied and the suspended screen shows the suspension reason',
+      },
+      {
+        name: 'T7 – Update Password', scenario: 'Account Security',
+        desc: 'Change the account password from the Profile page',
+        prereq: 'Resident logged in',
+        input: 'New password meeting the minimum strength rules',
+        steps: ['Login as resident', 'Navigate to Profile', 'Enter a new password and confirm', 'Save changes'],
+        expected: 'The password is updated and the user can sign in with the new password',
+      },
+    ],
+  },
+];
+
+const container = document.getElementById('body');
+let tableNo = 0;
+for (const s of sections) {
+  const h = document.createElement('h2'); h.className = 'sec'; h.textContent = s.role; container.appendChild(h);
+  const sub = document.createElement('h3'); sub.className = 'sub'; sub.textContent = s.sub; container.appendChild(sub);
+  const sp = document.createElement('p'); sp.className = 'indent'; sp.innerHTML = 'Test Scenario: ' + s.scenario; container.appendChild(sp);
+  const rp = document.createElement('p'); rp.className = 'indent'; rp.innerHTML = 'Requirements:'; container.appendChild(rp);
+  const ul = document.createElement('ul'); ul.className = 'req';
+  for (const r of s.requirements) { const li = document.createElement('li'); li.textContent = r; ul.appendChild(li); }
+  container.appendChild(ul);
+  for (const c of s.cases) {
+    tableNo++;
+    const t = document.createElement('p'); t.className = 'tbl-title';
+    t.innerHTML = `Table ${tableNo}.<br>${c.name.split('–')[1].trim()}`;
+    container.appendChild(t);
+    const rows = [
+      ['Test Case Name/ID', c.name],
+      ['Test Scenario', c.scenario],
+      ['Test Description', c.desc],
+      ['Prerequisite', c.prereq],
+      ['Text input', c.input],
+      ['Execution steps', '<ol class="steps">' + c.steps.map((x, i) => `<li>${i + 1}. ${x}</li>`).join('') + '</ol>', true],
+      ['Expected behavior', c.expected],
+      ['Actual Results', 'NA'],
+      ['Status', 'Not Tested'],
+    ];
+    const tbl = document.createElement('table'); tbl.className = 'tc';
+    for (const [k, v, raw] of rows) {
+      const tr = document.createElement('tr');
+      const td1 = document.createElement('td'); td1.className = 'k'; td1.textContent = k;
+      const td2 = document.createElement('td'); td2.className = 'v';
+      if (raw) td2.innerHTML = v; else td2.textContent = v;
+      tr.appendChild(td1); tr.appendChild(td2); tbl.appendChild(tr);
+    }
+    container.appendChild(tbl);
+  }
+}
+</script>
+</body>
+</html>

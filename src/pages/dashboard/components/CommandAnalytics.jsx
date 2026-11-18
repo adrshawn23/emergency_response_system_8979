@@ -5,6 +5,7 @@ import {
 } from 'recharts';
 import Icon from '../../../components/AppIcon';
 import { supabase } from '../../../lib/supabase';
+import IncidentHotspotMap from './IncidentHotspotMap';
 
 const DAY_MS = 86400000;
 const TYPE_COLORS = ['#0e7490', '#dc2626', '#d97706']; // cyan / red / amber for top-3 type lines
@@ -74,13 +75,18 @@ const trendPoints = (points) => {
   return points.map((p, x) => ({ ...p, trend: Math.max(0, +(slope * x + intercept).toFixed(2)) }));
 };
 
-const summarize = (reports, period, resolvedAt) => {
+// Reports inside the selected period — shared by stats and the hotspot map
+// so both always describe the same incident set.
+const periodRows = (reports, period) => {
   const days = period === 'week' ? 7 : period === 'month' ? 30 : 365;
   const cutoff = Date.now() - days * DAY_MS;
-  const rows = (reports || []).filter(r => {
+  return (reports || []).filter(r => {
     const t = when(r);
     return Number.isFinite(t) && t >= cutoff;
   });
+};
+
+const summarize = (rows, period, resolvedAt) => {
 
   const resolved = rows.filter(r => r.status === 'resolved');
   // Exact resolution time: created_at -> 'resolved' transition recorded in
@@ -164,7 +170,7 @@ const Breakdown = ({ title, icon, rows }) => {
   );
 };
 
-const CommandAnalytics = ({ reports }) => {
+const CommandAnalytics = ({ reports, isAdmin }) => {
   const [period, setPeriod] = useState('week'); // 'week' | 'month' | 'year'
   const [dept, setDept] = useState('all'); // department id, or 'all' for overall
   const [departments, setDepartments] = useState([]);
@@ -211,7 +217,8 @@ const CommandAnalytics = ({ reports }) => {
     );
   }, [reports, dept, departments]);
 
-  const stats = useMemo(() => summarize(scopedReports, period, resolvedAt), [scopedReports, period, resolvedAt]);
+  const periodFiltered = useMemo(() => periodRows(scopedReports, period), [scopedReports, period]);
+  const stats = useMemo(() => summarize(periodFiltered, period, resolvedAt), [periodFiltered, period, resolvedAt]);
 
   const headline = [
     ['Total incidents', stats.total, 'Siren'],
@@ -321,6 +328,10 @@ const CommandAnalytics = ({ reports }) => {
         <Breakdown title="By priority" icon="AlertTriangle" rows={stats.byPriority} />
         <Breakdown title="By assigned department" icon="Building2" rows={stats.byDept} />
       </div>
+
+      {/* Hotspot map — admin-only planning surface: typed pins, 100 m density
+          circles, and generated response suggestions. */}
+      {isAdmin && <IncidentHotspotMap rows={periodFiltered} />}
     </section>
   );
 };

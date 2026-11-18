@@ -35,9 +35,9 @@ const UserModal = ({
   ];
 
   const departmentOptions = [
-    { value: 'fire', label: 'Fire Department' },
-    { value: 'police', label: 'Police Department' },
-    { value: 'medical', label: 'Medical Services' },
+    { value: 'Disaster Response Team (BDRRMC)', label: 'Disaster Response Team (BDRRMC)' },
+    { value: 'Barangay Tanod / Peace and Order', label: 'Barangay Tanod / Peace and Order' },
+    { value: 'Health and First Aid Team', label: 'Health and First Aid Team' },
     { value: 'admin', label: 'Administration' }
   ];
 

@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  @page { size: A4 portrait; margin: 1.9cm 2cm; }
+  body { font-family: 'Times New Roman', Times, serif; font-size: 11.5pt; color: #000; margin: 0; }
+  h3 { font-weight: bold; margin: 0 0 14px; }
+  .figwrap { page-break-inside: avoid; }
+  .brk { page-break-before: always; }
+  svg { display: block; margin: 0 auto; }
+  .cap { text-align: center; font-weight: bold; margin: 8px 0 14px; }
+  .expl { text-align: justify; text-indent: 1.25cm; line-height: 1.5; margin: 10px 0 0; }
+  .lbl { font-family: Arial, sans-serif; font-size: 9px; }
+  .icn { font-size: 22px; }
+</style>
+</head>
+<body>
+
+<h3>Program Workflow</h3>
+<p class="expl">A program workflow visually depicts the logical order of steps within a system. This type of workflow works to capture and explain the mechanized nature of work execution, data processing, and the inter-relationship of modules or components within a system. This captures the intricate or complete explanation of the system behavior or architecture structure system. Moreover, it has some components like inputs, operations, decision points or processes, and outputs. Program workflows enable effective planning, troubleshooting, and optimization of system.</p>
+
+<div id="figs"></div>
+
+<script>
+// node: [x, y, emoji, 'Label\nLine2']
+// edge: array of [x,y] points; arrowhead drawn at last point
+function N(x,y,i,t){ return {x:x,y:y,i:i,t:t}; }
+function E(){ return [].slice.call(arguments); }
+
+var F = [
+{ actor:'Admin', h:600, nodes:[
+  N(230,60,'\u{1F511}','Sign In'),
+  N(370,60,'\u{1F512}','Forgot\nPassword'),
+  N(510,60,'\u{1F4E7}','Reset Link\nvia Email'),
+  N(230,125,'\u{2699}','Account\nManagement'),
+  N(370,110,'\u{1F512}','Change\nPassword'),
+  N(370,145,'\u{1F6AA}','Log Out'),
+  N(230,185,'\u{1F4DE}','Contacts'),
+  N(230,240,'\u{1F514}','Notifications'),
+  N(370,240,'\u{1F4E3}','Announcements'),
+  N(230,300,'\u{1F465}','Residents &\nreview'),
+  N(370,282,'\u{2795}','Add Staff\nAccount'),
+  N(370,320,'\u{2714}','Validate\nSign Up'),
+  N(510,290,'\u{2705}','Approve &\nSend Notice'),
+  N(510,332,'\u{274C}','Disapprove &\nSend Notice'),
+  N(230,365,'\u{1F6E1}','Access\ncontrol'),
+  N(370,365,'\u{1F511}','Change Page\nAccess'),
+  N(230,425,'\u{1F3E2}','Departments'),
+  N(370,410,'\u{270F}','Modify\nDepartment'),
+  N(370,442,'\u{2795}','Add\nDepartment'),
+  N(230,485,'\u{1F4CA}','Reports'),
+  N(370,485,'\u{1F4CB}','View Response\nReports'),
+  N(230,545,'\u{1F5A5}','Command\ncenter')
+], trunk:[60,545], edges:[
+  E([254,60],[336,60]), E([394,60],[476,60]),
+  E([254,125],[336,112]), E([254,125],[336,142]),
+  E([254,240],[336,240]),
+  E([254,300],[336,284]), E([254,300],[336,315]),
+  E([394,315],[476,290]), E([394,315],[476,330]),
+  E([254,365],[336,365]),
+  E([254,425],[336,412]), E([254,425],[336,438]),
+  E([254,485],[336,485])
+]},
+{ actor:'Resident/\nBoarder', h:530, nodes:[
+  N(230,60,'\u{1F511}','Sign In'),
+  N(370,60,'\u{1F512}','Forgot\nPassword'),
+  N(510,60,'\u{1F4E7}','Reset Link\nvia Email'),
+  N(230,115,'\u{1F4DD}','Sign Up'),
+  N(370,115,'\u{1F58A}','Input\nInformation'),
+  N(510,115,'\u{1F194}','Upload\nValid ID'),
+  N(230,175,'\u{2699}','Account\nManagement'),
+  N(370,160,'\u{1F512}','Change\nPassword'),
+  N(370,195,'\u{1F6AA}','Log Out'),
+  N(230,245,'\u{1F6A8}','Report\nemergency'),
+  N(370,245,'\u{1F4DD}','Input Incident\nDetails'),
+  N(510,245,'\u{1F4F7}','Upload Photo\nEvidence'),
+  N(620,245,'\u{1F4E4}','Send\nReport'),
+  N(230,310,'\u{1F4CB}','My reports'),
+  N(230,365,'\u{1F4DE}','Contacts'),
+  N(230,425,'\u{1F4E3}','Announcements'),
+  N(230,485,'\u{1F514}','Notifications'),
+  N(370,485,'\u{1F514}','View Alerts\nand Updates')
+], trunk:[60,485], edges:[
+  E([254,60],[336,60]), E([394,60],[476,60]),
+  E([254,115],[336,115]), E([394,115],[476,115]),
+  E([254,175],[336,163]), E([254,175],[336,190]),
+  E([254,245],[336,245]), E([394,245],[476,245]), E([534,245],[586,245]),
+  E([254,485],[336,485])
+]},
+{ actor:'Responder', h:490, nodes:[
+  N(230,60,'\u{1F511}','Sign In'),
+  N(370,60,'\u{1F512}','Forgot\nPassword'),
+  N(510,60,'\u{1F194}','Upload\nValid ID'),
+  N(230,120,'\u{2699}','Account\nManagement'),
+  N(370,105,'\u{1F512}','Change\nPassword'),
+  N(370,140,'\u{1F6AA}','Log Out'),
+  N(230,180,'\u{1F4DE}','Contacts'),
+  N(230,240,'\u{1F514}','Notifications'),
+  N(370,240,'\u{1F4E3}','Announcements'),
+  N(230,300,'\u{1F691}','Response\nboard'),
+  N(370,300,'\u{1F4CB}','View Assigned\nIncidents'),
+  N(230,365,'\u{2714}','Accept/Decline\nAssignment'),
+  N(370,350,'\u{2705}','Accept'),
+  N(370,385,'\u{274C}','Decline'),
+  N(230,430,'\u{1F6E0}','Resolve\nIncident'),
+  N(370,430,'\u{1F4DD}','Input Resolution\nNotes'),
+  N(510,430,'\u{1F4F7}','Upload Resolution\nPhoto')
+], trunk:[60,430], edges:[
+  E([254,60],[336,60]), E([394,60],[476,60]),
+  E([254,120],[336,107]), E([254,120],[336,137]),
+  E([254,240],[336,240]),
+  E([254,300],[336,300]),
+  E([254,365],[336,353]), E([254,365],[336,380]),
+  E([254,430],[336,430]), E([394,430],[476,430])
+]},
+{ actor:'Dispatcher', h:560, nodes:[
+  N(230,60,'\u{1F511}','Sign In'),
+  N(370,60,'\u{1F512}','Forgot\nPassword'),
+  N(510,60,'\u{1F4E7}','Reset Link\nvia Email'),
+  N(230,120,'\u{2699}','Account\nManagement'),
+  N(370,105,'\u{1F512}','Change\nPassword'),
+  N(370,140,'\u{1F6AA}','Log Out'),
+  N(230,180,'\u{1F4DE}','Contacts'),
+  N(230,240,'\u{1F5C2}','Incident\nqueue'),
+  N(370,240,'\u{1F441}','View\nReport'),
+  N(500,215,'\u{2705}','Accept'),
+  N(600,215,'\u{1F504}','Turn\nOver'),
+  N(500,270,'\u{274C}','Decline'),
+  N(600,270,'\u{2753}','Provide\nReason'),
+  N(370,300,'\u{1F4CC}','Assign\nResponder'),
+  N(230,340,'\u{2795}','New\nincident'),
+  N(370,340,'\u{1F4DD}','Input Incident\nDetails'),
+  N(230,400,'\u{1F4E3}','Announcements'),
+  N(370,400,'\u{1F4E4}','Post\nAlert'),
+  N(230,455,'\u{1F4CA}','Reports'),
+  N(370,455,'\u{1F4CB}','View\nReports'),
+  N(230,510,'\u{1F514}','Notifications')
+], trunk:[60,510], edges:[
+  E([254,60],[336,60]), E([394,60],[476,60]),
+  E([254,120],[336,107]), E([254,120],[336,137]),
+  E([254,240],[336,240]),
+  E([394,240],[466,217]), E([394,240],[466,268]),
+  E([524,215],[566,215]), E([524,270],[566,270]),
+  E([254,240],[320,240]), E([320,240],[320,300]), E([320,300],[336,300]),
+  E([254,340],[336,340]),
+  E([254,400],[336,400]),
+  E([254,455],[336,455])
+]},
+{ actor:'Department\nAdmin', h:450, nodes:[
+  N(230,60,'\u{1F511}','Sign In'),
+  N(370,60,'\u{1F512}','Forgot\nPassword'),
+  N(510,60,'\u{1F4E7}','Reset Link\nvia Email'),
+  N(230,120,'\u{2699}','Account\nManagement'),
+  N(370,105,'\u{1F512}','Change\nPassword'),
+  N(370,140,'\u{1F6AA}','Log Out'),
+  N(230,180,'\u{1F4DE}','Contacts'),
+  N(230,245,'\u{1F5C2}','Incident\nqueue'),
+  N(370,245,'\u{1F4CB}','View Department\nIncidents'),
+  N(510,245,'\u{1F4CC}','Assign\nResponders'),
+  N(230,310,'\u{1F4E3}','Announcements'),
+  N(230,370,'\u{1F514}','Notifications'),
+  N(370,370,'\u{1F514}','View Alerts\nand Updates')
+], trunk:[60,370], edges:[
+  E([254,60],[336,60]), E([394,60],[476,60]),
+  E([254,120],[336,107]), E([254,120],[336,137]),
+  E([254,245],[336,245]), E([394,245],[476,245]),
+  E([254,370],[336,370])
+]}
+];
+
+var CAPTIONS = ['All Actors (Admin)','Residents/Boarders','Responder','Dispatcher','Department Administrator'];
+var PARAS = [
+'The admin portal provides comprehensive tools for managing users, departments, and emergency systems. Admins begin by signing in, after which they can handle account management tasks like password changes and logging out. The command center offers oversight of contacts, notifications, announcements, and reports. A key page is Residents & review, where admins can add staff accounts, input user information, and validate uploaded IDs to approve or reject sign-ups, sending approval or disapproval notices accordingly. Access control lets admins configure which pages each role may open, while the Departments page allows restructuring teams and modifying or adding departments. The Reports page enables monitoring of emergency responses. This centralized system balances user oversight with operational tools for crisis management.',
+'Residents or boarders start by logging in or signing up with their information and a valid ID. If they forget their password, they can easily reset it through a reset link sent via email. Once inside, they can update their profile, change their password, and view contacts and announcements. Their core function is the Report emergency page, which requires inputting incident details and uploading photo evidence before the report is sent. The My reports page lets them track the status of submitted reports, and they are kept informed through notifications, alerts, and updates so no one misses important news.',
+'The responder starts by logging into the system, with the option to reset their password through an emailed reset link, and the system supports uploading a valid ID for verification if needed. Inside, they can manage their profile, change their password, and view contacts. They get notified about new or ongoing incidents and announcements, and the response board lets them view their assigned incidents in detail. For each assignment they can accept or decline, and when resolving an incident they input resolution notes and upload a resolution photo as evidence, keeping them informed and ready to act.',
+'The dispatcher logs in to start processing incident reports. If they have forgotten their password, it is an easy task to reset through a link sent via email. Inside, they can manage their profile and view contacts. Their primary work is in the incident queue: viewing each report with care and thoroughness, then accepting or declining it. If declined, they provide a reason; if accepted, the case can be turned over to another department, and responders are assigned to handle it. They can also file a new incident on behalf of callers, post alerts through the announcements page, and monitor outcomes through the reports page. Notifications keep them updated throughout the process, allowing smooth and responsible incident processing.',
+'The department administrator logs in to oversee their assigned department, with a forgotten-password option that sends a reset link via email. Once inside, they manage their account, change their password, and view contacts and announcements. Their central workspace is the incident queue, where they can view incidents assigned to their department and coordinate the response by assigning responders to active cases. Notifications, alerts, and updates keep them informed so departmental actions remain timely and organized.'
+];
+
+function render(f, idx){
+  var W=700, H=f.h, s='<svg width="'+W+'" height="'+H+'" xmlns="http://www.w3.org/2000/svg">';
+  s+='<defs><marker id="a'+idx+'" markerWidth="9" markerHeight="9" refX="7" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#000"/></marker></defs>';
+  // actor
+  s+='<text x="66" y="'+(f.trunk[0]+8)+'" text-anchor="middle" class="icn" style="font-size:30px">\u{1F464}</text>';
+  f.actor.split('\n').forEach(function(ln,i){ s+='<text x="66" y="'+(f.trunk[0]+30+i*11)+'" text-anchor="middle" class="lbl">'+ln+'</text>'; });
+  // trunk + stubs
+  s+='<line x1="150" y1="'+f.trunk[0]+'" x2="150" y2="'+f.trunk[1]+'" stroke="#000" stroke-width="1.4"/>';
+  s+='<polyline points="86,'+f.trunk[0]+' 150,'+f.trunk[0]+'" fill="none" stroke="#000" stroke-width="1.4" marker-end="url(#a'+idx+')"/>';
+  f.nodes.forEach(function(n){
+    if(n.x===230){
+      s+='<line x1="150" y1="'+n.y+'" x2="196" y2="'+n.y+'" stroke="#000" stroke-width="1.4" marker-end="url(#a'+idx+')"/>';
+    }
+  });
+  // edges
+  f.edges.forEach(function(e){
+    s+='<polyline points="'+e.map(function(p){return p.join(',');}).join(' ')+'" fill="none" stroke="#000" stroke-width="1.4" marker-end="url(#a'+idx+')"/>';
+  });
+  // nodes
+  f.nodes.forEach(function(n){
+    s+='<text x="'+n.x+'" y="'+(n.y+8)+'" text-anchor="middle" class="icn">'+n.i+'</text>';
+    n.t.split('\n').forEach(function(ln,i){
+      s+='<text x="'+n.x+'" y="'+(n.y+22+i*10)+'" text-anchor="middle" class="lbl">'+ln+'</text>';
+    });
+  });
+  return s+'</svg>';
+}
+
+var out='';
+F.forEach(function(f,i){
+  out+='<div class="figwrap'+(i>0?' brk':'')+'">'+render(f,i)+
+    '<div class="cap">Figure '+(7+i)+': '+CAPTIONS[i]+' Program Workflow</div>'+
+    '<p class="expl">'+PARAS[i]+'</p></div>';
+});
+document.getElementById('figs').innerHTML=out;
+</script>
+
+</body>
+</html>

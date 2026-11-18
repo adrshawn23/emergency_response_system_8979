@@ -8,67 +8,67 @@ const EmergencyTypeSelector = ({
 }) => {
   const emergencyTypes = [
     {
+      id: 'flood',
+      label: 'Flood',
+      icon: 'CloudRain',
+      color: 'text-sky-600',
+      bgColor: 'bg-sky-50 hover:bg-sky-100',
+      borderColor: 'border-sky-200',
+      description: 'Rising water, submerged areas — Disaster Response Team'
+    },
+    {
       id: 'fire',
-      label: 'Fire Emergency',
+      label: 'Fire',
       icon: 'Flame',
       color: 'text-red-600',
       bgColor: 'bg-red-50 hover:bg-red-100',
       borderColor: 'border-red-200',
-      description: 'Building fires, wildfires, smoke'
+      description: 'Building fires, smoke — Disaster Response Team + BFP'
     },
     {
-      id: 'medical',
-      label: 'Medical Emergency',
-      icon: 'Heart',
-      color: 'text-pink-600',
-      bgColor: 'bg-pink-50 hover:bg-pink-100',
-      borderColor: 'border-pink-200',
-      description: 'Injuries, illness, accidents'
-    },
-    {
-      id: 'police',
-      label: 'Police Emergency',
+      id: 'theft',
+      label: 'Theft / Pickpocketing',
       icon: 'Shield',
       color: 'text-blue-600',
       bgColor: 'bg-blue-50 hover:bg-blue-100',
       borderColor: 'border-blue-200',
-      description: 'Crime, violence, security threats'
+      description: 'Stolen items, snatching — Barangay Tanod + PNP'
     },
     {
-      id: 'natural',
-      label: 'Natural Disaster',
-      icon: 'CloudRain',
-      color: 'text-green-600',
-      bgColor: 'bg-green-50 hover:bg-green-100',
-      borderColor: 'border-green-200',
-      description: 'Floods, storms, earthquakes'
+      id: 'medical',
+      label: 'Medical Emergency',
+      icon: 'HeartPulse',
+      color: 'text-pink-600',
+      bgColor: 'bg-pink-50 hover:bg-pink-100',
+      borderColor: 'border-pink-200',
+      description: 'Injuries, illness — Health & First Aid Team + ambulance'
     },
     {
-      id: 'utility',
-      label: 'Utility Emergency',
-      icon: 'Zap',
-      color: 'text-yellow-600',
-      bgColor: 'bg-yellow-50 hover:bg-yellow-100',
-      borderColor: 'border-yellow-200',
-      description: 'Power outages, gas leaks, water issues'
-    },
-    {
-      id: 'traffic',
-      label: 'Traffic Accident',
+      id: 'accident',
+      label: 'Road Accident',
       icon: 'Car',
       color: 'text-orange-600',
       bgColor: 'bg-orange-50 hover:bg-orange-100',
       borderColor: 'border-orange-200',
-      description: 'Vehicle accidents, road hazards'
+      description: 'Vehicle crashes, road hazards — First Aid + Tanod'
     },
     {
-      id: 'hazmat',
-      label: 'Hazardous Materials',
-      icon: 'AlertTriangle',
+      id: 'assault',
+      label: 'Assault / Robbery / Fight',
+      icon: 'ShieldAlert',
       color: 'text-purple-600',
       bgColor: 'bg-purple-50 hover:bg-purple-100',
       borderColor: 'border-purple-200',
-      description: 'Chemical spills, toxic substances'
+      description: 'Violence in progress — Barangay Tanod + PNP'
+    },
+    {
+      id: 'structural',
+      label: 'Fallen Tree / Trapped',
+      icon: 'TreePine',
+      color: 'text-green-600',
+      bgColor: 'bg-green-50 hover:bg-green-100',
+      borderColor: 'border-green-200',
+      description: 'Damaged structures, someone trapped — Disaster Response Team'
     },
     {
       id: 'other',

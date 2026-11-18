@@ -4,6 +4,7 @@ import Button from '../../../components/ui/Button';
 import Image from '../../../components/AppImage';
 import IncidentTimeline from '../../../components/IncidentTimeline';
 import { supabase } from '../../../lib/supabase';
+import { responseGuideFor } from '../../../utils/incidentResponse';
 
 const ReportDetailsModal = ({ 
   report, 
@@ -14,6 +15,36 @@ const ReportDetailsModal = ({
 }) => {
   const [activeTab, setActiveTab] = useState('details');
   const [priorIncidents, setPriorIncidents] = useState(null);
+  const [clusterReports, setClusterReports] = useState(null);
+
+  // Linked corroborating reports (same incident, multiple reporters). The
+  // cluster key is report.cluster_id for members, report.id for the primary.
+  useEffect(() => {
+    if (!isOpen || !report?.id) return undefined;
+    const key = report.cluster_id || report.id;
+    let live = true;
+    supabase
+      .from('emergency_reports')
+      .select('id, report_id, cluster_id, created_at, status, attachments')
+      .or(`id.eq.${key},cluster_id.eq.${key}`)
+      .order('created_at', { ascending: true })
+      .then(({ data }) => { if (live) setClusterReports(data ?? []); });
+    return () => { live = false; setClusterReports(null); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, report?.id, report?.cluster_id]);
+
+  // Corroborating reporters — every row in the cluster, each with its own
+  // contact name and evidence photos.
+  const corroborations = (clusterReports || []).map(r => ({
+    id: r.id,
+    report_id: r.report_id,
+    name: r.attachments?.contact_name || 'Resident',
+    created_at: r.created_at,
+    images: Array.isArray(r.attachments?.images) ? r.attachments.images : [],
+    isPrimary: !r.cluster_id,
+  }));
+  const primaryImages = corroborations.find(c => c.isPrimary)?.images
+    || (Array.isArray(report?.attachments?.images) ? report.attachments.images : report?.images || []);
 
   // Resident-history lookup (spec 004 US5): every other incident this
   // reporter filed — repeat alarms and pattern triage at a glance.
@@ -61,6 +92,10 @@ const ReportDetailsModal = ({
       case 'police': return 'Shield';
       case 'accident': return 'Car';
       case 'natural': return 'CloudRain';
+      case 'flood': return 'CloudRain';
+      case 'theft': return 'Shield';
+      case 'assault': return 'ShieldAlert';
+      case 'structural': return 'TreePine';
       default: return 'AlertTriangle';
     }
   };
@@ -135,23 +170,58 @@ const ReportDetailsModal = ({
         <div className="p-6 overflow-y-auto max-h-96">
           {activeTab === 'details' && (
             <div className="space-y-6">
+              {(() => { const guide = responseGuideFor(report); return guide && (
+                <div className="rounded-md border border-sky-200 bg-sky-50 p-3 text-sm">
+                  <p className="flex items-center gap-1.5 font-medium text-sky-900">
+                    <Icon name="Landmark" size={14}/> Barangay response:
+                    <span className="font-normal text-sky-800">{guide.responders}</span>
+                  </p>
+                  <p className="mt-1 flex items-center gap-1.5 font-medium text-sky-900">
+                    <Icon name="Phone" size={14}/> Coordinate with:
+                    <span className="font-normal text-sky-800">{guide.coordinate}</span>
+                  </p>
+                </div>
+              );})()}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-4">
                   <div>
-                    <label className="text-sm font-medium text-foreground">Reporter Information</label>
+                    <label className="text-sm font-medium text-foreground">
+                      Reporter Information{corroborations.length > 1 ? ` (${corroborations.length} reporters)` : ''}
+                    </label>
                     <div className="mt-2 p-3 bg-muted rounded-md">
                       <div className="flex items-center space-x-3">
                         <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
                           <span className="text-sm font-medium text-white">
-                            {report?.contact_name?.charAt(0)}
+                            {(report?.contact_name || report?.attachments?.contact_name || '?')?.charAt(0)}
                           </span>
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-foreground">{report?.contact_name}</p>
-                          <p className="text-xs text-muted-foreground">{report?.contact_phone}</p>
+                          <p className="text-sm font-medium text-foreground">
+                            {report?.contact_name || report?.attachments?.contact_name}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {report?.contact_phone || report?.attachments?.contact_phone}
+                          </p>
                         </div>
                       </div>
                     </div>
+                    {corroborations.length > 1 && (
+                      <div className="mt-2 space-y-1">
+                        {corroborations.map(c => (
+                          <div key={c.id} className="flex items-center justify-between rounded-md border border-border bg-muted/50 px-3 py-1.5">
+                            <div className="flex items-center space-x-2">
+                              <Icon name="User" size={12} className="text-muted-foreground" />
+                              <span className="text-sm text-foreground">
+                                {c.name}{c.isPrimary ? ' (first report)' : ''}
+                              </span>
+                            </div>
+                            <span className="text-xs text-muted-foreground">
+                              {new Date(c.created_at).toLocaleTimeString()}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   <div>
@@ -250,9 +320,9 @@ const ReportDetailsModal = ({
             <div className="space-y-4">
               <div>
                 <label className="text-sm font-medium text-foreground">Attached Images</label>
-                {report?.images && report?.images?.length > 0 ? (
+                {primaryImages.length > 0 ? (
                   <div className="mt-2 grid grid-cols-2 md:grid-cols-3 gap-4">
-                    {report?.images?.map((image, index) => (
+                    {primaryImages.map((image, index) => (
                       <div key={index} className="relative group">
                         <Image
                           src={image}
@@ -277,6 +347,25 @@ const ReportDetailsModal = ({
                   </div>
                 )}
               </div>
+
+              {/* Photos attached by each corroborating reporter */}
+              {corroborations.filter(c => !c.isPrimary && c.images.length > 0).map(c => (
+                <div key={c.id}>
+                  <label className="text-sm font-medium text-foreground">
+                    Photos from {c.name}
+                  </label>
+                  <div className="mt-2 grid grid-cols-2 md:grid-cols-3 gap-4">
+                    {c.images.map((image, index) => (
+                      <Image
+                        key={index}
+                        src={image}
+                        alt={`Evidence from ${c.name} ${index + 1}`}
+                        className="w-full h-32 object-cover rounded-md"
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
 

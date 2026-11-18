@@ -122,7 +122,7 @@ const LocationInput = ({
               ? 'Service-area verification unavailable — no active boundary is configured in Supabase. Dispatch will triage this report.'
               : insideServiceArea
                 ? 'Inside the configured Barangay Kalubihan service boundary.'
-                : 'Outside the configured service boundary. Your report will still be submitted as Outside Service Area for dispatcher triage.'}
+                : 'Outside the configured service boundary. Emergency reports cannot be submitted from this location.'}
           </div>
           {boundaryName && <p className="mt-2 text-xs text-muted-foreground">Boundary: {boundaryName} (administrator-managed in Supabase).</p>}
           <div className="mt-3 h-52 overflow-hidden rounded-md border border-border">

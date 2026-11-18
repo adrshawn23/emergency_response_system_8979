@@ -49,20 +49,28 @@ export const responderDeptIcon = (deptName) => {
   return icon;
 };
 
-// Colored letter-badge dots for incident types on the command map.
-const INCIDENT_COLORS = {
-  fire: '#dc2626', medical: '#db2777', police: '#2563eb', natural: '#16a34a',
-  utility: '#ca8a04', traffic: '#ea580c', hazmat: '#9333ea', other: '#475569',
-};
-const INCIDENT_LETTERS = {
-  fire: 'F', medical: 'M', police: 'P', natural: 'N',
-  utility: 'U', traffic: 'T', hazmat: 'H', other: '?',
+// Colored letter-badge dots for incident types. Keys cover both the current
+// barangay taxonomy (RESPONSE_GUIDE) and legacy/enum drift seen in old data.
+export const INCIDENT_TYPE_STYLE = {
+  fire:       { c: '#dc2626', l: 'F'  },
+  flood:      { c: '#0891b2', l: 'W'  },
+  theft:      { c: '#9333ea', l: 'T'  },
+  medical:    { c: '#db2777', l: 'M'  },
+  accident:   { c: '#ea580c', l: 'R'  },
+  assault:    { c: '#991b1b', l: 'A'  },
+  structural: { c: '#a16207', l: 'S'  },
+  police:     { c: '#2563eb', l: 'P'  },
+  natural:    { c: '#16a34a', l: 'N'  },
+  utility:    { c: '#ca8a04', l: 'U'  },
+  traffic:    { c: '#ea580c', l: 'R'  },
+  hazmat:     { c: '#9333ea', l: 'H'  },
+  other:      { c: '#475569', l: '?'  },
 };
 export const incidentIcon = (type) => {
-  const t = INCIDENT_COLORS[type] ? type : 'other';
+  const s = INCIDENT_TYPE_STYLE[type] || INCIDENT_TYPE_STYLE.other;
   return L.divIcon({
     className: 'ers-inc',
-    html: `<div class="ers-inc__dot" style="background:${INCIDENT_COLORS[t]}">${INCIDENT_LETTERS[t]}</div>`,
+    html: `<div class="ers-inc__dot" style="background:${s.c}">${s.l}</div>`,
     iconSize: [24, 24],
     iconAnchor: [12, 12],
     popupAnchor: [0, -12],

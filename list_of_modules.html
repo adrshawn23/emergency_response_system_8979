@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  @page { size: A4; margin: 2.5cm 2cm; }
+  body { font-family: 'Times New Roman', Times, serif; color: #000; margin: 0; }
+  .page-num { text-align: right; font-size: 14pt; }
+  h2 { text-align: center; font-size: 15pt; margin: 24px 0 4px; }
+  h3 { text-align: center; font-size: 15pt; margin: 0 0 28px; font-weight: bold; }
+  table { width: 100%; border-collapse: collapse; font-size: 11.5pt; }
+  th, td { border: 1px solid #000; padding: 5px 8px; }
+  th { font-weight: bold; text-align: center; }
+  td.role { text-align: center; }
+  tr.section td { font-weight: bold; text-transform: uppercase; text-align: left; }
+  td.sub { padding-left: 22px; }
+  .fn { font-size: 10.5pt; margin-top: 14px; }
+</style>
+</head>
+<body>
+
+<h2>Appendix N</h2>
+<h3>List of Modules</h3>
+
+<table>
+  <tr>
+    <th style="width:34%">Modules</th>
+    <th>Admin</th>
+    <th>Dispatcher</th>
+    <th>Dept. Admin</th>
+    <th>Responder</th>
+    <th>Resident</th>
+  </tr>
+
+  <tr class="section"><td colspan="6">User Accounts &amp; Authentication</td></tr>
+  <tr><td>Register (with ID upload)</td><td class="role"></td><td class="role"></td><td class="role"></td><td class="role"></td><td class="role">*</td></tr>
+  <tr><td>Log-in / Log-out</td><td class="role">*</td><td class="role">*</td><td class="role">*</td><td class="role">*</td><td class="role">*</td></tr>
+  <tr><td>Update / Reset Password</td><td class="role">*</td><td class="role">*</td><td class="role">*</td><td class="role">*</td><td class="role">*</td></tr>
+  <tr><td>Suspended Account Screen</td><td class="role"></td><td class="role"></td><td class="role"></td><td class="role"></td><td class="role">*</td></tr>
+
+  <tr class="section"><td colspan="6">Command Center / Home (landing page) &#8224;</td></tr>
+  <tr><td class="sub">Live Incident Map &amp; Operations Board</td><td class="role">*</td><td class="role">*</td><td class="role">*</td><td class="role">*</td><td class="role"></td></tr>
+  <tr><td class="sub">Operational Settings (arrival &amp; map radii)</td><td class="role">*</td><td class="role"></td><td class="role"></td><td class="role"></td><td class="role"></td></tr>
+  <tr><td class="sub">ID Verification Card &amp; Resubmission</td><td class="role"></td><td class="role"></td><td class="role"></td><td class="role"></td><td class="role">*</td></tr>
+  <tr><td class="sub">Assigned-Incident Response Board</td><td class="role"></td><td class="role"></td><td class="role"></td><td class="role">*</td><td class="role"></td></tr>
+
+  <tr class="section"><td colspan="6">Incident Queue / My Reports</td></tr>
+  <tr><td class="sub">View &amp; Triage Incident Queue</td><td class="role"></td><td class="role">*</td><td class="role">*</td><td class="role">*</td><td class="role"></td></tr>
+  <tr><td class="sub">View Own Reports (&quot;My reports&quot;)</td><td class="role"></td><td class="role"></td><td class="role"></td><td class="role"></td><td class="role">*</td></tr>
+  <tr><td class="sub">Assign Department / Responder</td><td class="role"></td><td class="role">*</td><td class="role">*</td><td class="role"></td><td class="role"></td></tr>
+  <tr><td class="sub">Incident Detail (map, photos, timeline)</td><td class="role">*</td><td class="role">*</td><td class="role">*</td><td class="role">*</td><td class="role">*</td></tr>
+
+  <tr class="section"><td colspan="6">New Incident / Report Emergency</td></tr>
+  <tr><td class="sub">File Emergency Report (photos, GPS)</td><td class="role"></td><td class="role">*</td><td class="role"></td><td class="role">*</td><td class="role">*</td></tr>
+
+  <tr class="section"><td colspan="6">Emergency Response</td></tr>
+  <tr><td class="sub">Arrive / Resolve Incident + Proof Photo</td><td class="role"></td><td class="role"></td><td class="role">*</td><td class="role">*</td><td class="role"></td></tr>
+  <tr><td class="sub">Live GPS Location Sharing</td><td class="role"></td><td class="role"></td><td class="role"></td><td class="role">*</td><td class="role"></td></tr>
+  <tr><td class="sub">Cross-Department Assistance Request</td><td class="role"></td><td class="role"></td><td class="role">*</td><td class="role">*</td><td class="role"></td></tr>
+
+  <tr class="section"><td colspan="6">Residents &amp; Review</td></tr>
+  <tr><td class="sub">Approve / Reject Registrations</td><td class="role">*</td><td class="role"></td><td class="role"></td><td class="role"></td><td class="role"></td></tr>
+  <tr><td class="sub">Review ID Documents &amp; OCR Results</td><td class="role">*</td><td class="role"></td><td class="role"></td><td class="role"></td><td class="role"></td></tr>
+
+  <tr class="section"><td colspan="6">Access Control (admin only)</td></tr>
+  <tr><td class="sub">Change User Roles</td><td class="role">*</td><td class="role"></td><td class="role"></td><td class="role"></td><td class="role"></td></tr>
+  <tr><td class="sub">Suspend / Reactivate Accounts</td><td class="role">*</td><td class="role"></td><td class="role"></td><td class="role"></td><td class="role"></td></tr>
+  <tr><td class="sub">Grant / Revoke Page Access by Role</td><td class="role">*</td><td class="role"></td><td class="role"></td><td class="role"></td><td class="role"></td></tr>
+
+  <tr class="section"><td colspan="6">Departments &#8224;</td></tr>
+  <tr><td class="sub">Manage Departments</td><td class="role">*</td><td class="role"></td><td class="role"></td><td class="role"></td><td class="role"></td></tr>
+  <tr><td class="sub">Manage Memberships &amp; Roles</td><td class="role">*</td><td class="role"></td><td class="role">*</td><td class="role"></td><td class="role"></td></tr>
+  <tr><td class="sub">View Department Incidents</td><td class="role">*</td><td class="role"></td><td class="role">*</td><td class="role"></td><td class="role"></td></tr>
+
+  <tr class="section"><td colspan="6">Reports</td></tr>
+  <tr><td class="sub">Incident Records / History</td><td class="role">*</td><td class="role">*</td><td class="role"></td><td class="role"></td><td class="role"></td></tr>
+  <tr><td class="sub">Export Incident Data</td><td class="role">*</td><td class="role"></td><td class="role"></td><td class="role"></td><td class="role"></td></tr>
+  <tr><td class="sub">System Activity / Audit Log</td><td class="role">*</td><td class="role"></td><td class="role"></td><td class="role"></td><td class="role"></td></tr>
+  <tr><td class="sub">Operations Metrics Dashboard</td><td class="role">*</td><td class="role">*</td><td class="role"></td><td class="role"></td><td class="role"></td></tr>
+
+  <tr class="section"><td colspan="6">Announcements</td></tr>
+  <tr><td class="sub">Post Emergency Advisory</td><td class="role">*</td><td class="role"></td><td class="role"></td><td class="role"></td><td class="role"></td></tr>
+  <tr><td class="sub">View Announcements &amp; Incident Feed</td><td class="role">*</td><td class="role">*</td><td class="role">*</td><td class="role">*</td><td class="role">*</td></tr>
+
+  <tr class="section"><td colspan="6">Contacts</td></tr>
+  <tr><td class="sub">Emergency Contacts Directory</td><td class="role">*</td><td class="role">*</td><td class="role">*</td><td class="role">*</td><td class="role">*</td></tr>
+
+  <tr class="section"><td colspan="6">Profile</td></tr>
+  <tr><td class="sub">View &amp; Edit Own Profile</td><td class="role">*</td><td class="role">*</td><td class="role">*</td><td class="role">*</td><td class="role">*</td></tr>
+
+  <tr class="section"><td colspan="6">Automated / System</td></tr>
+  <tr><td class="sub">Incident Broadcast Emails (created/resolved)</td><td class="role"></td><td class="role"></td><td class="role"></td><td class="role"></td><td class="role">*</td></tr>
+  <tr><td class="sub">Account Decision Emails (approve/reject/suspend)</td><td class="role"></td><td class="role"></td><td class="role"></td><td class="role"></td><td class="role">*</td></tr>
+  <tr><td class="sub">Auto-Dispatch on Department Assignment</td><td class="role"></td><td class="role"></td><td class="role"></td><td class="role"></td><td class="role"></td></tr>
+  <tr><td class="sub">Incident Map Snapshots in Emails</td><td class="role"></td><td class="role"></td><td class="role"></td><td class="role"></td><td class="role">*</td></tr>
+</table>
+
+<p class="fn">&#8224; These pages ship with the role access shown, but an admin can grant them to additional roles in <b>Access control &rarr; Page access by role</b> (Incident queue, New incident, Residents &amp; review, Departments, Reports, Announcements and Contacts are all grantable). Access control itself stays admin-only.</p>
+
+</body>
+</html>

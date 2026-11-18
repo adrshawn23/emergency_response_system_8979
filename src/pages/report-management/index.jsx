@@ -132,6 +132,35 @@ const ReportManagement = () => {
     setFilteredReports(filtered);
   }, [reports, filters, searchQuery]);
 
+  // Collapse clustered reports (same incident, multiple reporters) into one
+  // queue row: the primary report carries _cluster = every row in its group.
+  const clusteredReports = React.useMemo(() => {
+    const groups = new Map();
+    filteredReports.forEach(r => {
+      const key = r.cluster_id || r.id;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(r);
+    });
+    const out = [];
+    groups.forEach(members => {
+      if (members.length === 1) { out.push(members[0]); return; }
+      // Primary = the row with NULL cluster_id; fall back to earliest report.
+      const primary = members.find(m => !m.cluster_id)
+        || members.slice().sort((a, b) => new Date(a.created_at) - new Date(b.created_at))[0];
+      out.push({
+        ...primary,
+        _cluster: members.map(m => ({
+          id: m.id,
+          report_id: m.report_id,
+          contact_name: m.attachments?.contact_name,
+          created_at: m.created_at,
+          isPrimary: m.id === primary.id,
+        })),
+      });
+    });
+    return out;
+  }, [filteredReports]);
+
   const handleFiltersChange = (newFilters) => {
     setFilters(newFilters);
   };

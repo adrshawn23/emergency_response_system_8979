@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  @page { size: A4 portrait; margin: 1.9cm 2cm; }
+  body { font-family: 'Times New Roman', Times, serif; font-size: 11.5pt; color: #000; margin: 0; }
+  h3 { font-weight: bold; margin: 0 0 6px; }
+  h4 { font-weight: bold; margin: 18px 0 10px; }
+  svg { display: block; margin: 8px auto 4px; }
+  .cap { text-align: center; font-weight: bold; text-decoration: underline; margin: 8px 0 18px; }
+  .expl { text-align: justify; text-indent: 1.25cm; line-height: 1.5; margin: 10px 0 0; }
+  .noident { text-indent: 0; }
+  ul.b { margin: 8px 0 0 1.4cm; line-height: 1.5; }
+  ul.b li { margin-bottom: 8px; text-align: justify; }
+  .brk { page-break-before: always; }
+  .nolabel { font-family: Arial, sans-serif; font-size: 10px; fill: #000; text-anchor: middle; }
+  .stack-title { font-family: Arial, sans-serif; font-size: 15px; font-weight: bold; fill: #000; }
+  .stack-item { font-family: Arial, sans-serif; font-size: 11.5px; fill: #000; }
+  .topo-label { font-family: Arial, sans-serif; font-size: 19px; font-weight: bold; fill: #000; text-anchor: middle; }
+</style>
+</head>
+<body>
+
+<h3>Network Design</h3>
+<h4>Network Model</h4>
+
+<!-- ==================== FIGURE 50: NETWORK MODEL ==================== -->
+<svg width="700" height="360" xmlns="http://www.w3.org/2000/svg">
+  <!-- ===== Web server (top center) ===== -->
+  <g transform="translate(322,6)">
+    <!-- server rack -->
+    <rect x="0" y="4" width="30" height="12" fill="none" stroke="#000" stroke-width="1.5"/>
+    <rect x="0" y="18" width="30" height="12" fill="none" stroke="#000" stroke-width="1.5"/>
+    <rect x="0" y="32" width="30" height="12" fill="none" stroke="#000" stroke-width="1.5"/>
+    <circle cx="24" cy="10" r="1.6" fill="#000"/><circle cx="24" cy="24" r="1.6" fill="#000"/><circle cx="24" cy="38" r="1.6" fill="#000"/>
+    <!-- database cylinder -->
+    <ellipse cx="52" cy="18" rx="17" ry="6" fill="none" stroke="#000" stroke-width="1.5"/>
+    <path d="M35,18 v30 a17,6 0 0 0 34,0 v-30" fill="none" stroke="#000" stroke-width="1.5"/>
+    <ellipse cx="52" cy="33" rx="17" ry="6" fill="none" stroke="#000" stroke-width="1"/>
+  </g>
+  <text x="350" y="70" class="nolabel">Web Server</text>
+  <!-- line web server to internet -->
+  <line x1="350" y1="54" x2="350" y2="105" stroke="#000" stroke-width="1.5"/>
+
+  <!-- ===== Internet antenna tower ===== -->
+  <g transform="translate(350,150)">
+    <path d="M-16,30 L0,-14 L16,30" fill="none" stroke="#000" stroke-width="1.5"/>
+    <line x1="-9" y1="12" x2="9" y2="12" stroke="#000" stroke-width="1.2"/>
+    <line x1="-5" y1="0" x2="5" y2="0" stroke="#000" stroke-width="1.2"/>
+    <circle cx="0" cy="-16" r="4" fill="none" stroke="#000" stroke-width="1.5"/>
+    <path d="M-10,-26 a14,14 0 0 1 20,0" fill="none" stroke="#000" stroke-width="1.4"/>
+    <path d="M-17,-33 a24,24 0 0 1 34,0" fill="none" stroke="#000" stroke-width="1.4"/>
+    <path d="M-24,-40 a34,34 0 0 1 48,0" fill="none" stroke="#000" stroke-width="1.4"/>
+  </g>
+  <text x="350" y="200" class="nolabel">Internet</text>
+  <!-- line internet to router -->
+  <line x1="350" y1="180" x2="350" y2="226" stroke="#000" stroke-width="1.5"/>
+
+  <!-- ===== Router (center) ===== -->
+  <g transform="translate(322,226)">
+    <rect x="0" y="0" width="56" height="26" rx="3" fill="none" stroke="#000" stroke-width="1.5"/>
+    <circle cx="8" cy="13" r="1.8" fill="#000"/><circle cx="14" cy="13" r="1.8" fill="#000"/><circle cx="20" cy="13" r="1.8" fill="#000"/>
+    <path d="M48,0 v-8" stroke="#000" stroke-width="1.5"/>
+    <path d="M38,-8 a14,14 0 0 1 20,0" fill="none" stroke="#000" stroke-width="1.4"/>
+    <path d="M33,-15 a22,22 0 0 1 30,0" fill="none" stroke="#000" stroke-width="1.4"/>
+  </g>
+  <text x="350" y="268" class="nolabel">Router</text>
+
+  <!-- ===== Switch (left) ===== -->
+  <g transform="translate(190,155)">
+    <rect x="0" y="0" width="64" height="16" rx="3" fill="none" stroke="#000" stroke-width="1.5"/>
+    <circle cx="8" cy="8" r="1.5" fill="#000"/><circle cx="14" cy="8" r="1.5" fill="#000"/><circle cx="20" cy="8" r="1.5" fill="#000"/><circle cx="26" cy="8" r="1.5" fill="#000"/>
+    <line x1="34" y1="8" x2="58" y2="8" stroke="#000" stroke-width="1.2"/>
+  </g>
+  <text x="222" y="184" class="nolabel">Switch</text>
+  <!-- line left switch to router -->
+  <line x1="254" y1="163" x2="322" y2="239" stroke="#000" stroke-width="1.5"/>
+
+  <!-- ===== Switch (right) ===== -->
+  <g transform="translate(450,155)">
+    <rect x="0" y="0" width="64" height="16" rx="3" fill="none" stroke="#000" stroke-width="1.5"/>
+    <circle cx="8" cy="8" r="1.5" fill="#000"/><circle cx="14" cy="8" r="1.5" fill="#000"/><circle cx="20" cy="8" r="1.5" fill="#000"/><circle cx="26" cy="8" r="1.5" fill="#000"/>
+    <line x1="34" y1="8" x2="58" y2="8" stroke="#000" stroke-width="1.2"/>
+  </g>
+  <text x="482" y="184" class="nolabel">Switch</text>
+  <!-- line right switch to router -->
+  <line x1="450" y1="163" x2="378" y2="239" stroke="#000" stroke-width="1.5"/>
+
+  <!-- ===== Staff monitor (top left) ===== -->
+  <g transform="translate(60,52)">
+    <rect x="0" y="0" width="58" height="40" rx="3" fill="none" stroke="#000" stroke-width="1.5"/>
+    <line x1="22" y1="40" x2="22" y2="50" stroke="#000" stroke-width="1.5"/>
+    <line x1="36" y1="40" x2="36" y2="50" stroke="#000" stroke-width="1.5"/>
+    <rect x="14" y="50" width="30" height="6" rx="3" fill="none" stroke="#000" stroke-width="1.5"/>
+  </g>
+  <text x="89" y="122" class="nolabel">Staff</text>
+  <line x1="118" y1="92" x2="190" y2="155" stroke="#000" stroke-width="1.5"/>
+
+  <!-- ===== Admin monitor (bottom left) ===== -->
+  <g transform="translate(60,205)">
+    <rect x="0" y="0" width="58" height="40" rx="3" fill="none" stroke="#000" stroke-width="1.5"/>
+    <line x1="22" y1="40" x2="22" y2="50" stroke="#000" stroke-width="1.5"/>
+    <line x1="36" y1="40" x2="36" y2="50" stroke="#000" stroke-width="1.5"/>
+    <rect x="14" y="50" width="30" height="6" rx="3" fill="none" stroke="#000" stroke-width="1.5"/>
+  </g>
+  <text x="89" y="275" class="nolabel">Admin</text>
+  <line x1="118" y1="225" x2="190" y2="168" stroke="#000" stroke-width="1.5"/>
+
+  <!-- ===== Residents/User person (far right) ===== -->
+  <g transform="translate(600,150)">
+    <circle cx="15" cy="14" r="12" fill="#000"/>
+    <path d="M0,60 C0,32 30,32 30,60 Z" fill="#000"/>
+  </g>
+  <text x="615" y="230" class="nolabel">Residents/User</text>
+  <line x1="514" y1="163" x2="592" y2="163" stroke="#000" stroke-width="1.5"/>
+</svg>
+<div class="cap">Figure 50: Network Model</div>
+
+<p class="expl">The Kalubihan Emergency Response System serves to enable easy communication and coordination between barangay personnel and people residing there when an emergency is occurring. It consists of the admin and staff computers that link via a switch to a main router that accesses the internet, to which both residents connect through a different switch also connected to the same router. The router will be the central point for directing all network traffic to a web server via the internet. The web server has an emergency response application whereby both the personnel and the residents can send and receive real-time notifications, control emergency data, and react accordingly. The system offers a centralized and stable communication interface to enhance public safety and emergency preparedness in the barangay.</p>
+
+<h4>Network Topology</h4>
+
+<!-- ==================== FIGURE 51: NETWORK TOPOLOGY ==================== -->
+<svg width="560" height="340" xmlns="http://www.w3.org/2000/svg">
+  <!-- vertical chain: Computer -> VPN -> Router -> Firewall -> Router -->
+  <rect x="210" y="8"   width="140" height="44" fill="none" stroke="#000" stroke-width="3"/>
+  <text x="280" y="37" class="topo-label">Computer</text>
+  <line x1="280" y1="52" x2="280" y2="76" stroke="#000" stroke-width="2.5"/>
+
+  <rect x="232" y="76"  width="96"  height="44" fill="none" stroke="#000" stroke-width="3"/>
+  <text x="280" y="105" class="topo-label">VPN</text>
+  <line x1="280" y1="120" x2="280" y2="144" stroke="#000" stroke-width="2.5"/>
+
+  <rect x="222" y="144" width="116" height="44" fill="none" stroke="#000" stroke-width="3"/>
+  <text x="280" y="173" class="topo-label">Router</text>
+  <line x1="280" y1="188" x2="280" y2="212" stroke="#000" stroke-width="2.5"/>
+
+  <rect x="212" y="212" width="136" height="44" fill="none" stroke="#000" stroke-width="3"/>
+  <text x="280" y="241" class="topo-label">Firewall</text>
+  <line x1="280" y1="256" x2="280" y2="276" stroke="#000" stroke-width="2.5"/>
+
+  <!-- bottom row: Database -- Router -- Server -->
+  <g transform="translate(0,-24)">
+    <rect x="4"   y="300" width="150" height="44" fill="none" stroke="#000" stroke-width="3"/>
+    <text x="79"  y="329" class="topo-label">Database</text>
+    <rect x="224" y="300" width="112" height="44" fill="none" stroke="#000" stroke-width="3"/>
+    <text x="280" y="329" class="topo-label">Router</text>
+    <rect x="406" y="300" width="120" height="44" fill="none" stroke="#000" stroke-width="3"/>
+    <text x="466" y="329" class="topo-label">Server</text>
+    <line x1="154" y1="322" x2="224" y2="322" stroke="#000" stroke-width="2.5"/>
+    <line x1="336" y1="322" x2="406" y2="322" stroke="#000" stroke-width="2.5"/>
+  </g>
+</svg>
+<div class="cap">Figure 51: Network Topology</div>
+
+<p class="expl">The Kalubihan Emergency Response System will be implementing the star topology. The Star topology is constructed in which each node is separately connected to a central connection point like switch or hubs. The benefits of a star network topology are extremely reliable, high-performance servers as there is no chance of data collisions. Kalubihan Emergency Response System employs the Star topology due to the topology is centralized connection and simple to manage. Through the implementation of this network topology, this does not affect other computer connections in case there is a failure action. This network topology is easier to maintain the network due to the central connection between hub and a node.</p>
+
+<h4>Development Phase</h4>
+<h4>Technology Stock Diagram</h4>
+
+<p class="expl">The Kalubihan Emergency Response System is built on a three-layer technology stack consisting of the server side, front end, and back end. This architecture ensures the system remains scalable, secure, and capable of handling time-sensitive emergency data efficiently.</p>
+
+<!-- ==================== FIGURE 52: TECHNOLOGY STOCK DIAGRAM ==================== -->
+<svg width="700" height="310" xmlns="http://www.w3.org/2000/svg">
+  <!-- SERVER SIDE box -->
+  <rect x="20" y="20" width="230" height="170" rx="14" fill="none" stroke="#000" stroke-width="2"/>
+  <text x="135" y="55" class="stack-title" text-anchor="middle">SERVER SIDE</text>
+  <text x="135" y="105" class="stack-item" text-anchor="middle">Supabase (Web + Auth + API)</text>
+  <text x="135" y="140" class="stack-item" text-anchor="middle">Database (PostgreSQL)</text>
+  <text x="135" y="172" class="stack-item" text-anchor="middle">Edge Functions (Deno/TypeScript)</text>
+
+  <!-- Internet label + double arrow -->
+  <text x="360" y="100" font-family="Arial" font-size="26" font-weight="bold" text-anchor="middle">Internet</text>
+  <line x1="255" y1="115" x2="465" y2="115" stroke="#000" stroke-width="2"/>
+  <polygon points="255,115 270,108 270,122" fill="#000"/>
+  <polygon points="465,115 450,108 450,122" fill="#000"/>
+
+  <!-- FRONT END box -->
+  <rect x="470" y="10" width="220" height="185" rx="14" fill="none" stroke="#000" stroke-width="2"/>
+  <text x="580" y="40" class="stack-title" text-anchor="middle">FRONT END</text>
+  <text x="485" y="68" class="stack-item">React/JSX (Structure)</text>
+  <text x="485" y="90" class="stack-item">CSS (Styling)</text>
+  <text x="485" y="112" class="stack-item">JavaScript (UI interactivity)</text>
+  <text x="485" y="134" class="stack-item">JSON (Data exchange)</text>
+  <text x="485" y="156" class="stack-item">Mobile Responsive (Client</text>
+  <text x="500" y="172" class="stack-item">side access)</text>
+  <text x="485" y="190" class="stack-item">Web Browser (User Interface)</text>
+
+  <!-- BACK END box -->
+  <rect x="470" y="205" width="220" height="100" rx="14" fill="none" stroke="#000" stroke-width="2"/>
+  <text x="580" y="232" class="stack-title" text-anchor="middle">BACK END</text>
+  <text x="485" y="258" class="stack-item">Edge Functions (Server side scripting)</text>
+  <text x="485" y="278" class="stack-item">PostgreSQL (Database layer)</text>
+  <text x="485" y="298" class="stack-item">RLS + Realtime (Application logic)</text>
+</svg>
+<div class="cap">Figure 52: Technology Stock Diagram</div>
+
+<p class="expl noident">The architecture of Kalubihan Emergency Response System is structured into three main layers: Server Side, Front End, and Back End.</p>
+
+<ul class="b">
+  <li>The server side is implemented with Supabase (hosted API, authentication, and PostgreSQL database) to manage data flow. PostgreSQL stores resident details, incident reports, and response records, while Edge Functions support automation and real-time operations.</li>
+  <li>The front end is built with React/JSX, CSS, and JavaScript for structure, styling, and interactivity. JSON ensures smooth data exchange. Accessible via web browsers and mobile-responsive views for residents, responders, and administrators.</li>
+  <li>The <i>back end</i> handles application logic, data processing, and database interaction. Edge Functions manage server-side scripting, PostgreSQL ensures reliable storage, and row-level security with realtime subscriptions supports advanced processes like alerts and monitoring.</li>
+</ul>
+
+<p class="expl">This layered approach ensures that Kalubihan Emergency Response System can process emergency reports in real time, deliver timely alerts, and maintain secure data handling. By clearly separating responsibilities across the technology stack, the system achieves both operational efficiency and ease of maintenance.</p>
+
+</body>
+</html>

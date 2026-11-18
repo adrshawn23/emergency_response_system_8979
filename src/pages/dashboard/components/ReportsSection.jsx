@@ -74,7 +74,7 @@ const buildActivity = (history, cda) => [
   })),
 ].sort((a, b) => b.at - a.at).slice(0, 50);
 
-const ReportsSection = () => {
+const ReportsSection = ({ isAdmin }) => {
   const [reports, setReports] = useState([]);
   const [history, setHistory] = useState([]);
   const [cda, setCda] = useState([]);
@@ -132,7 +132,7 @@ const ReportsSection = () => {
 
   return (
     <div className="mt-7 space-y-6">
-      <CommandAnalytics reports={reports} />
+      <CommandAnalytics reports={reports} isAdmin={isAdmin} />
 
       {/* Incident records — review surface with filters + CSV export */}
       <section className="rounded-lg border border-slate-200/70 bg-white">
